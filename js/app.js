@@ -238,6 +238,7 @@ const App = {
 
   // ─── SHOW APP ─────────────────────────────────────────────
   _showApp() {
+    document.getElementById('login-page').style.display = 'none';
     const appEl = document.getElementById('app');
     appEl.style.display = 'flex';
 
