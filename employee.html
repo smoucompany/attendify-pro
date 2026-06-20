@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Attendify Pro — بوابة الموظف</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="css/pro-ui.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-bg: rgba(99,102,241,0.08);
+      --success: #10b981;
+      --success-bg: rgba(16,185,129,0.08);
+      --danger: #ef4444;
+      --danger-bg: rgba(239,68,68,0.08);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245,158,11,0.08);
+      --info: #06b6d4;
+      --bg: #f1f5f9;
+      --bg-card: #ffffff;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.07);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.12);
+      --font: 'Cairo', sans-serif;
+    }
+    [data-theme="dark"] {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border: #334155;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.5);
+      --primary-bg: rgba(99,102,241,0.15);
+      --success-bg: rgba(16,185,129,0.12);
+      --danger-bg: rgba(239,68,68,0.12);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:var(--font); background:var(--bg); color:var(--text-primary); min-height:100vh; transition:background .3s,color .3s; }
+    button { cursor:pointer; border:none; background:none; font-family:var(--font); }
+    input, select, textarea { font-family:var(--font); }
+
+    /* ── LOGIN ── */
+    #emp-login {
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+      position:relative;
+      overflow:hidden;
+    }
+    #emp-login::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .login-card {
+      background:rgba(255,255,255,0.12);
+      backdrop-filter:blur(24px);
+      -webkit-backdrop-filter:blur(24px);
+      border:1px solid rgba(255,255,255,0.2);
+      border-radius:24px;
+      padding:40px;
+      width:100%;
+      max-width:420px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+      position:relative;
+      z-index:1;
+    }
+    .login-logo {
+      text-align:center;
+      margin-bottom:28px;
+    }
+    .login-logo .logo-icon {
+      width:72px; height:72px;
+      border-radius:20px;
+      background:rgba(255,255,255,0.2);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:32px;
+      color:white;
+      margin-bottom:12px;
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,0.4)}
+      50%{box-shadow:0 0 0 16px rgba(255,255,255,0)}
+    }
+    .login-logo h1 { color:white; font-size:22px; font-weight:800; }
+    .login-logo p { color:rgba(255,255,255,0.8); font-size:13px; margin-top:4px; }
+    .login-tabs {
+      display:flex;
+      gap:6px;
+      background:rgba(255,255,255,0.1);
+      border-radius:12px;
+      padding:4px;
+      margin-bottom:24px;
+    }
+    .login-tab {
+      flex:1;
+      padding:9px;
+      border-radius:9px;
+      font-size:13px;
+      font-weight:600;
+      color:rgba(255,255,255,0.7);
+      text-align:center;
+      transition:all .2s;
+    }
+    .login-tab.active {
+      background:rgba(255,255,255,0.25);
+      color:white;
+    }
+    .login-field { margin-bottom:16px; }
+    .login-field label { display:block; color:rgba(255,255,255,0.9); font-size:13px; font-weight:600; margin-bottom:6px; }
+    .login-input {
+      width:100%;
+      padding:13px 16px;
+      border-radius:12px;
+      border:1.5px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.1);
+      color:white;
+      font-size:15px;
+      font-family:var(--font);
+      transition:border-color .2s;
+    }
+    .login-input::placeholder { color:rgba(255,255,255,0.5); }
+    .login-input:focus { outline:none; border-color:rgba(255,255,255,0.6); background:rgba(255,255,255,0.15); }
+    .login-input option { color:#0f172a; background:white; }
+    .btn-login {
+      width:100%;
+      padding:14px;
+      border-radius:12px;
+      background:white;
+      color:var(--primary);
+      font-size:15px;
+      font-weight:800;
+      font-family:var(--font);
+      margin-top:8px;
+      transition:transform .15s, box-shadow .15s;
+      box-shadow:0 4px 20px rgba(0,0,0,0.2);
+    }
+    .btn-login:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(0,0,0,0.3); }
+    .btn-login:active { transform:translateY(0); }
+    .login-hint {
+      text-align:center;
+      color:rgba(255,255,255,0.6);
+      font-size:12px;
+      margin-top:16px;
+    }
+    .login-hint strong { color:rgba(255,255,255,0.9); }
+
+    /* ── APP SHELL ── */
+    #emp-app { display:none; }
+    .emp-header {
+      background:var(--bg-card);
+      border-bottom:1px solid var(--border);
+      padding:0 20px;
+      height:60px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      position:sticky;
+      top:0;
+      z-index:100;
+      box-shadow:0 2px 12px rgba(0,0,0,0.06);
+    }
+    .emp-header-logo {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:16px;
+      font-weight:800;
+      color:var(--primary);
+    }
+    .emp-header-logo i { font-size:20px; }
+    .emp-header-actions { display:flex; align-items:center; gap:8px; }
+    .hdr-btn {
+      width:36px; height:36px;
+      border-radius:10px;
+      background:var(--bg);
+      color:var(--text-secondary);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:15px;
+      transition:all .2s;
+    }
+    .hdr-btn:hover { background:var(--primary-bg); color:var(--primary); }
+    .emp-avatar-btn {
+      width:36px; height:36px;
+      border-radius:10px;
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      font-size:14px;
+    }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position:fixed;
+      bottom:0;
+      left:0;
+      right:0;
+      height:64px;
+      background:var(--bg-card);
+      border-top:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      z-index:100;
+      box-shadow:0 -4px 20px rgba(0,0,0,0.08);
+    }
+    .bnav-item {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
+      padding:8px 4px;
+      color:var(--text-muted);
+      font-size:11px;
+      font-weight:600;
+      transition:all .2s;
+      position:relative;
+    }
+    .bnav-item.active { color:var(--primary); }
+    .bnav-item.active .bnav-icon { background:var(--primary-bg); }
+    .bnav-icon {
+      width:40px;
+      height:30px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:17px;
+      transition:all .2s;
+    }
+    .bnav-badge {
+      position:absolute;
+      top:6px;
+      background:var(--danger);
+      color:white;
+      font-size:9px;
+      font-weight:800;
+      min-width:16px;
+      height:16px;
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:0 4px;
+      inset-inline-start: calc(50% + 8px);
+    }
+
+    /* ── PAGE CONTENT ── */
+    .emp-content {
+      padding:20px 20px 84px;
+      max-width:600px;
+      margin:0 auto;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background:var(--bg-card);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      margin-bottom:16px;
+    }
+    .card-body { padding:20px; }
+
+    /* ── GREETING ── */
+    .greeting-card {
+      background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 60%,#06b6d4 100%);
+      border-radius:var(--radius);
+      padding:24px 20px;
+      color:white;
+      margin-bottom:16px;
+      position:relative;
+      overflow:hidden;
+    }
+    .greeting-card::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      background:url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1' fill='white' fill-opacity='0.1'/%3E%3C/svg%3E");
+    }
+    .greeting-top {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:16px;
+    }
+    .greeting-name { font-size:20px; font-weight:800; }
+    .greeting-sub { font-size:13px; opacity:.8; margin-top:2px; }
+    .greeting-clock {
+      font-size:28px;
+      font-weight:800;
+      font-variant-numeric:tabular-nums;
+      letter-spacing:-1px;
+    }
+    .greeting-date { font-size:13px; opacity:.8; margin-top:2px; }
+    .greeting-status {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:rgba(255,255,255,0.2);
+      backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.3);
+      border-radius:20px;
+      padding:6px 14px;
+      font-size:12px;
+      font-weight:700;
+      margin-top:12px;
+    }
+    .status-dot {
+      width:7px; height:7px;
+      border-radius:50%;
+      background:white;
+      animation:blink 1.5s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── CHECKIN WIDGET ── */
+    .checkin-widget {
+      text-align:center;
+      padding:28px 20px;
+    }
+    .checkin-ring {
+      width:180px;
+      height:180px;
+      border-radius:50%;
+      margin:0 auto 20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      cursor:pointer;
+      transition:transform .15s;
+    }
+    .checkin-ring:active { transform:scale(.97); }
+    .ring-bg {
+      position:absolute;
+      inset:0;
+      border-radius:50%;
+      background:conic-gradient(var(--success) var(--progress, 0%), var(--border) 0%);
+      padding:8px;
+    }
+    .ring-inner {
+      position:absolute;
+      inset:12px;
+      border-radius:50%;
+      background:var(--bg-card);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+    }
+    .checkin-ring.checked-out .ring-bg { background:conic-gradient(var(--primary) var(--progress, 0%), var(--border) 0%); }
+    .ring-icon {
+      width:64px; height:64px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:26px;
+      background:var(--success-bg);
+      color:var(--success);
+      transition:all .3s;
+    }
+    .checked-out .ring-icon { background:var(--primary-bg); color:var(--primary); }
+    .ring-label { font-size:13px; font-weight:700; color:var(--text-secondary); }
+    .ring-sublabel { font-size:11px; color:var(--text-muted); }
+
+    .checkin-methods {
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      margin-bottom:20px;
+    }
+    .method-btn {
+      flex:1;
+      max-width:100px;
+      padding:12px 8px;
+      border-radius:12px;
+      border:2px solid var(--border);
+      background:var(--bg);
+      color:var(--text-secondary);
+      font-size:12px;
+      font-weight:600;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      transition:all .2s;
+      font-family:var(--font);
+    }
+    .method-btn i { font-size:20px; }
+    .method-btn:hover, .method-btn.active {
+      border-color:var(--primary);
+      background:var(--primary-bg);
+      color:var(--primary);
+    }
+    .btn-checkin {
+      width:100%;
+      padding:16px;
+      border-radius:14px;
+      background:linear-gradient(135deg,#10b981,#059669);
+      color:white;
+      font-size:16px;
+      font-weight:800;
+      font-family:var(--font);
+      transition:all .2s;
+      box-shadow:0 4px 20px rgba(16,185,129,0.4);
+    }
+    .btn-checkin.checkout {
+      background:linear-gradient(135deg,#6366f1,#4f46e5);
+      box-shadow:0 4px 20px rgba(99,102,241,0.4);
+    }
+    .btn-checkin:hover { transform:translateY(-1px); }
+    .btn-checkin:active { transform:translateY(0); }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .stat-mini {
+      background:var(--bg-card);
+      border-radius:14px;
+      padding:14px 12px;
+      text-align:center;
+      box-shadow:var(--shadow);
+    }
+    .stat-mini-val {
+      font-size:20px;
+      font-weight:800;
+      color:var(--primary);
+      line-height:1;
+      margin-bottom:4px;
+    }
+    .stat-mini-label {
+      font-size:11px;
+      color:var(--text-muted);
+      font-weight:600;
+    }
+
+    /* ── SECTION TITLE ── */
+    .section-title {
+      font-size:14px;
+      font-weight:800;
+      color:var(--text-primary);
+      margin-bottom:12px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .section-title i { color:var(--primary); font-size:16px; }
+
+    /* ── TIMELINE ── */
+    .att-timeline { list-style:none; }
+    .att-item {
+      display:flex;
+      align-items:center;
+      gap:14px;
+      padding:12px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .att-item:last-child { border-bottom:none; }
+    .att-dot {
+      width:10px; height:10px;
+      border-radius:50%;
+      flex-shrink:0;
+    }
+    .att-dot.in { background:var(--success); }
+    .att-dot.out { background:var(--primary); }
+    .att-dot.absent { background:var(--danger); }
+    .att-dot.late { background:var(--warning); }
+    .att-date { font-size:12px; color:var(--text-muted); min-width:70px; }
+    .att-info { flex:1; }
+    .att-label { font-size:13px; font-weight:700; color:var(--text-primary); }
+    .att-times { font-size:11px; color:var(--text-muted); margin-top:2px; }
+    .att-dur {
+      font-size:12px;
+      font-weight:700;
+      color:var(--text-secondary);
+      background:var(--bg);
+      padding:3px 8px;
+      border-radius:6px;
+    }
+
+    /* ── LEAVE BALANCE ── */
+    .balance-item {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:12px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .balance-item:last-child { border-bottom:none; }
+    .balance-icon {
+      width:38px; height:38px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:16px;
+      flex-shrink:0;
+    }
+    .balance-info { flex:1; }
+    .balance-type { font-size:13px; font-weight:700; color:var(--text-primary); }
+    .balance-bar-wrap { height:5px; background:var(--border); border-radius:3px; margin-top:5px; overflow:hidden; }
+    .balance-bar { height:100%; border-radius:3px; transition:width .8s ease; }
+    .balance-days { font-size:13px; font-weight:800; color:var(--text-secondary); white-space:nowrap; }
+
+    /* ── REQUEST FORM ── */
+    .form-group { margin-bottom:16px; }
+    .form-group label {
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      color:var(--text-secondary);
+      margin-bottom:6px;
+    }
+    .form-input {
+      width:100%;
+      padding:12px 14px;
+      border-radius:10px;
+      border:1.5px solid var(--border);
+      background:var(--bg);
+      color:var(--text-primary);
+      font-size:14px;
+      font-family:var(--font);
+      transition:border-color .2s;
+    }
+    .form-input:focus { outline:none; border-color:var(--primary); }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .btn-submit {
+      width:100%;
+      padding:14px;
+      border-radius:12px;
+      background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+      color:white;
+      font-size:15px;
+      font-weight:700;
+      font-family:var(--font);
+      box-shadow:0 4px 16px rgba(99,102,241,0.4);
+      transition:all .2s;
+    }
+    .btn-submit:hover { transform:translateY(-1px); }
+
+    /* ── PROFILE ── */
+    .profile-header {
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      padding:28px 20px 20px;
+      text-align:center;
+      color:white;
+    }
+    .profile-avatar {
+      width:72px; height:72px;
+      border-radius:20px;
+      background:rgba(255,255,255,0.25);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:28px;
+      font-weight:800;
+      margin-bottom:12px;
+      border:3px solid rgba(255,255,255,0.3);
+    }
+    .profile-name { font-size:18px; font-weight:800; }
+    .profile-role { font-size:13px; opacity:.8; margin-top:2px; }
+    .profile-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      background:rgba(255,255,255,0.2);
+      border-radius:20px;
+      padding:4px 12px;
+      font-size:12px;
+      margin-top:8px;
+    }
+    .info-row {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:13px 0;
+      border-bottom:1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom:none; }
+    .info-icon {
+      width:36px; height:36px;
+      border-radius:10px;
+      background:var(--primary-bg);
+      color:var(--primary);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:14px;
+      flex-shrink:0;
+    }
+    .info-label { font-size:11px; color:var(--text-muted); }
+    .info-val { font-size:13px; font-weight:600; color:var(--text-primary); margin-top:1px; }
+    .btn-logout-emp {
+      width:100%;
+      padding:13px;
+      border-radius:12px;
+      background:var(--danger-bg);
+      color:var(--danger);
+      font-size:14px;
+      font-weight:700;
+      font-family:var(--font);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      margin-top:8px;
+      transition:all .2s;
+    }
+    .btn-logout-emp:hover { background:var(--danger); color:white; }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.5);
+      backdrop-filter:blur(4px);
+      z-index:200;
+      display:none;
+    }
+    .modal-overlay.open { display:flex; align-items:flex-end; justify-content:center; }
+    .modal-sheet {
+      background:var(--bg-card);
+      border-radius:24px 24px 0 0;
+      width:100%;
+      max-width:600px;
+      max-height:85vh;
+      overflow-y:auto;
+      padding:20px;
+      transform:translateY(0);
+      animation:slideUp .3s ease;
+    }
+    @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .modal-handle {
+      width:40px; height:4px;
+      border-radius:2px;
+      background:var(--border);
+      margin:0 auto 20px;
+    }
+    .modal-title {
+      font-size:17px;
+      font-weight:800;
+      color:var(--text-primary);
+      margin-bottom:20px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .modal-title i { color:var(--primary); }
+
+    /* ── GPS / QR MODALS ── */
+    .verify-icon {
+      width:100px; height:100px;
+      border-radius:50%;
+      margin:0 auto 16px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:40px;
+    }
+    .gps-ring {
+      position:relative;
+      width:100px; height:100px;
+      border-radius:50%;
+      background:var(--success-bg);
+      color:var(--success);
+    }
+    .gps-ring::before, .gps-ring::after {
+      content:'';
+      position:absolute;
+      inset:-12px;
+      border-radius:50%;
+      border:2px solid var(--success);
+      opacity:0;
+      animation:gpsPulse 2s ease-out infinite;
+    }
+    .gps-ring::after { animation-delay:.7s; }
+    @keyframes gpsPulse {
+      0%{inset:-4px;opacity:.6}
+      100%{inset:-28px;opacity:0}
+    }
+    .qr-frame {
+      width:160px; height:160px;
+      margin:0 auto 16px;
+      border-radius:16px;
+      background:var(--bg);
+      border:2px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:60px;
+      position:relative;
+      overflow:hidden;
+    }
+    .qr-scan-line {
+      position:absolute;
+      inset:0 0 auto;
+      height:3px;
+      background:linear-gradient(90deg,transparent,var(--primary),transparent);
+      animation:qrScan 2s ease-in-out infinite;
+    }
+    @keyframes qrScan {
+      0%{top:0} 50%{top:calc(100% - 3px)} 100%{top:0}
+    }
+    .face-circle {
+      width:120px; height:120px;
+      border-radius:50%;
+      margin:0 auto 16px;
+      background:var(--primary-bg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:48px;
+      position:relative;
+      border:3px solid var(--primary);
+      animation:facePulse 2s ease-in-out infinite;
+    }
+    @keyframes facePulse {
+      0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.4)}
+      50%{box-shadow:0 0 0 20px rgba(99,102,241,0)}
+    }
+    .verify-status {
+      text-align:center;
+      font-size:14px;
+      font-weight:700;
+      color:var(--text-secondary);
+      margin-bottom:6px;
+    }
+    .verify-sub { text-align:center; font-size:12px; color:var(--text-muted); margin-bottom:20px; }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position:fixed;
+      top:70px;
+      right:0; left:0;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:8px;
+      z-index:999;
+      pointer-events:none;
+    }
+    .toast {
+      background:var(--bg-card);
+      border-radius:12px;
+      padding:12px 20px;
+      font-size:14px;
+      font-weight:600;
+      box-shadow:0 8px 32px rgba(0,0,0,0.2);
+      display:flex;
+      align-items:center;
+      gap:10px;
+      animation:toastIn .3s ease;
+      pointer-events:all;
+    }
+    @keyframes toastIn { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+    .toast.success i { color:var(--success); }
+    .toast.error i { color:var(--danger); }
+    .toast.info i { color:var(--info); }
+
+    /* ── ADMIN LINK ── */
+    .admin-link {
+      position:fixed;
+      bottom:74px;
+      inset-inline-end:16px;
+      background:var(--primary);
+      color:white;
+      border-radius:50px;
+      padding:8px 16px;
+      font-size:12px;
+      font-weight:700;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      text-decoration:none;
+      box-shadow:0 4px 16px rgba(99,102,241,0.5);
+      z-index:90;
+    }
+
+    /* ── EMPTY ── */
+    .empty {
+      text-align:center;
+      padding:32px 16px;
+      color:var(--text-muted);
+    }
+    .empty i { font-size:40px; margin-bottom:10px; opacity:.4; display:block; }
+    .empty p { font-size:14px; }
+
+    /* ── Biometric modal compat ── */
+    .btn { display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s; }
+    .btn-primary { background:var(--primary);color:white; }
+    .btn-primary:hover { background:var(--primary-dark); }
+    .btn-secondary { background:var(--border,#e2e8f0);color:var(--text-secondary,#475569); }
+    .btn-secondary:hover { background:#d1d5db; }
+    .btn-sm { padding:6px 12px;font-size:12px; }
+    .loading-spinner { display:inline-block;width:20px;height:20px;border:2.5px solid rgba(99,102,241,.3);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .modal-title { font-size:16px;font-weight:800;color:var(--text-primary);margin-bottom:16px;display:flex;align-items:center;gap:8px; }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="emp-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon"><i class="fas fa-fingerprint"></i></div>
+      <h1>Attendify Pro</h1>
+      <p>بوابة الموظف الذاتية</p>
+    </div>
+
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('id',this)">كود الموظف</div>
+      <div class="login-tab" onclick="switchLoginTab('email',this)">البريد الإلكتروني</div>
+    </div>
+
+    <form id="emp-login-form" onsubmit="empLogin(event)">
+      <div class="login-field" id="field-id">
+        <label>كود الموظف</label>
+        <input type="text" class="login-input" id="emp-code" placeholder="مثال: 001" autocomplete="off" inputmode="numeric">
+      </div>
+      <div class="login-field" id="field-email" style="display:none">
+        <label>البريد الإلكتروني</label>
+        <input type="email" class="login-input" id="emp-email" placeholder="name@company.com">
+      </div>
+      <div class="login-field">
+        <label>الرقم السري / كلمة المرور</label>
+        <input type="password" class="login-input" id="emp-pass" placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-login">
+        <i class="fas fa-arrow-right-to-bracket"></i> دخول
+      </button>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button type="button" onclick="empBiometricLogin('fingerprint')" style="flex:1;padding:12px;border-radius:12px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);color:white;font-family:var(--font);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+          <i class="fas fa-fingerprint" style="font-size:16px"></i> بصمة الإصبع
+        </button>
+        <button type="button" onclick="empBiometricLogin('face')" style="flex:1;padding:12px;border-radius:12px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.25);color:white;font-family:var(--font);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+          <i class="fas fa-face-smile" style="font-size:16px"></i> بصمة الوجه
+        </button>
+      </div>
+    </form>
+    <div class="login-hint">
+      <a href="index.html" style="color:rgba(255,255,255,0.7);text-decoration:none;margin-top:8px;display:inline-block">
+        <i class="fas fa-shield-halved"></i> لوحة تحكم الإدارة
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="emp-app">
+
+  <!-- Header -->
+  <header class="emp-header">
+    <div class="emp-header-logo">
+      <i class="fas fa-fingerprint"></i>
+      <span>Attendify</span>
+    </div>
+    <div class="emp-header-actions">
+      <button class="hdr-btn" onclick="toggleTheme()" title="تغيير المظهر">
+        <i class="fas fa-moon" id="theme-icon"></i>
+      </button>
+      <div class="emp-avatar-btn" id="hdr-avatar">م</div>
+    </div>
+  </header>
+
+  <!-- Content -->
+  <div class="emp-content" id="emp-content">
+    <!-- Dynamic pages rendered here -->
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="bnav-item active" data-page="home" onclick="goPage('home',this)">
+      <div class="bnav-icon"><i class="fas fa-house"></i></div>
+      <span>الرئيسية</span>
+    </button>
+    <button class="bnav-item" data-page="history" onclick="goPage('history',this)">
+      <div class="bnav-icon"><i class="fas fa-clock-rotate-left"></i></div>
+      <span>سجل الحضور</span>
+    </button>
+    <button class="bnav-item" data-page="leaves" onclick="goPage('leaves',this)">
+      <div class="bnav-icon"><i class="fas fa-calendar-minus"></i></div>
+      <span>الإجازات</span>
+      <span class="bnav-badge">2</span>
+    </button>
+    <button class="bnav-item" data-page="profile" onclick="goPage('profile',this)">
+      <div class="bnav-icon"><i class="fas fa-user"></i></div>
+      <span>ملفي</span>
+    </button>
+  </nav>
+
+  <a href="index.html" class="admin-link" title="لوحة الإدارة">
+    <i class="fas fa-shield-halved"></i> الإدارة
+  </a>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()">
+  <div class="modal-sheet" id="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== DATA + SCRIPTS ===== -->
+<script src="js/i18n.js"></script>
+<script src="js/data.js"></script>
+<script src="js/biometrics.js"></script>
+<script>
+/* ============================================================
+   EMPLOYEE PORTAL — CORE
+   ============================================================ */
+
+let currentEmp = null;
+let checkedIn  = false;
+let checkInTime = null;
+let selectedMethod = 'face';
+let currentPage = 'home';
+
+/* ── THEME ── */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('theme-icon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  localStorage.setItem('emp-theme', html.dataset.theme);
+}
+(function initTheme() {
+  const t = localStorage.getItem('emp-theme') || 'light';
+  document.documentElement.dataset.theme = t;
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+})();
+
+
+function switchLoginTab(type, btn) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('field-id').style.display    = type === 'id'    ? '' : 'none';
+  document.getElementById('field-email').style.display = type === 'email' ? '' : 'none';
+}
+
+/* ── LOGIN ── */
+function empLogin(e) {
+  e.preventDefault();
+  const pass = document.getElementById('emp-pass').value;
+  if (!pass) return showToast('أدخل كلمة المرور', 'error');
+
+  const emailInput = document.getElementById('emp-email').value;
+  let emp;
+  if (emailInput) {
+    emp = DB.employees.find(x => x.email === emailInput.trim().toLowerCase());
+    if (!emp) return showToast('البريد الإلكتروني غير موجود', 'error');
+  } else {
+    const code = document.getElementById('emp-code').value.trim();
+    if (!code) return showToast('أدخل كود الموظف', 'error');
+    emp = DB.employees.find(x => x.no === code || x.no === code.padStart(3,'0'));
+    if (!emp) return showToast('كود الموظف غير صحيح', 'error');
+  }
+
+  // Validate password: uses emp.password if set, otherwise defaults to employee code
+  const validPass = emp.password || emp.no;
+  if (pass !== validPass) return showToast('كلمة المرور غير صحيحة', 'error');
+
+  currentEmp = emp;
+  sessionStorage.setItem('emp-session', JSON.stringify(emp));
+
+  document.getElementById('emp-login').style.display = 'none';
+  document.getElementById('emp-app').style.display = 'block';
+  document.getElementById('hdr-avatar').textContent = emp.avatar;
+
+  // Detect if already checked in today
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRec = DB.attendance.find(a =>
+    a.empId === emp.id && a.date === todayStr
+  );
+  if (todayRec && todayRec.checkIn && !todayRec.checkOut) {
+    checkedIn = true;
+    checkInTime = todayRec.checkIn;
+  }
+
+  goPage('home');
+  showToast(`أهلاً ${emp.name} 👋`, 'success');
+}
+
+/* ── BIOMETRIC LOGIN ── */
+async function empBiometricLogin(type) {
+  if (type === 'fingerprint') {
+    if (!Biometrics.canWebAuthn()) {
+      showToast('جهازك لا يدعم البصمة البيومترية', 'error');
+      return;
+    }
+    // Find employee by code field
+    const code = document.getElementById('emp-code')?.value?.trim();
+    if (!code) { showToast('أدخل كود الموظف أولاً ثم اضغط بصمة الإصبع', 'warning'); return; }
+    const emp = DB.employees.find(x => x.no === code || x.no === code.padStart(3,'0'));
+    if (!emp) { showToast('كود الموظف غير صحيح', 'error'); return; }
+    if (!Biometrics.hasFingerprint(emp.id)) { showToast('لم يتم تسجيل البصمة لهذا الموظف — سجّل البصمة من لوحة الإدارة', 'warning'); return; }
+    Biometrics.openFingerprintVerify(emp, () => _loginEmp(emp));
+  } else {
+    if (!Biometrics.canCamera()) { showToast('الكاميرا غير متاحة', 'error'); return; }
+    const hasAny = DB.employees.some(e => Biometrics.hasStoredFace(e.id));
+    if (!hasAny) { showToast('لا توجد بصمات وجه مسجّلة — سجّل من لوحة الإدارة', 'warning'); return; }
+    Biometrics.openFaceVerify({
+      onSuccess: (name) => {
+        const emp = DB.employees.find(e => e.name === name);
+        if (emp) _loginEmp(emp);
+        else showToast('لم يُعثر على الموظف', 'error');
+      },
+      onFail: () => showToast('لم يتم التعرف — حاول مرة أخرى', 'error'),
+    });
+  }
+}
+
+function _loginEmp(emp) {
+  currentEmp = emp;
+  sessionStorage.setItem('emp-session', JSON.stringify(emp));
+  document.getElementById('emp-login').style.display = 'none';
+  document.getElementById('emp-app').style.display = 'block';
+  document.getElementById('hdr-avatar').textContent = emp.avatar;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayRec = DB.attendance.find(a => a.empId === emp.id && a.date === todayStr);
+  if (todayRec && todayRec.checkIn && !todayRec.checkOut) { checkedIn = true; checkInTime = todayRec.checkIn; }
+  goPage('home');
+  showToast(`أهلاً ${emp.name} 👋`, 'success');
+}
+
+/* ── LOGOUT ── */
+function empLogout() {
+  if (!confirm('هل تريد تسجيل الخروج؟')) return;
+  sessionStorage.removeItem('emp-session');
+  currentEmp = null; checkedIn = false; checkInTime = null;
+  document.getElementById('emp-app').style.display = 'none';
+  document.getElementById('emp-login').style.display = 'flex';
+}
+
+/* ── NAVIGATION ── */
+function goPage(page, btn) {
+  currentPage = page;
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  else document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+
+  const content = document.getElementById('emp-content');
+  const pages = { home: renderHome, history: renderHistory, leaves: renderLeaves, profile: renderProfile };
+  (pages[page] || renderHome)(content);
+  content.scrollTop = 0;
+}
+
+/* ─────────────────────────────────────────
+   PAGE: HOME
+───────────────────────────────────────── */
+function renderHome(container) {
+  const now = new Date();
+  const greetHour = now.getHours();
+  const greeting  = greetHour < 12 ? 'صباح الخير' : greetHour < 17 ? 'مساء الخير' : 'مساء النور';
+
+  const stats = getMyStats();
+
+  container.innerHTML = `
+    <!-- Greeting Card -->
+    <div class="greeting-card">
+      <div class="greeting-top">
+        <div>
+          <div class="greeting-sub">${greeting} ☀️</div>
+          <div class="greeting-name">${currentEmp.name}</div>
+        </div>
+        <div style="text-align:center">
+          <div class="greeting-clock" id="emp-clock">${formatTime(now)}</div>
+          <div class="greeting-date">${formatDateAr(now)}</div>
+        </div>
+      </div>
+      <div class="greeting-status">
+        <div class="status-dot" style="background:${checkedIn ? 'white' : 'rgba(255,255,255,0.5)'}"></div>
+        ${checkedIn ? `حاضر منذ ${formatTime12(checkInTime)}` : 'لم تسجّل حضورك بعد'}
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--success)">${stats.present}</div>
+        <div class="stat-mini-label">أيام الحضور</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--warning)">${stats.late}</div>
+        <div class="stat-mini-label">تأخيرات</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-val" style="color:var(--primary)">${stats.leaveBalance}</div>
+        <div class="stat-mini-label">رصيد إجازة</div>
+      </div>
+    </div>
+
+    <!-- Check-in Widget -->
+    <div class="card">
+      <div class="checkin-widget">
+        <div class="checkin-ring ${checkedIn ? 'checked-out' : ''}" id="ring"
+          style="--progress:${getProgressPercent()}%"
+          onclick="handleCheckin()">
+          <div class="ring-bg"></div>
+          <div class="ring-inner">
+            <div class="ring-icon"><i class="fas ${checkedIn ? 'fa-right-from-bracket' : 'fa-right-to-bracket'}"></i></div>
+            <div class="ring-label">${checkedIn ? 'تسجيل الانصراف' : 'تسجيل الحضور'}</div>
+            <div class="ring-sublabel" id="ring-sub">${checkedIn ? getElapsedHours() : 'اضغط للتسجيل'}</div>
+          </div>
+        </div>
+
+        <div class="checkin-methods">
+          <button class="method-btn ${selectedMethod==='face'?'active':''}" onclick="selectMethod('face',this)">
+            <i class="fas fa-face-smile"></i>بصمة وجه
+          </button>
+          <button class="method-btn ${selectedMethod==='qr'?'active':''}" onclick="selectMethod('qr',this)">
+            <i class="fas fa-qrcode"></i>QR Code
+          </button>
+          <button class="method-btn ${selectedMethod==='gps'?'active':''}" onclick="selectMethod('gps',this)">
+            <i class="fas fa-map-pin"></i>GPS
+          </button>
+        </div>
+
+        <button class="btn-checkin ${checkedIn ? 'checkout' : ''}" onclick="handleCheckin()">
+          <i class="fas ${checkedIn ? 'fa-right-from-bracket' : 'fa-right-to-bracket'}"></i>
+          ${checkedIn ? 'تسجيل الانصراف' : 'تسجيل الحضور الآن'}
+        </button>
+
+        ${!checkedIn ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+          <button onclick="handleBiometricCheckin('fingerprint')" style="padding:10px 6px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:white;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <i class="fas fa-fingerprint" style="font-size:15px"></i> بصمة الإصبع
+          </button>
+          <button onclick="handleBiometricCheckin('face')" style="padding:10px 6px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.1);color:white;font-family:var(--font);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+            <i class="fas fa-face-smile" style="font-size:15px"></i> بصمة الوجه
+          </button>
+        </div>` : ''}
+      </div>
+    </div>
+
+    <!-- Today Info -->
+    ${checkedIn ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title"><i class="fas fa-info-circle"></i> معلومات اليوم</div>
+        <div class="att-item">
+          <div class="att-dot in"></div>
+          <div class="att-info"><div class="att-label">وقت الحضور</div></div>
+          <div class="att-dur">${formatTime12(checkInTime)}</div>
+        </div>
+        <div class="att-item">
+          <div class="att-dot" style="background:var(--info)"></div>
+          <div class="att-info"><div class="att-label">ساعات العمل</div></div>
+          <div class="att-dur">${getElapsedHours()}</div>
+        </div>
+        <div class="att-item" style="border:none">
+          <div class="att-dot" style="background:var(--warning)"></div>
+          <div class="att-info"><div class="att-label">الوردية</div></div>
+          <div class="att-dur">${currentEmp.shift || 'صباحي 08:00'}</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- Quick Actions -->
+    <div class="section-title"><i class="fas fa-bolt"></i> إجراءات سريعة</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      ${[
+        {icon:'fa-calendar-plus',label:'طلب إجازة',color:'--primary',page:'leaves'},
+        {icon:'fa-file-lines',label:'سجل الحضور',color:'--success',page:'history'},
+        {icon:'fa-envelope',label:'مراسلة الإدارة',color:'--info',action:'contact'},
+        {icon:'fa-user-pen',label:'تحديث ملفي',color:'--warning',page:'profile'},
+      ].map(a=>`
+        <button onclick="${a.page?`goPage('${a.page}')`:`quickAction('${a.action}')`}"
+          style="background:var(--bg-card);border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;text-align:start;border:1.5px solid var(--border);transition:all .2s;font-family:var(--font)"
+          onmouseover="this.style.borderColor='var(${a.color})'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(var(--primary-rgb,99,102,241),.08);color:var(${a.color});display:flex;align-items:center;justify-content:center;font-size:18px">
+            <i class="fas ${a.icon}"></i>
+          </div>
+          <span style="font-size:13px;font-weight:700;color:var(--text-primary)">${a.label}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  // Start live clock
+  startEmpClock();
+}
+
+/* ─────────────────────────────────────────
+   PAGE: ATTENDANCE HISTORY
+───────────────────────────────────────── */
+function renderHistory(container) {
+  const myAtt = DB.attendance
+    .filter(a => a.empId === currentEmp.id)
+    .sort((a,b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 30);
+
+  const present = myAtt.filter(a => a.status === 'present' || a.status === 'late').length;
+  const absent  = myAtt.filter(a => a.status === 'absent').length;
+  const late    = myAtt.filter(a => a.status === 'late').length;
+
+  container.innerHTML = `
+    <div style="font-size:18px;font-weight:800;margin-bottom:16px;color:var(--text-primary)">
+      <i class="fas fa-clock-rotate-left" style="color:var(--primary)"></i> سجل الحضور
+    </div>
+    <div class="stats-row">
+      <div class="stat-mini"><div class="stat-mini-val" style="color:var(--success)">${present}</div><div class="stat-mini-label">حضور</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" style="color:var(--danger)">${absent}</div><div class="stat-mini-label">غياب</div></div>
+      <div class="stat-mini"><div class="stat-mini-val" style="color:var(--warning)">${late}</div><div class="stat-mini-label">تأخير</div></div>
+    </div>
+    <div class="card">
+      <div class="card-body" style="padding:16px">
+        ${myAtt.length ? myAtt.map(a => {
+          const dotClass = a.status==='present'?'in':a.status==='late'?'late':a.status==='absent'?'absent':'out';
+          const label = {present:'حضور',late:'متأخر',absent:'غياب',off:'إجازة'}[a.status]||a.status;
+          const dur = a.checkIn && a.checkOut ? calcDuration(a.checkIn,a.checkOut) : '—';
+          return `
+            <div class="att-item">
+              <div class="att-dot ${dotClass}"></div>
+              <div class="att-date">${formatDateShort(a.date)}</div>
+              <div class="att-info">
+                <div class="att-label">${label}</div>
+                <div class="att-times">${a.checkIn?'دخول: '+formatTime12(a.checkIn):'—'} ${a.checkOut?' | خروج: '+formatTime12(a.checkOut):''}</div>
+              </div>
+              <div class="att-dur">${dur}</div>
+            </div>`;
+        }).join('') : '<div class="empty"><i class="fas fa-calendar-xmark"></i><p>لا يوجد سجلات</p></div>'}
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────
+   PAGE: LEAVES
+───────────────────────────────────────── */
+function renderLeaves(container) {
+  const bal = DB.leaveBalances[currentEmp.id] || { annual:21, sick:10, emergency:3 };
+  const myLeaves = DB.leaves.filter(l => l.empId === currentEmp.id).reverse();
+
+  container.innerHTML = `
+    <div style="font-size:18px;font-weight:800;margin-bottom:16px;color:var(--text-primary)">
+      <i class="fas fa-calendar-minus" style="color:var(--primary)"></i> إجازاتي
+    </div>
+
+    <!-- Balance -->
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title"><i class="fas fa-wallet"></i> رصيد الإجازات</div>
+        ${[
+          {type:'سنوية',used:bal.annualUsed||0,total:bal.annual||21,color:'#6366f1'},
+          {type:'مرضية',used:bal.sickUsed||0,  total:bal.sick||10,  color:'#10b981'},
+          {type:'طارئة',used:bal.emerUsed||0,  total:bal.emergency||3,color:'#f59e0b'},
+        ].map(b=>`
+          <div class="balance-item">
+            <div class="balance-icon" style="background:${b.color}20;color:${b.color}">
+              <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="balance-info">
+              <div class="balance-type">${b.type}</div>
+              <div class="balance-bar-wrap">
+                <div class="balance-bar" style="width:${Math.min(100,(b.used/b.total)*100)}%;background:${b.color}"></div>
+              </div>
+            </div>
+            <div class="balance-days" style="color:${b.color}">${b.total-b.used}/${b.total}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- New Request -->
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title"><i class="fas fa-plus-circle"></i> طلب إجازة جديدة</div>
+        <form onsubmit="submitLeave(event)">
+          <div class="form-group">
+            <label>نوع الإجازة</label>
+            <select class="form-input" name="type">
+              <option value="annual">سنوية</option>
+              <option value="sick">مرضية</option>
+              <option value="emergency">طارئة</option>
+              <option value="unpaid">بدون أجر</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>من تاريخ</label>
+              <input class="form-input" type="date" name="from" required>
+            </div>
+            <div class="form-group">
+              <label>إلى تاريخ</label>
+              <input class="form-input" type="date" name="to" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>السبب</label>
+            <textarea class="form-input" name="reason" rows="3" placeholder="اذكر سبب الإجازة..."></textarea>
+          </div>
+          <button type="submit" class="btn-submit">
+            <i class="fas fa-paper-plane"></i> إرسال الطلب
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- My Leaves List -->
+    ${myLeaves.length ? `
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title"><i class="fas fa-list"></i> طلباتي السابقة</div>
+        ${myLeaves.slice(0,6).map(l=>{
+          const colors={approved:'var(--success)',pending:'var(--warning)',rejected:'var(--danger)'};
+          const labels={approved:'موافق عليها',pending:'في الانتظار',rejected:'مرفوضة'};
+          return `
+            <div class="att-item">
+              <div class="att-dot" style="background:${colors[l.status]||'var(--text-muted)'}"></div>
+              <div class="att-info">
+                <div class="att-label">${{annual:'سنوية',sick:'مرضية',emergency:'طارئة',unpaid:'بدون أجر'}[l.type]||l.type}</div>
+                <div class="att-times">${l.from} — ${l.to} (${l.days} أيام)</div>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:${colors[l.status]};background:${colors[l.status]}20;padding:3px 8px;border-radius:6px">${labels[l.status]||l.status}</div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
+  `;
+}
+
+/* ─────────────────────────────────────────
+   PAGE: PROFILE
+───────────────────────────────────────── */
+function renderProfile(container) {
+  const emp = currentEmp;
+  container.innerHTML = `
+    <div class="card" style="overflow:visible">
+      <div class="profile-header">
+        <div class="profile-avatar">${emp.avatar}</div>
+        <div class="profile-name">${emp.name}</div>
+        <div class="profile-role">${emp.position}</div>
+        <div class="profile-badge">
+          <i class="fas fa-circle" style="font-size:7px;color:var(--success)"></i>
+          ${emp.status==='active'?'نشط':'غير نشط'}
+        </div>
+      </div>
+      <div class="card-body">
+        ${[
+          {icon:'fa-id-badge', label:'كود الموظف', val: emp.no},
+          {icon:'fa-building',  label:'القسم',      val: DB.getDepartment(emp.dept)?.name||emp.dept},
+          {icon:'fa-briefcase', label:'المنصب',     val: emp.position},
+          {icon:'fa-envelope',  label:'البريد',     val: emp.email},
+          {icon:'fa-phone',     label:'الهاتف',     val: emp.phone},
+          {icon:'fa-calendar',  label:'تاريخ التعيين', val: emp.hireDate},
+        ].map(r=>`
+          <div class="info-row">
+            <div class="info-icon"><i class="fas ${r.icon}"></i></div>
+            <div>
+              <div class="info-label">${r.label}</div>
+              <div class="info-val">${r.val||'—'}</div>
+            </div>
+          </div>
+        `).join('')}
+        <button class="btn-logout-emp" onclick="empLogout()">
+          <i class="fas fa-right-from-bracket"></i> تسجيل الخروج
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────
+   CHECK-IN / CHECK-OUT FLOW
+───────────────────────────────────────── */
+function selectMethod(m, btn) {
+  selectedMethod = m;
+  document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function handleCheckin() {
+  if (selectedMethod === 'face')  openFaceModal();
+  else if (selectedMethod === 'qr') openQRModal();
+  else openGPSModal();
+}
+
+function confirmCheckin() {
+  closeModal();
+  _doCheckin(selectedMethod || 'manual');
+}
+
+/* ── BIOMETRIC CHECK-IN (Real) ── */
+async function handleBiometricCheckin(type) {
+  if (!currentEmp) return;
+
+  if (type === 'fingerprint') {
+    if (!Biometrics.canWebAuthn()) { showToast('جهازك لا يدعم البصمة', 'error'); return; }
+    if (!Biometrics.hasFingerprint(currentEmp.id)) {
+      showToast('لم تُسجَّل بصمتك — راجع مدير النظام', 'warning'); return;
+    }
+    Biometrics.openFingerprintVerify(currentEmp, () => _doCheckin('fingerprint'));
+  } else {
+    if (!Biometrics.canCamera()) { showToast('الكاميرا غير متاحة', 'error'); return; }
+    if (!Biometrics.hasStoredFace(currentEmp.id)) {
+      showToast('لم تُسجَّل بصمة وجهك — راجع مدير النظام', 'warning'); return;
+    }
+    Biometrics.openFaceVerify({
+      empId: currentEmp.id,
+      onSuccess: () => _doCheckin('face'),
+      onFail: () => showToast('لم يتم التعرف — حاول مرة أخرى', 'error'),
+    });
+  }
+}
+
+function _doCheckin(method) {
+  const now = new Date();
+  const nowStr = now.toTimeString().slice(0, 5);
+  const today  = now.toISOString().split('T')[0];
+
+  if (!checkedIn) {
+    checkedIn  = true;
+    checkInTime = nowStr;
+
+    // Save to DB
+    const existing = DB.attendance.find(a => a.empId === currentEmp.id && a.date === today);
+    if (!existing) {
+      const shift = DB.shifts?.find(s => s.id === currentEmp.shift);
+      const workStart = shift?.startTime || '08:00';
+      const [wh, wm] = workStart.split(':').map(Number);
+      const [nh, nm] = nowStr.split(':').map(Number);
+      const lateMin = Math.max(0, (nh*60+nm) - (wh*60+wm));
+      DB.attendance.unshift({
+        id: DB.nextId('a'), empId: currentEmp.id, date: today,
+        checkIn: nowStr, checkOut: null, method,
+        status: lateMin > 15 ? 'late' : 'present',
+        lateMin: lateMin || null, overtime: null,
+      });
+    }
+    showToast('✅ تم تسجيل حضورك — ' + formatTime12(nowStr), 'success');
+  } else {
+    checkedIn = false;
+    const dur = calcDuration(checkInTime, nowStr);
+
+    // Update checkOut
+    const rec = DB.attendance.find(a => a.empId === currentEmp.id && a.date === today);
+    if (rec) rec.checkOut = nowStr;
+
+    showToast(`👋 تم تسجيل انصرافك — مدة العمل ${dur}`, 'success');
+    checkInTime = null;
+  }
+  goPage('home');
+}
+
+/* ── FACE MODAL (Simulated — legacy) ── */
+function openFaceModal() {
+  openModal(`
+    <div class="modal-title"><i class="fas fa-face-smile"></i> التعرف على الوجه</div>
+    <div style="text-align:center;padding:20px 0">
+      <div class="face-circle">😊</div>
+      <div class="verify-status">جارٍ التعرف على وجهك...</div>
+      <div class="verify-sub">ثبّت نظرتك أمام الكاميرا</div>
+    </div>
+    <div style="background:var(--success-bg);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <i class="fas fa-circle-check" style="color:var(--success);font-size:20px"></i>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--success)">تم التعرف بنجاح</div>
+        <div style="font-size:12px;color:var(--text-muted)">${currentEmp.name} — ${new Date().toLocaleTimeString('ar-EG')}</div>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="confirmCheckin()">
+      <i class="fas fa-check"></i> تأكيد ${checkedIn?'الانصراف':'الحضور'}
+    </button>
+  `);
+}
+
+/* ── QR MODAL ── */
+function openQRModal() {
+  openModal(`
+    <div class="modal-title"><i class="fas fa-qrcode"></i> مسح QR Code</div>
+    <div class="qr-frame">📱<div class="qr-scan-line"></div></div>
+    <div class="verify-status">وجّه الكاميرا نحو رمز QR الخاص بك</div>
+    <div class="verify-sub">يمكنك إيجاد الرمز في بطاقة الموظف أو التطبيق</div>
+    <div style="background:var(--success-bg);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;margin:16px 0">
+      <i class="fas fa-circle-check" style="color:var(--success);font-size:20px"></i>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--success)">تم مسح الرمز بنجاح</div>
+        <div style="font-size:12px;color:var(--text-muted)">EMP-${currentEmp.no}</div>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="confirmCheckin()">
+      <i class="fas fa-check"></i> تأكيد ${checkedIn?'الانصراف':'الحضور'}
+    </button>
+  `);
+}
+
+/* ── GPS MODAL ── */
+function openGPSModal() {
+  openModal(`
+    <div class="modal-title"><i class="fas fa-map-pin"></i> التحقق من الموقع (GPS)</div>
+    <div style="text-align:center;padding:16px 0">
+      <div class="gps-ring verify-icon" style="margin-bottom:20px">
+        <i class="fas fa-map-pin"></i>
+      </div>
+      <div class="verify-status">جارٍ تحديد موقعك الجغرافي...</div>
+      <div class="verify-sub" style="margin-bottom:16px">يرجى السماح بالوصول إلى الموقع</div>
+      <div style="background:var(--success-bg);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;margin-bottom:20px;text-align:start">
+        <i class="fas fa-circle-check" style="color:var(--success);font-size:20px"></i>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--success)">أنت داخل النطاق الجغرافي</div>
+          <div style="font-size:12px;color:var(--text-muted)">المبنى الرئيسي — دقة: 15م</div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="confirmCheckin()">
+      <i class="fas fa-check"></i> تأكيد ${checkedIn?'الانصراف':'الحضور'}
+    </button>
+  `);
+}
+
+/* ─────────────────────────────────────────
+   LEAVE SUBMIT
+───────────────────────────────────────── */
+function submitLeave(e) {
+  e.preventDefault();
+  const d = Object.fromEntries(new FormData(e.target));
+  if (!d.from || !d.to) return showToast('أدخل التواريخ', 'error');
+  const days = Math.ceil((new Date(d.to)-new Date(d.from))/(1000*60*60*24))+1;
+  DB.leaves.push({
+    id: DB.nextId('leave'),
+    empId: currentEmp.id,
+    type: d.type,
+    from: d.from,
+    to: d.to,
+    days,
+    reason: d.reason || '',
+    status: 'pending',
+    appliedOn: new Date().toISOString().split('T')[0],
+  });
+  showToast('✅ تم إرسال طلب الإجازة للمراجعة', 'success');
+  renderLeaves(document.getElementById('emp-content'));
+}
+
+/* ─────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────── */
+function getMyStats() {
+  const myAtt = DB.attendance.filter(a => a.empId === currentEmp.id);
+  const bal   = DB.leaveBalances[currentEmp.id] || {};
+  return {
+    present: myAtt.filter(a=>a.status==='present'||a.status==='late').length,
+    late:    myAtt.filter(a=>a.status==='late').length,
+    leaveBalance: (bal.annual||21) - (bal.annualUsed||0),
+  };
+}
+
+function getProgressPercent() {
+  if (!checkedIn || !checkInTime) return 0;
+  const now = new Date();
+  const [h,m] = checkInTime.split(':').map(Number);
+  const startMs = new Date().setHours(h,m,0,0);
+  const elapsed = (now - startMs) / 1000 / 60;
+  return Math.min(100, (elapsed / (8*60)) * 100);
+}
+
+function getElapsedHours() {
+  if (!checkInTime) return '—';
+  const now = new Date();
+  const [h,m] = checkInTime.split(':').map(Number);
+  const diff = (now - new Date().setHours(h,m,0,0)) / 1000 / 60;
+  const hrs  = Math.floor(diff / 60);
+  const mins = Math.floor(diff % 60);
+  return `${hrs}س ${mins}د`;
+}
+
+function calcDuration(from, to) {
+  const [h1,m1] = (from||'').split(':').map(Number);
+  const [h2,m2] = (to||'').split(':').map(Number);
+  const diff = (h2*60+m2) - (h1*60+m1);
+  if (isNaN(diff) || diff <= 0) return '—';
+  return `${Math.floor(diff/60)}س ${diff%60}د`;
+}
+
+function formatTime(d) {
+  return d.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+}
+function formatTime12(t) {
+  if (!t) return '—';
+  const [h,m] = t.split(':').map(Number);
+  const ampm = h < 12 ? 'ص' : 'م';
+  return `${h%12||12}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function formatDateAr(d) {
+  return d.toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long'});
+}
+function formatDateShort(str) {
+  const d = new Date(str);
+  return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'});
+}
+
+let clockInterval;
+function startEmpClock() {
+  clearInterval(clockInterval);
+  clockInterval = setInterval(() => {
+    const el = document.getElementById('emp-clock');
+    if (el) el.textContent = formatTime(new Date());
+    else clearInterval(clockInterval);
+    const sub = document.getElementById('ring-sub');
+    if (sub && checkedIn) sub.textContent = getElapsedHours();
+  }, 1000);
+}
+
+function quickAction(type) {
+  if (type === 'contact') showToast('سيتم إطلاق المراسلة قريباً', 'info');
+}
+
+/* ── MODAL ── */
+function openModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+/* ── TOAST ── */
+function showToast(msg, type='info') {
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icons = {success:'circle-check',error:'circle-xmark',info:'circle-info'};
+  t.innerHTML = `<i class="fas fa-${icons[type]||'circle-info'}"></i><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(-8px)'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+/* ── RESUME SESSION ── */
+(function resumeSession() {
+  const saved = sessionStorage.getItem('emp-session');
+  if (saved) {
+    try {
+      currentEmp = JSON.parse(saved);
+      document.getElementById('emp-login').style.display = 'none';
+      document.getElementById('emp-app').style.display = 'block';
+      document.getElementById('hdr-avatar').textContent = currentEmp.avatar;
+      goPage('home');
+    } catch(e) { sessionStorage.removeItem('emp-session'); }
+  }
+})();
+</script>
+</body>
+</html>
