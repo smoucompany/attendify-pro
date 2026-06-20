@@ -968,54 +968,8 @@ const SettingsModule = {
     ];
 
     return `
-      ${this._group('إشعارات WhatsApp','إرسال رسائل واتساب لكل موظف بشكل فردي — مجاناً تماماً بدون API',`
-
-        <!-- How it works -->
-        <div style="background:linear-gradient(135deg,#25d36612,#128c7e12);border:1.5px solid #25d36635;border-radius:14px;padding:16px;margin-bottom:20px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <div style="width:44px;height:44px;border-radius:12px;background:#25d36620;color:#25d366;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
-              <i class="fab fa-whatsapp"></i>
-            </div>
-            <div>
-              <div style="font-size:14px;font-weight:800;color:#25d366">واتساب مجاني — بدون API ولا اشتراك</div>
-              <div style="font-size:12px;color:var(--text-muted)">يعمل عبر رابط wa.me الرسمي من واتساب</div>
-            </div>
-            <span class="badge badge-success" style="margin-right:auto">✅ مفعّل دائماً</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            ${[
-              {icon:'fas fa-check-circle',color:'#25d366',t:'لا حاجة لـ API أو Instance'},
-              {icon:'fas fa-check-circle',color:'#25d366',t:'لا اشتراك شهري'},
-              {icon:'fas fa-check-circle',color:'#25d366',t:'يفتح واتساب مع الرسالة جاهزة'},
-              {icon:'fas fa-check-circle',color:'#25d366',t:'يدعم الإرسال الفردي والجماعي'},
-            ].map(i=>`
-              <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">
-                <i class="${i.icon}" style="color:${i.color}"></i> ${i.t}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <!-- How to use -->
-        <div style="background:var(--bg-input);border-radius:12px;padding:14px;margin-bottom:4px">
-          <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:10px">
-            <i class="fas fa-circle-info" style="color:var(--primary)"></i> كيفية الاستخدام
-          </div>
-          <ol style="font-size:12.5px;color:var(--text-secondary);padding-right:18px;margin:0;line-height:2">
-            <li>تأكد من إضافة <strong>رقم واتساب</strong> لكل موظف في ملفه الشخصي</li>
-            <li>اضغط على أيقونة <i class="fab fa-whatsapp" style="color:#25d366"></i> بجانب الموظف في صفحة الحضور أو الإجازات</li>
-            <li>اختر قالب الرسالة أو اكتب رسالة مخصصة</li>
-            <li>اضغط <strong>"فتح واتساب"</strong> ثم اضغط <strong>إرسال</strong> داخل واتساب</li>
-          </ol>
-        </div>
-
-        <!-- Test button -->
-        <div style="margin-top:14px;display:flex;align-items:center;gap:10px">
-          <input class="app-form-input" id="wa-test-phone" type="tel" dir="ltr" placeholder="أدخل رقم هاتف للاختبار (05XXXXXXXX)" style="flex:1">
-          <button class="btn" style="background:#25d366;color:white;flex-shrink:0" onclick="SettingsModule.testWA()">
-            <i class="fab fa-whatsapp"></i> اختبار
-          </button>
-        </div>
+      ${this._group('إعدادات واتساب التلقائي','ربط UltraMsg API للإرسال الفوري بدون أي تدخل',`
+        <div id="wa-api-section">${WhatsApp.renderApiSettings()}</div>
       `)}
 
       ${this._group('قوالب رسائل WhatsApp','تخصيص نصوص الرسائل التلقائية المرسلة للموظفين',`
@@ -1076,11 +1030,12 @@ const SettingsModule = {
     App.toast('لا حاجة لإعدادات — الخدمة مجانية وتعمل تلقائياً ✅', 'success');
   },
 
-  testWA() {
+  async testWA() {
     const phone = document.getElementById('wa-test-phone')?.value?.trim();
     if (!phone) { App.toast('أدخل رقم الهاتف للاختبار', 'warning'); return; }
-    const ok = WhatsApp.open(phone, `مرحباً من Attendify Pro 👋\nهذه رسالة اختبار لتأكيد عمل الإشعارات.\n\n${DB.company.name || 'فريق الموارد البشرية'}`);
-    if (ok) App.toast('✅ تم فتح واتساب — اضغط إرسال داخل التطبيق', 'success');
+    const msg = `مرحباً من Attendify Pro 👋\nهذه رسالة اختبار لتأكيد عمل الإشعارات.\n\n${DB.company.name || 'فريق الموارد البشرية'}`;
+    const ok = await WhatsApp.send(phone, msg);
+    if (ok) App.toast(WhatsApp.isApiReady() ? '✅ أُرسلت الرسالة تلقائياً' : '✅ تم فتح واتساب — اضغط إرسال', 'success');
   },
 
   saveWATemplates() {
