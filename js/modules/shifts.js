@@ -33,35 +33,39 @@ const ShiftsModule = {
 
       <!-- Shift Templates -->
       <div class="grid-4" style="margin-bottom:24px">
-        ${DB.shifts.map(s => `
-          <div class="card" style="border-top:3px solid ${s.color}">
+        ${DB.shifts.filter(s=>s.type!=='assignment').map(s => {
+          const isOvernight = s.end && s.start && s.end <= s.start;
+          const hrs = ShiftsModule._shiftHours(s.start, s.end);
+          return `
+          <div class="card" style="border-top:3px solid ${s.color||'#6366f1'}">
             <div class="card-body">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <div style="font-size:15px;font-weight:700;color:var(--text-primary)">${s.name}</div>
-                <div style="display:flex;gap:4px">
-                  <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')"><i class="fas fa-pencil"></i></button>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:15px;font-weight:700;color:var(--text-primary)">${s.name}</span>
+                  ${isOvernight?`<span style="font-size:10px;background:rgba(139,92,246,0.12);color:#7c3aed;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ليلي</span>`:''}
                 </div>
+                <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')"><i class="fas fa-pencil"></i></button>
               </div>
               <div style="display:flex;flex-direction:column;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                  <i class="fas fa-clock" style="color:${s.color};width:16px"></i>
-                  <span style="font-family:var(--font-en)">${s.start} — ${s.end}</span>
+                  <i class="fas fa-clock" style="color:${s.color||'#6366f1'};width:16px"></i>
+                  <span style="font-family:var(--font-en);font-weight:600">${s.start} — ${s.end}${isOvernight?' (+يوم)':''}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
+                  <i class="fas fa-hourglass-half" style="color:var(--success);width:16px"></i>
+                  <span>${hrs}</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
                   <i class="fas fa-coffee" style="color:var(--warning);width:16px"></i>
-                  <span>${s.break} ${currentLang==='ar'?'دقيقة استراحة':'min break'}</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                  <i class="fas fa-calendar-week" style="color:var(--info);width:16px"></i>
-                  <span>${s.days.length} ${currentLang==='ar'?'أيام عمل':'working days'}</span>
+                  <span>${s.break||0} ${currentLang==='ar'?'دقيقة استراحة':'min break'}</span>
                 </div>
                 <div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">
-                  ${s.days.map(d => `<span style="padding:2px 7px;background:${s.color}22;color:${s.color};border-radius:4px;font-size:10px;font-weight:700">${t('day.'+d).substring(0,3)}</span>`).join('')}
+                  ${(s.days||[]).map(d => `<span style="padding:2px 7px;background:${s.color||'#6366f1'}22;color:${s.color||'#6366f1'};border-radius:4px;font-size:10px;font-weight:700">${t('day.'+d).substring(0,3)}</span>`).join('')}
                 </div>
               </div>
             </div>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
 
       <!-- Weekly Schedule -->
@@ -162,6 +166,24 @@ const ShiftsModule = {
     `;
   },
 
+  // helper: حساب مدة الوردية مع دعم الليلية
+  _shiftHours(start, end) {
+    if (!start || !end) return '—';
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    let diff = (eh*60+em) - (sh*60+sm);
+    if (diff <= 0) diff += 24*60;
+    const h = Math.floor(diff/60), m = diff%60;
+    return m ? `${h} س ${m} د` : `${h} ساعة`;
+  },
+
+  _detectType(start) {
+    const h = parseInt((start||'08:00').split(':')[0], 10);
+    if (h >= 5  && h < 12) return { type:'morning', color:'#f59e0b' };
+    if (h >= 12 && h < 20) return { type:'evening', color:'#6366f1' };
+    return { type:'night', color:'#7c3aed' };
+  },
+
   saveShift(e, id) {
     e.preventDefault();
     const form  = e.target;
@@ -170,15 +192,18 @@ const ShiftsModule = {
     const shObj = Object.fromEntries(data);
     shObj.days  = days;
 
+    const { type, color } = this._detectType(shObj.start);
+
     if (id) {
       const s = DB.shifts.find(s => s.id === id);
-      if (s) Object.assign(s, shObj);
+      if (s) Object.assign(s, shObj, { type, color });
       App.toast(currentLang==='ar'?'تم تحديث الوردية':'Shift updated', 'success');
     } else {
-      DB.shifts.push({ id: DB.nextId('s'), ...shObj, type: 'morning', color: '#6366f1' });
+      DB.shifts.push({ id: DB.nextId('s'), ...shObj, type, color });
       App.toast(currentLang==='ar'?'تمت إضافة الوردية':'Shift added', 'success');
     }
 
+    DB.save();
     App.closeModal();
     this.render(document.getElementById('page-content'));
   },
@@ -241,6 +266,7 @@ const ShiftsModule = {
       DB.logAudit('admin', currentLang==='ar'?'تعيين وردية':'Assign Shift', 'Shifts',
         `${emp.name} ← ${shiftName}`);
     }
+    DB.save();
     App.closeModal();
     App.toast(currentLang==='ar'?'تم تعيين الوردية بنجاح':'Shift assigned successfully', 'success');
     this.render(document.getElementById('page-content'));

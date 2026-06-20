@@ -215,10 +215,20 @@ const AttendanceModule = {
     try {
       const [sh, sm] = start.split(':').map(Number);
       const [eh, em] = end.split(':').map(Number);
-      const diff = (eh * 60 + em) - (sh * 60 + sm);
-      if (diff <= 0) return '—';
+      let diff = (eh * 60 + em) - (sh * 60 + sm);
+      if (diff < 0) diff += 24 * 60; // وردية ليلية تعدي منتصف الليل
+      if (diff === 0) return '—';
       return `${Math.floor(diff/60)}:${String(diff%60).padStart(2,'0')}`;
     } catch { return '—'; }
+  },
+
+  // حساب دقائق الوردية مع دعم الوردية الليلية
+  _shiftMinutes(start, end) {
+    const [sh, sm] = (start||'00:00').split(':').map(Number);
+    const [eh, em] = (end||'00:00').split(':').map(Number);
+    let diff = (eh*60+em) - (sh*60+sm);
+    if (diff <= 0) diff += 24*60;
+    return diff;
   },
 
   doCheckIn() {
@@ -323,13 +333,31 @@ const AttendanceModule = {
         <div class="app-form-row">
           <div class="app-form-group">
             <label>${t('attendance.checkInTime')}</label>
-            <input class="app-form-input" type="time" name="checkIn" value="08:00" required>
+            <input class="app-form-input" type="time" name="checkIn" id="manual-checkin" value="08:00" required>
           </div>
           <div class="app-form-group">
             <label>${t('attendance.checkOutTime')}</label>
-            <input class="app-form-input" type="time" name="checkOut" value="17:00">
+            <input class="app-form-input" type="time" name="checkOut" id="manual-checkout" value="17:00">
           </div>
         </div>
+        <!-- معلومة الوردية الليلية -->
+        <div id="overnight-info" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:10px;font-size:12px;color:#7c3aed">
+          <i class="fas fa-moon"></i> وردية ليلية — الانصراف يكون اليوم التالي، ساعات العمل تُحسب بشكل صحيح تلقائياً
+        </div>
+        <script>
+          (function(){
+            const ci = document.getElementById('manual-checkin');
+            const co = document.getElementById('manual-checkout');
+            function checkOvernight(){
+              const info = document.getElementById('overnight-info');
+              if(ci&&co&&info&&ci.value&&co.value) {
+                info.style.display = co.value < ci.value ? '' : 'none';
+              }
+            }
+            if(ci) ci.addEventListener('change', checkOvernight);
+            if(co) co.addEventListener('change', checkOvernight);
+          })();
+        </script>
         <div class="app-form-group">
           <label>${currentLang==='ar'?'ملاحظات':'Notes'}</label>
           <input class="app-form-input" type="text" name="notes" placeholder="${currentLang==='ar'?'ملاحظات اختيارية':'Optional notes'}">
@@ -346,21 +374,40 @@ const AttendanceModule = {
     e.preventDefault();
     const form = e.target;
     const data = Object.fromEntries(new FormData(form));
-    const isLate = data.checkIn > '08:15';
+
+    // تحديد وقت بداية وردية الموظف
+    const emp = DB.employees.find(em => em.id === data.empId);
+    const empShift = emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+    const shiftStart = empShift?.start || DB.company.workStart || '08:00';
+    const [sh, sm] = shiftStart.split(':').map(Number);
+    const [ch, cm] = (data.checkIn||'00:00').split(':').map(Number);
+    const late = (DB.company.lateThreshold || 15);
+    const isLate = (ch*60+cm) > (sh*60+sm+late);
+
+    // حساب ساعات العمل (مع دعم الوردية الليلية)
+    const workedMins = (data.checkIn && data.checkOut)
+      ? this._shiftMinutes(data.checkIn, data.checkOut)
+      : 0;
+
+    // حساب الأوفر تايم
+    const shiftMins = empShift ? this._shiftMinutes(empShift.start, empShift.end) : (8*60);
+    const overtimeMins = Math.max(0, workedMins - shiftMins);
 
     DB.attendance.push({
-      id:       DB.nextId('att'),
-      empId:    data.empId,
-      date:     data.date,
-      checkIn:  data.checkIn,
-      checkOut: data.checkOut,
-      status:   isLate ? 'late' : 'present',
-      method:   data.method,
-      overtime: null,
-      location: currentLang==='ar'?'يدوي':'Manual',
-      notes:    data.notes,
+      id:           DB.nextId('att'),
+      empId:        data.empId,
+      date:         data.date,
+      checkIn:      data.checkIn,
+      checkOut:     data.checkOut || null,
+      status:       isLate ? 'late' : 'present',
+      method:       data.method,
+      workedMins,
+      overtime:     overtimeMins > 0 ? overtimeMins : null,
+      location:     currentLang==='ar'?'يدوي':'Manual',
+      notes:        data.notes,
     });
 
+    DB.save();
     App.closeModal();
     App.toast(t('attendance.addRecord') + ' — ' + (currentLang==='ar'?'تم بنجاح':'Added'), 'success');
     this._renderTable();

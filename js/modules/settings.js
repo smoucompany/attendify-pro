@@ -357,11 +357,7 @@ const SettingsModule = {
       {k:'tue',l:'الثلاثاء'},{k:'wed',l:'الأربعاء'},{k:'thu',l:'الخميس'},{k:'fri',l:'الجمعة'},
     ];
     const periods = co.workPeriods || [];
-    const totalMins = periods.reduce((sum, p) => {
-      const [sh,sm] = p.start.split(':').map(Number);
-      const [eh,em] = p.end.split(':').map(Number);
-      return sum + Math.max(0, (eh*60+em) - (sh*60+sm));
-    }, 0);
+    const totalMins = periods.reduce((sum, p) => sum + this._periodMins(p), 0);
     const totalHrs = (totalMins/60).toFixed(1);
 
     return `
@@ -460,15 +456,18 @@ const SettingsModule = {
   },
 
   _periodRow(p, i) {
+    const isOvernight = p.end && p.start && p.end <= p.start;
+    const borderColor = isOvernight ? 'rgba(139,92,246,0.4)' : 'var(--border)';
     return `
-      <div class="settings-item period-row" id="period-row-${p.id}" style="align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1.5px solid var(--border)">
-        <div style="width:36px;height:36px;border-radius:10px;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">
-          ${i+1}
+      <div class="settings-item period-row" id="period-row-${p.id}"
+        style="align-items:center;gap:10px;background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1.5px solid ${borderColor}">
+        <div style="width:36px;height:36px;border-radius:10px;background:${isOvernight?'rgba(139,92,246,0.12)':'var(--primary-bg)'};color:${isOvernight?'#7c3aed':'var(--primary)'};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0">
+          ${isOvernight ? '🌙' : i+1}
         </div>
         <div class="app-form-group" style="margin:0;flex:1.5">
           <label style="font-size:11px;margin-bottom:4px">اسم الفترة</label>
           <input class="app-form-input" style="padding:7px 10px" value="${p.label}"
-            onchange="DB.company.workPeriods[${i}].label=this.value;SettingsModule._refreshTotal()">
+            onchange="DB.company.workPeriods[${i}].label=this.value">
         </div>
         <div class="app-form-group" style="margin:0;flex:1">
           <label style="font-size:11px;margin-bottom:4px">من</label>
@@ -481,12 +480,12 @@ const SettingsModule = {
             onchange="DB.company.workPeriods[${i}].end=this.value;SettingsModule._refreshTotal()">
         </div>
         <div style="flex-shrink:0;padding-top:18px">
-          <span style="font-size:12px;font-weight:700;color:var(--success);white-space:nowrap" id="dur-${p.id}">
+          <span style="font-size:12px;font-weight:700;color:${isOvernight?'#7c3aed':'var(--success)'};white-space:nowrap" id="dur-${p.id}">
             ${this._calcDur(p.start, p.end)}
           </span>
         </div>
         ${i > 0 ? `
-        <button class="btn btn-danger btn-sm" style="flex-shrink:0;padding-top:18px;background:none;color:var(--danger);width:28px;height:28px;margin-top:16px"
+        <button class="btn btn-danger btn-sm" style="flex-shrink:0;background:none;color:var(--danger);width:28px;height:28px;margin-top:16px"
           onclick="SettingsModule.removePeriod('${p.id}')">
           <i class="fas fa-trash"></i>
         </button>` : '<div style="width:28px;margin-top:16px"></div>'}
@@ -497,22 +496,32 @@ const SettingsModule = {
   _calcDur(start, end) {
     const [sh,sm] = start.split(':').map(Number);
     const [eh,em] = end.split(':').map(Number);
-    const diff = (eh*60+em) - (sh*60+sm);
-    if (diff <= 0) return '—';
+    let diff = (eh*60+em) - (sh*60+sm);
+    if (diff <= 0) diff += 24*60; // وردية ليلية تتعدى منتصف الليل
     const h = Math.floor(diff/60), m = diff%60;
-    return m ? `${h}س ${m}د` : `${h} ساعة`;
+    const overnight = end <= start ? ' <span style="font-size:10px;color:#8b5cf6;font-weight:700">🌙ليلي</span>' : '';
+    return (m ? `${h}س ${m}د` : `${h} ساعة`) + overnight;
+  },
+
+  _periodMins(p) {
+    const [sh,sm] = p.start.split(':').map(Number);
+    const [eh,em] = p.end.split(':').map(Number);
+    let diff = (eh*60+em) - (sh*60+sm);
+    if (diff <= 0) diff += 24*60;
+    return diff;
   },
 
   _refreshTotal() {
     const periods = DB.company.workPeriods || [];
-    const totalMins = periods.reduce((sum, p) => {
-      const [sh,sm] = p.start.split(':').map(Number);
-      const [eh,em] = p.end.split(':').map(Number);
-      return sum + Math.max(0, (eh*60+em) - (sh*60+sm));
-    }, 0);
+    const totalMins = periods.reduce((sum, p) => sum + this._periodMins(p), 0);
     const totalHrs = (totalMins/60).toFixed(1);
     const header = document.querySelector('.settings-group-header p strong');
     if (header) header.textContent = `${totalHrs} ساعة`;
+    // Refresh all duration displays
+    periods.forEach((p, i) => {
+      const el = document.getElementById(`dur-${p.id}`);
+      if (el) el.innerHTML = this._calcDur(p.start, p.end);
+    });
   },
 
   addPeriod() {
