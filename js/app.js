@@ -17,6 +17,10 @@ const App = {
 
   // ─── INIT ────────────────────────────────────────────────
   async init() {
+    // ── استعادة البيانات من localStorage أولاً ──────────────
+    DB.loadFromLocal();
+    DB._wrapArrays();
+
     // Load saved preferences
     this.state.theme = localStorage.getItem('app-theme') || 'light';
     this.state.lang  = localStorage.getItem('app-lang')  || 'ar';

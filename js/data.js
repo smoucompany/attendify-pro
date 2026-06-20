@@ -212,10 +212,10 @@ const DB = {
       time:    new Date().toISOString(),
     };
     this.audit.unshift(record);
-    // Sync to Supabase if connected
     if (typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected) {
       SupabaseDB._enqueue('upsert', 'audit_logs', record);
     }
+    this._scheduleSave();
   },
 
   // مزامنة إعدادات الشركة مع Supabase
@@ -223,5 +223,111 @@ const DB = {
     if (typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected) {
       SupabaseDB.saveCompany();
     }
+    this._scheduleSave();
+  },
+
+  // ════════════════════════════════════════════════════════
+  //  localStorage Persistence
+  //  يحفظ كل البيانات محلياً — يعمل حتى بدون Supabase
+  // ════════════════════════════════════════════════════════
+
+  _saveTimer: null,
+
+  // حفظ مؤجّل (debounced) لتجنب حفظ متكرر
+  _scheduleSave() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => this._saveToLocal(), 600);
+  },
+
+  _saveToLocal() {
+    try {
+      const snap = {
+        v:             2,
+        ts:            Date.now(),
+        company:       this.company,
+        adminCreds:    this.adminCredentials,
+        departments:   Array.from(this.departments),
+        employees:     Array.from(this.employees),
+        shifts:        Array.from(this.shifts),
+        attendance:    Array.from(this.attendance),
+        leaves:        Array.from(this.leaves),
+        requests:      Array.from(this.requests),
+        notifications: Array.from(this.notifications),
+        payroll:       Array.from(this.payroll),
+        locations:     Array.from(this.locations),
+        roles:         Array.from(this.roles),
+        audit:         Array.from(this.audit).slice(0, 300),
+      };
+      localStorage.setItem('attendify-db', JSON.stringify(snap));
+    } catch(e) {
+      console.warn('[DB] localStorage save failed:', e.message);
+    }
+  },
+
+  loadFromLocal() {
+    try {
+      const raw = localStorage.getItem('attendify-db');
+      if (!raw) return false;
+      const snap = JSON.parse(raw);
+      if (!snap?.v) return false;
+
+      if (snap.company)    Object.assign(this.company, snap.company);
+      if (snap.adminCreds?.email) Object.assign(this.adminCredentials, snap.adminCreds);
+
+      const arrays = ['departments','employees','shifts','attendance','leaves',
+                      'requests','notifications','payroll','locations','roles','audit'];
+      arrays.forEach(k => {
+        if (Array.isArray(snap[k]) && snap[k].length) {
+          this[k].length = 0;
+          snap[k].forEach(r => Array.prototype.push.call(this[k], r));
+        }
+      });
+      console.log('[DB] Loaded from localStorage ✓', snap.ts ? new Date(snap.ts).toLocaleTimeString() : '');
+      return true;
+    } catch(e) {
+      console.warn('[DB] localStorage load failed:', e.message);
+      return false;
+    }
+  },
+
+  // يُستدعى من كل الوحدات بعد أي تعديل
+  save() {
+    this._scheduleSave();
+    // Supabase sync handled by Proxy automatically
+  },
+
+  // ─── تغليف المصفوفات بـ Proxy للحفظ التلقائي ────────────
+  _wrapArrays() {
+    const db = this;
+    const keys = ['departments','employees','shifts','attendance','leaves',
+                  'requests','notifications','payroll','locations','roles','audit'];
+    keys.forEach(key => {
+      const arr = this[key];
+      this[key] = new Proxy(arr, {
+        get(target, prop) {
+          if (['push','unshift'].includes(prop)) {
+            return function(...args) {
+              const r = Array.prototype[prop].apply(target, args);
+              db._scheduleSave();
+              return r;
+            };
+          }
+          if (prop === 'splice') {
+            return function(...args) {
+              const r = Array.prototype.splice.apply(target, args);
+              db._scheduleSave();
+              return r;
+            };
+          }
+          const val = target[prop];
+          return typeof val === 'function' ? val.bind(target) : val;
+        },
+        set(target, prop, value) {
+          target[prop] = value;
+          if (!isNaN(prop)) db._scheduleSave();
+          return true;
+        },
+      });
+    });
   },
 };
