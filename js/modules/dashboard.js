@@ -10,6 +10,19 @@ const DashboardModule = {
     const counts = DB.getPendingCount();
     const today  = DB.getTodayAttendance();
 
+    // حساب الساعات الإضافية الحقيقية من سجلات الحضور
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayOvertimeMin = DB.attendance
+      .filter(a => a.date === todayStr && a.overtime > 0)
+      .reduce((sum, a) => sum + (a.overtime || 0), 0);
+    const todayOvertimeHrs = (todayOvertimeMin / 60).toFixed(1);
+
+    const monthStart = todayStr.slice(0, 7) + '-01';
+    const monthOvertimeMin = DB.attendance
+      .filter(a => a.date >= monthStart && a.date <= todayStr && a.overtime > 0)
+      .reduce((sum, a) => sum + (a.overtime || 0), 0);
+    const monthOvertimeHrs = (monthOvertimeMin / 60).toFixed(1);
+
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
@@ -24,13 +37,20 @@ const DashboardModule = {
 
       <!-- KPI CARDS -->
       <div class="stat-cards">
-        ${this._statCard('primary', 'fas fa-users', stats.total, t('dashboard.totalEmployees'), `+2 ${currentLang==='ar'?'هذا الشهر':'this month'}`, 'up', 'gradient-primary')}
+        ${(() => {
+          const monthStart = todayStr.slice(0, 7) + '-01';
+          const newThisMonth = DB.employees.filter(e => e.hireDate && e.hireDate >= monthStart).length;
+          const newLabel = newThisMonth > 0
+            ? `+${newThisMonth} ${currentLang==='ar'?'هذا الشهر':'this month'}`
+            : (currentLang==='ar'?'لا إضافات هذا الشهر':'no new this month');
+          return this._statCard('primary', 'fas fa-users', stats.total, t('dashboard.totalEmployees'), newLabel, newThisMonth > 0 ? 'up' : 'neutral', 'gradient-primary');
+        })()}
         ${this._statCard('success', 'fas fa-user-check', stats.present + stats.late, t('dashboard.presentToday'), `${stats.attendanceRate}% ${currentLang==='ar'?'نسبة الحضور':'attendance rate'}`, 'up', 'gradient-success')}
         ${this._statCard('warning', 'fas fa-calendar-minus', stats.onLeave, t('dashboard.onLeave'), `${currentLang==='ar'?'إجازة مؤكدة':'confirmed leaves'}`, 'neutral', 'gradient-warning')}
         ${this._statCard('danger',  'fas fa-clock', stats.late, t('dashboard.lateArrivals'), `${currentLang==='ar'?'اليوم':'today'}`, stats.late > 3 ? 'down' : 'neutral', 'gradient-danger')}
         ${this._statCard('info',    'fas fa-user-xmark', stats.absent, t('dashboard.absent'), `${currentLang==='ar'?'غياب اليوم':'absent today'}`, 'down', 'gradient-info')}
         ${this._statCard('primary', 'fas fa-percent', stats.attendanceRate + '%', t('dashboard.attendanceRate'), currentLang==='ar'?'مقارنة بالأمس':'vs yesterday', 'up', 'gradient-indigo')}
-        ${this._statCard('success', 'fas fa-hourglass-half', '24.5', t('dashboard.overtimeHours'), currentLang==='ar'?'ساعة إضافية اليوم':'overtime hours today', 'up', 'gradient-cyan')}
+        ${this._statCard('success', 'fas fa-hourglass-half', monthOvertimeHrs, t('dashboard.overtimeHours'), `${todayOvertimeHrs} ${currentLang==='ar'?'ساعة إضافية اليوم':'overtime hrs today'}`, todayOvertimeMin > 0 ? 'up' : 'neutral', 'gradient-cyan')}
         ${this._statCard('warning', 'fas fa-file-circle-question', counts.leaves + counts.requests, t('dashboard.pendingRequests'), currentLang==='ar'?'تنتظر موافقتك':'awaiting approval', 'neutral', 'gradient-rose')}
       </div>
 
