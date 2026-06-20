@@ -54,6 +54,27 @@ const App = {
       });
     }
 
+    // Global keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.getElementById('global-search')?.focus();
+      }
+      if (e.key === 'Escape') {
+        this.closeModal();
+        this.closeNotifPanel();
+        this.closeUserMenu();
+      }
+    });
+
+    // Hash-based routing — يجب تسجيله قبل أي return
+    window.addEventListener('hashchange', () => this._route());
+
+    // Click outside user dropdown
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.header-user')) this.closeUserMenu();
+    });
+
     // Check saved session
     const savedUser = sessionStorage.getItem('app-user');
     if (savedUser) {
@@ -70,27 +91,6 @@ const App = {
     } else {
       document.getElementById('login-page').style.display = 'flex';
     }
-
-    // Global keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('global-search')?.focus();
-      }
-      if (e.key === 'Escape') {
-        this.closeModal();
-        this.closeNotifPanel();
-        this.closeUserMenu();
-      }
-    });
-
-    // Hash-based routing
-    window.addEventListener('hashchange', () => this._route());
-
-    // Click outside user dropdown
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.header-user')) this.closeUserMenu();
-    });
 
     // Start live clock
     this._startClock();
