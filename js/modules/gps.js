@@ -87,6 +87,7 @@ const GpsModule = {
                   <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
                     <span class="badge ${loc.active?'badge-success':'badge-secondary'} badge-dot">${loc.active?(currentLang==='ar'?'نشط':'Active'):(currentLang==='ar'?'معطل':'Inactive')}</span>
                     <button class="btn-icon btn" onclick="GpsModule.editLocation('${loc.id}')"><i class="fas fa-pencil"></i></button>
+                    <button class="btn-icon btn" style="color:var(--danger)" onclick="GpsModule.deleteLocation('${loc.id}')" title="${currentLang==='ar'?'حذف':'Delete'}"><i class="fas fa-trash" style="font-size:11px"></i></button>
                   </div>
                 </div>
               `).join('')}
@@ -364,5 +365,18 @@ const GpsModule = {
     App.closeModal();
     App.toast(currentLang==='ar'?'تم التحديث':'Updated', 'success');
     this.render(document.getElementById('page-content'));
-  }
+  },
+
+  deleteLocation(id) {
+    const loc = DB.locations.find(l => l.id === id);
+    if (!loc) return;
+    const msg = currentLang === 'ar'
+      ? `هل تريد حذف موقع "${loc.name}"؟`
+      : `Delete location "${loc.name}"?`;
+    if (!confirm(msg)) return;
+    const i = DB.locations.findIndex(l => l.id === id);
+    if (i !== -1) DB.locations.splice(i, 1);
+    App.toast(currentLang === 'ar' ? 'تم حذف الموقع' : 'Location deleted', 'success');
+    this.render(document.getElementById('page-content'));
+  },
 };
