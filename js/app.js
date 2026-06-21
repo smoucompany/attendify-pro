@@ -748,15 +748,18 @@ const App = {
   },
 
   // Confirm dialog
+  _confirmCb: null,
+
   confirm(message, onConfirm) {
+    this._confirmCb = onConfirm;
     const html = `
       <div style="text-align:center;padding:16px 0">
         <div style="font-size:48px;margin-bottom:16px">⚠️</div>
         <p style="font-size:16px;color:var(--text-primary);font-weight:600;margin-bottom:8px">تأكيد الإجراء</p>
         <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">${message}</p>
         <div style="display:flex;gap:10px;justify-content:center">
-          <button class="btn btn-danger" onclick="(${onConfirm.toString()})(); App.closeModal()">تأكيد</button>
-          <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
+          <button class="btn btn-danger" onclick="App._confirmCb?.(); App._confirmCb=null; App.closeModal()">تأكيد</button>
+          <button class="btn btn-secondary" onclick="App._confirmCb=null; App.closeModal()">إلغاء</button>
         </div>
       </div>
     `;
