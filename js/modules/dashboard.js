@@ -150,20 +150,25 @@ const DashboardModule = {
               <h3><i class="fas fa-chart-bar" style="color:var(--success)"></i> ${currentLang==='ar'?'ملخص الأسبوع':'Weekly Summary'}</h3>
             </div>
             <div class="card-body">
-              ${trend.slice(-5).map(d => {
-                const pct = d.total > 0 ? Math.round((d.present / DB.employees.length) * 100) : 0;
-                const dayName = new Date(d.date).toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{weekday:'short'});
-                return `
-                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                    <span style="font-size:11px;color:var(--text-muted);width:50px;text-align:center;flex-shrink:0">${dayName}</span>
-                    <div class="progress-bar" style="flex:1">
-                      <div class="progress-fill gradient-primary" style="width:${pct}%"></div>
+              ${(() => {
+                const totalActive = DB.employees.filter(e => e.status !== 'terminated').length || 1;
+                return trend.slice(-5).map(d => {
+                  const attended = d.present + d.late;
+                  const pct = Math.round((attended / totalActive) * 100);
+                  const dayName = new Date(d.date + 'T12:00:00').toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{weekday:'short'});
+                  const barColor = pct >= 80 ? 'gradient-success' : pct >= 50 ? 'gradient-warning' : 'gradient-danger';
+                  return `
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                      <span style="font-size:11px;color:var(--text-muted);width:50px;text-align:center;flex-shrink:0">${dayName}</span>
+                      <div class="progress-bar" style="flex:1">
+                        <div class="progress-fill ${barColor}" style="width:${pct}%;transition:width 0.6s ease"></div>
+                      </div>
+                      <span style="font-size:12px;font-weight:700;color:var(--text-primary);width:36px;text-align:center">${pct}%</span>
+                      <span style="font-size:11px;color:var(--text-muted)">${attended}/${totalActive}</span>
                     </div>
-                    <span style="font-size:12px;font-weight:700;color:var(--text-primary);width:36px;text-align:center">${pct}%</span>
-                    <span style="font-size:11px;color:var(--text-muted)">${d.present + d.late}/${DB.employees.length}</span>
-                  </div>
-                `;
-              }).join('')}
+                  `;
+                }).join('');
+              })()}
             </div>
           </div>
         </div>
@@ -282,17 +287,27 @@ const DashboardModule = {
     const legend = document.getElementById('dept-legend');
     if (!canvas) return;
 
-    const depts  = DB.departments.slice(0, 6);
     const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
     const { font } = App.getChartDefaults();
+
+    // Count active employees per department
+    const depts = DB.departments.slice(0, 6).map(d => ({
+      ...d,
+      count: DB.employees.filter(e => e.dept === d.id && e.status !== 'terminated').length,
+    })).filter(d => d.count > 0);
+
+    // Fallback: if no dept data, show total by status
+    const data  = depts.length ? depts.map(d => d.count) : [1];
+    const labels = depts.length ? depts.map(d => d.name) : [currentLang==='ar'?'لا توجد بيانات':'No data'];
+    const bgColors = depts.length ? colors.slice(0, depts.length) : ['#e2e8f0'];
 
     const chart = new Chart(canvas, {
       type: 'doughnut',
       data: {
-        labels: depts.map(d => d.name),
+        labels,
         datasets: [{
-          data: depts.map(d => d.count),
-          backgroundColor: colors,
+          data,
+          backgroundColor: bgColors,
           borderColor: App.state.theme === 'dark' ? '#0f172a' : '#fff',
           borderWidth: 3,
           hoverOffset: 6,
@@ -310,17 +325,24 @@ const DashboardModule = {
     });
     App.registerChart('dept', chart);
 
-    // Custom legend
+    // Custom legend — show all depts even with 0 employees
     if (legend) {
-      legend.innerHTML = depts.map((d, i) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="width:10px;height:10px;border-radius:3px;background:${colors[i]};flex-shrink:0"></div>
-            <span style="font-size:12px;color:var(--text-secondary)">${d.name}</span>
+      const allDepts = DB.departments.slice(0, 6).map((d, i) => ({
+        ...d,
+        count: DB.employees.filter(e => e.dept === d.id && e.status !== 'terminated').length,
+        color: colors[i],
+      }));
+      legend.innerHTML = allDepts.length
+        ? allDepts.map(d => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:10px;height:10px;border-radius:3px;background:${d.color};flex-shrink:0"></div>
+              <span style="font-size:12px;color:var(--text-secondary)">${d.name}</span>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${d.count}</span>
           </div>
-          <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${d.count}</span>
-        </div>
-      `).join('');
+        `).join('')
+        : `<p style="text-align:center;color:var(--text-muted);font-size:12px">${currentLang==='ar'?'لا توجد أقسام':'No departments'}</p>`;
     }
   }
 };
