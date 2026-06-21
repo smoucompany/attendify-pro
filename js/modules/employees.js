@@ -136,13 +136,17 @@ const EmployeesModule = {
   },
 
   _empCard(e) {
-    const dept = DB.getDepartment(e.dept);
+    const dept    = DB.getDepartment(e.dept);
+    const deptIdx = DB.departments.findIndex(d => d.id === e.dept);
+    const deptHex = dept?.hex || (typeof DepartmentsModule !== 'undefined'
+      ? DepartmentsModule.COLORS[(deptIdx >= 0 ? deptIdx : 0) % DepartmentsModule.COLORS.length].hex
+      : '#6366f1');
     return `
-      <div class="employee-card stagger-item">
+      <div class="employee-card stagger-item" style="border-top:3px solid ${deptHex}">
         <div class="employee-card-avatar ${e.avatarColor}">${e.avatar}</div>
         <div class="employee-card-name">${e.name}</div>
         <div class="employee-card-role">${e.position}</div>
-        <div class="employee-card-dept"><i class="fas fa-building"></i> ${dept?.name || ''}</div>
+        <div class="employee-card-dept" style="color:${deptHex}"><i class="fas fa-building"></i> ${dept?.name || ''}</div>
         <div class="employee-card-stats">
           <div class="emp-stat">
             <div class="emp-stat-val">${DB.leaveBalances[e.id]?.remaining || 0}</div>
