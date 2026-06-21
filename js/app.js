@@ -96,8 +96,6 @@ const App = {
       document.getElementById('login-page').style.display = 'flex';
     }
 
-    // Inject demo button under login form
-    setTimeout(() => this._injectDemoBtn(), 50);
 
     // Start live clock
     this._startClock();
