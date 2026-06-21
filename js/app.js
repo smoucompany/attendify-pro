@@ -489,11 +489,13 @@ const App = {
       notif.read = true;
       el?.classList.remove('unread');
       this._updateBadges();
+      DB.save();
     }
   },
 
   markAllRead() {
     DB.notifications.forEach(n => n.read = true);
+    DB.save();
     this._populateNotifPanel();
     this._updateBadges();
     const dot = document.getElementById('notif-dot');
@@ -767,6 +769,14 @@ document.addEventListener('DOMContentLoaded', () => {
   App.init();
   _initRipple();
   _initStagger();
+});
+
+// Force-save before tab/browser closes (prevents data loss from debounce timer)
+window.addEventListener('beforeunload', () => {
+  if (DB._saveTimer) {
+    clearTimeout(DB._saveTimer);
+    DB._saveToLocal();
+  }
 });
 
 /* Ripple effect on .btn clicks */

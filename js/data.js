@@ -262,6 +262,9 @@ const DB = {
       localStorage.setItem('attendify-db', JSON.stringify(snap));
     } catch(e) {
       console.warn('[DB] localStorage save failed:', e.message);
+      if (e.name === 'QuotaExceededError') {
+        if (typeof App !== 'undefined') App.toast('تحذير: مساحة التخزين ممتلئة، قد لا تُحفظ بعض البيانات', 'error');
+      }
     }
   },
 

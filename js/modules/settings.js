@@ -1729,12 +1729,13 @@ const SettingsModule = {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - 12);
     const cutoffStr = cutoff.toISOString().split('T')[0];
-    const before = DB.audit.length;
-    DB.audit = DB.audit.filter(a => (a.time||'') >= cutoffStr);
-    const deleted = before - DB.audit.length;
-    const before2 = DB.attendance.length;
-    DB.attendance = DB.attendance.filter(a => (a.date||'') >= cutoffStr);
-    const deleted2 = before2 - DB.attendance.length;
+    let deleted = 0, deleted2 = 0;
+    for (let i = DB.audit.length - 1; i >= 0; i--) {
+      if ((DB.audit[i].time || '') < cutoffStr) { DB.audit.splice(i, 1); deleted++; }
+    }
+    for (let i = DB.attendance.length - 1; i >= 0; i--) {
+      if ((DB.attendance[i].date || '') < cutoffStr) { DB.attendance.splice(i, 1); deleted2++; }
+    }
     App.toast(`تم حذف ${deleted} سجل مراجعة و${deleted2} سجل حضور قديم ✓`, 'success');
   },
 

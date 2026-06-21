@@ -93,11 +93,12 @@ const NotificationsModule = {
 
   markRead(id, el) {
     const n = DB.notifications.find(n => n.id === id);
-    if (n) { n.read = true; el?.classList.remove('unread'); App._updateBadges(); }
+    if (n) { n.read = true; el?.classList.remove('unread'); App._updateBadges(); DB.save(); }
   },
 
   deleteNotif(id, el) {
-    DB.notifications = DB.notifications.filter(n => n.id !== id);
+    const i = DB.notifications.findIndex(n => n.id === id);
+    if (i !== -1) DB.notifications.splice(i, 1);
     el?.remove();
     App._updateBadges();
     App.toast(currentLang==='ar'?'تم حذف الإشعار':'Notification deleted', 'info');
@@ -105,7 +106,7 @@ const NotificationsModule = {
 
   deleteAll() {
     if (!confirm(currentLang==='ar'?'هل تريد حذف جميع الإشعارات؟':'Delete all notifications?')) return;
-    DB.notifications = [];
+    DB.notifications.splice(0);
     App._updateBadges();
     App.toast(currentLang==='ar'?'تم حذف كل الإشعارات':'All notifications deleted', 'success');
     this.render(document.getElementById('page-content'));

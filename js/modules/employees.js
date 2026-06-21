@@ -330,14 +330,10 @@ const EmployeesModule = {
         emp.status = data.status;
         emp.gender = data.gender;
         emp.hireDate = data.hireDate;
-        // تحديث الراتب في سجل الـ payroll
         const pr = DB.payroll.find(p => p.empId === id);
         if (pr && emp.salary) {
-          pr.base      = emp.salary;
-          pr.housing   = Math.round(emp.salary * 0.25);
-          pr.transport = Math.round(emp.salary * 0.10);
-          pr.food      = Math.round(emp.salary * 0.05);
-          pr.total     = Math.max(0, pr.base + pr.housing + pr.transport + pr.food + pr.overtime - pr.absentDeduction - pr.lateDeduction);
+          pr.base  = emp.salary;
+          pr.total = Math.max(0, pr.base + (pr.housing||0) + (pr.transport||0) + (pr.food||0) + (pr.overtime||0) - (pr.absentDeduction||0) - (pr.lateDeduction||0));
         }
         DB.save();
         App.toast(`${t('common.edit')} ${fullName} ${currentLang==='ar'?'تم بنجاح':'updated'}`, 'success');
@@ -431,7 +427,8 @@ const EmployeesModule = {
   deleteEmployee(id) {
     const emp = DB.getEmployee(id);
     App.confirm(`${t('employees.deleteConfirm')}\n${emp?.name}`, () => {
-      DB.employees = DB.employees.filter(e => e.id !== id);
+      const i = DB.employees.findIndex(e => e.id === id);
+      if (i !== -1) DB.employees.splice(i, 1);
       App.toast(`${currentLang==='ar'?'تم حذف':'Deleted'} ${emp?.name}`, 'success');
       this.render(document.getElementById('page-content'));
     });

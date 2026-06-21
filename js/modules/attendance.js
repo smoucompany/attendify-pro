@@ -797,8 +797,8 @@ const AttendanceModule = {
 
   deleteRecord(id) {
     App.confirm(currentLang==='ar'?'هل تريد حذف هذا السجل؟':'Delete this record?', () => {
-      DB.attendance = DB.attendance.filter(a => a.id !== id);
-      DB.save();
+      const i = DB.attendance.findIndex(a => a.id === id);
+      if (i !== -1) DB.attendance.splice(i, 1);
       App.toast(currentLang==='ar'?'تم الحذف':'Deleted', 'success');
       this._renderTable();
     });
