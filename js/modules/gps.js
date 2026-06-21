@@ -44,26 +44,9 @@ const GpsModule = {
             </div>
           </div>
           <div class="card-body" style="padding:0">
-            <div class="map-container" style="height:400px;border-radius:0 0 var(--radius-lg) var(--radius-lg)">
+            <div class="map-container" style="height:400px;border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden">
               <div class="map-grid"></div>
-              <!-- Geofence circles -->
-              <div class="geofence-circle"></div>
-              <div class="geofence-circle" style="width:120px;height:120px;border-color:rgba(16,185,129,0.5);animation-delay:1s"></div>
-              <!-- Employee pins -->
-              <div class="map-pin" style="top:43%;left:46%;background:#6366f1"></div>
-              <div class="map-pin" style="top:55%;left:52%;background:#10b981"></div>
-              <div class="map-pin" style="top:38%;left:58%;background:#10b981"></div>
-              <div class="map-pin" style="top:60%;left:40%;background:#f59e0b"></div>
-              <div class="map-pin" style="top:47%;left:65%;background:#ef4444"></div>
-              <!-- Labels -->
-              <div style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);border-radius:8px;padding:10px 14px">
-                <div style="color:white;font-size:13px;font-weight:700;margin-bottom:6px">${currentLang==='ar'?'المفتاح':'Legend'}</div>
-                <div style="display:flex;flex-direction:column;gap:4px">
-                  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.8)"><div style="width:8px;height:8px;border-radius:50%;background:#6366f1"></div>${currentLang==='ar'?'المركز الرئيسي':'Head Office'}</div>
-                  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.8)"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>${currentLang==='ar'?'داخل النطاق':'In Zone'}</div>
-                  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.8)"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div>${currentLang==='ar'?'خارج النطاق':'Out of Zone'}</div>
-                </div>
-              </div>
+              ${this._renderLiveMap()}
             </div>
           </div>
         </div>
@@ -137,6 +120,115 @@ const GpsModule = {
         </div>
       </div>
     `;
+  },
+
+  _renderLiveMap() {
+    const locs = DB.locations.filter(l => l.active);
+    const legend = `
+      <div style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);border-radius:8px;padding:10px 14px;z-index:10">
+        <div style="color:white;font-size:12px;font-weight:700;margin-bottom:6px">${currentLang==='ar'?'المفتاح':'Legend'}</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#6366f1"></div>${currentLang==='ar'?'موقع العمل':'Work Location'}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>${currentLang==='ar'?'داخل النطاق':'In Zone'}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div>${currentLang==='ar'?'خارج النطاق':'Out of Zone'}</div>
+        </div>
+      </div>`;
+
+    if (!locs.length) {
+      return `
+        ${legend}
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:rgba(255,255,255,0.4)">
+          <i class="fas fa-map-location-dot" style="font-size:40px"></i>
+          <div style="font-size:13px">${currentLang==='ar'?'لا توجد مواقع مضافة بعد':'No locations added yet'}</div>
+          <button class="btn btn-primary btn-sm" onclick="GpsModule.openAdd()"><i class="fas fa-plus"></i> ${currentLang==='ar'?'أضف موقعاً':'Add Location'}</button>
+        </div>`;
+    }
+
+    // Bounding box
+    const lats = locs.map(l => l.lat), lngs = locs.map(l => l.lng);
+    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+
+    // Padding: at least 0.002° or 35% of span
+    const latPad = Math.max((maxLat - minLat) * 0.45, 0.002);
+    const lngPad = Math.max((maxLng - minLng) * 0.45, 0.002);
+    minLat -= latPad; maxLat += latPad;
+    minLng -= lngPad; maxLng += lngPad;
+
+    const latSpan = maxLat - minLat;
+    const lngSpan = maxLng - minLng;
+    const latMeters = latSpan * 111000; // approx meters for lat span
+
+    // pin colors cycle
+    const pinColors = ['#6366f1','#10b981','#f59e0b','#06b6d4','#ec4899','#8b5cf6','#ef4444'];
+
+    const pins = locs.map((loc, i) => {
+      const top  = ((maxLat - loc.lat) / latSpan * 100).toFixed(2);
+      const left = ((loc.lng - minLng) / lngSpan * 100).toFixed(2);
+      const color = pinColors[i % pinColors.length];
+      // radius circle: radius_m → % of map height (400px represents latMeters)
+      const radiusPct = (loc.radius / latMeters * 100).toFixed(3);
+      // circle width in % of map width (approximate, compensate for aspect ratio)
+      const mapH = 400, mapW = 700; // approx container size
+      const radiusPx = (loc.radius / latMeters) * mapH;
+      const circleW = radiusPx * 2;
+      const circleH = radiusPx * 2;
+
+      return `
+        <!-- Geofence ring for ${loc.name} -->
+        <div style="
+          position:absolute;
+          top:${top}%; left:${left}%;
+          width:${circleW}px; height:${circleH}px;
+          margin-left:-${radiusPx}px; margin-top:-${radiusPx}px;
+          border:2px dashed ${color}88;
+          border-radius:50%;
+          background:${color}11;
+          pointer-events:none;
+          animation:pulse-ring 3s ease infinite;
+          animation-delay:${i*0.6}s;
+        "></div>
+
+        <!-- Pin -->
+        <div class="map-pin" style="
+          top:${top}%; left:${left}%;
+          background:${color};
+          transform:translate(-50%,-100%);
+          position:absolute;
+          z-index:5;
+        "></div>
+
+        <!-- Name label -->
+        <div style="
+          position:absolute;
+          top:${top}%; left:${left}%;
+          transform:translate(-50%, calc(-100% - 26px));
+          background:rgba(0,0,0,0.78);
+          color:white;
+          font-size:10.5px;
+          font-weight:700;
+          padding:3px 8px;
+          border-radius:5px;
+          white-space:nowrap;
+          pointer-events:none;
+          z-index:6;
+          border:1px solid ${color}88;
+        ">${loc.name}</div>
+
+        <!-- Coord tooltip on hover — invisible dot for tap -->
+        <div title="${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}" style="
+          position:absolute;
+          top:${top}%; left:${left}%;
+          width:28px;height:28px;
+          margin:-14px 0 0 -14px;
+          border-radius:50%;
+          cursor:pointer;
+          z-index:7;
+        "></div>
+      `;
+    }).join('');
+
+    return legend + pins;
   },
 
   // Haversine formula — returns distance in meters between two lat/lng points
