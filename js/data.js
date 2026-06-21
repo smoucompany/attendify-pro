@@ -189,7 +189,7 @@ const DB = {
     const today      = new Date();
     const active     = this.employees.filter(e => e.status === 'active').length;
     const workDayNames = this.company.workDays || ['sat','sun','mon','tue','wed','thu'];
-    const allDayNames  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const allDayNames  = ['sun','mon','tue','wed','thu','fri','sat'];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);

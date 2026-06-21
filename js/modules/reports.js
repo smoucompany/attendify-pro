@@ -199,7 +199,7 @@ const ReportsModule = {
   _workingDays(from, to) {
     const days = [];
     const weekend = DB.company.weekend || ['friday','saturday'];
-    const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
     const holidays = (DB.company.holidays || []).map(h => h.date || h);
     for (let d = new Date(from); d <= new Date(to); d.setDate(d.getDate()+1)) {
       const ds  = d.toISOString().split('T')[0];
@@ -1235,7 +1235,7 @@ ${type!=='summary'?`
     const ar     = currentLang === 'ar';
     const active = DB.employees.filter(e => e.status === 'active').length;
     const workDayNames = DB.company.workDays || ['sat','sun','mon','tue','wed','thu'];
-    const allDayNames  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const allDayNames  = ['sun','mon','tue','wed','thu','fri','sat'];
 
     const months  = [];
     const present = [];
