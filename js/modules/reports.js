@@ -6,6 +6,7 @@
 const ReportsModule = {
   _activeReport: null,
   _activeType: null,
+  _cache: {},   // يخزّن بيانات آخر تقرير عُرض على الشاشة لاستخدامها في الطباعة
 
   render(container) {
     const stats  = DB.getAttendanceStats();
@@ -248,6 +249,7 @@ const ReportsModule = {
   _attendanceReport(container, from, to, dept) {
     const ar      = currentLang === 'ar';
     const records = this._buildFullRecords(from, to, dept);
+    this._cache = { type:'attendance', from, to, dept, records };
     const present = records.filter(a => a.status === 'present').length;
     const late    = records.filter(a => a.status === 'late').length;
     const absent  = records.filter(a => a.status === 'absent').length;
@@ -287,6 +289,7 @@ const ReportsModule = {
     const ar = currentLang === 'ar';
     let lates = DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
     if (dept !== 'all') lates = lates.filter(a => DB.getEmployee(a.empId)?.dept === dept);
+    this._cache = { type:'late', from, to, dept, records: lates };
 
     // حساب دقائق التأخر لكل سجل بناءً على وردية الموظف الفعلية
     const _lateMin = (a) => {
@@ -518,6 +521,7 @@ const ReportsModule = {
     const totalDed   = rows.reduce((s, r) => s + r.totalDed, 0);
     const totalOT    = rows.reduce((s, r) => s + r.overtimeBonus, 0);
     const totalNet   = rows.reduce((s, r) => s + r.net, 0);
+    this._cache = { type:'payroll', from, to, dept, rows, totalBase, totalAllow, totalDed, totalOT, totalNet, workingDayCount };
 
     container.innerHTML = `
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:var(--bg-input);border-radius:8px;padding:10px 14px">
@@ -838,46 +842,94 @@ const ReportsModule = {
   // ── PRINT VIEW ───────────────────────────────────────────
 
   printReport(type, from, to) {
-    const ar    = currentLang === 'ar';
-    type = type || this._activeType || 'summary';
-    from = from || document.getElementById('rpt-from')?.value || new Date().toISOString().slice(0,7)+'-01';
-    to   = to   || document.getElementById('rpt-to')?.value   || new Date().toISOString().slice(0,10);
+    const ar  = currentLang === 'ar';
+    type = type || this._activeType || this._cache.type || 'summary';
+    from = from || document.getElementById('rpt-from')?.value || this._cache.from || new Date().toISOString().slice(0,7)+'-01';
+    to   = to   || document.getElementById('rpt-to')?.value   || this._cache.to   || new Date().toISOString().slice(0,10);
 
     const company   = DB.company;
-    const rpt       = this._reportTypes().find(r=>r.key===type) || {icon:'fas fa-chart-bar', color:''};
     const printDate = new Date().toLocaleDateString(ar?'ar-EG':'en-US',{year:'numeric',month:'long',day:'numeric'});
     const rangeStr  = `${from} — ${to}`;
 
-    // Build table data
-    let headers = [], rows = [];
-    if (type==='attendance') {
-      const recs = DB.attendance.filter(a=>a.date>=from&&a.date<=to);
-      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'دخول':'In', ar?'خروج':'Out', ar?'الحالة':'Status'];
-      rows = recs.map(a=>{ const e=DB.getEmployee(a.empId); return [e?.name||'—', DB.departments.find(d=>d.id===e?.dept)?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', a.status]; });
-    } else if (type==='late') {
-      const lates = DB.attendance.filter(a=>a.status==='late'&&a.date>=from&&a.date<=to);
-      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)'];
-      rows = lates.map(a=>{ const e=DB.getEmployee(a.empId); const [h,m]=(a.checkIn||'08:00').split(':').map(Number); const min=Math.max(0,(h*60+m)-8*60); return [e?.name||'—', a.date, a.checkIn, min+' '+(ar?'د':'m')]; });
-    } else if (type==='payroll') {
-      headers = [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'البدلات':'Allow.', ar?'الخصومات':'Ded.', ar?'الصافي':'Net'];
-      rows = DB.payroll.map(p=>{ const e=DB.getEmployee(p.empId); return [e?.name||'—', App.formatCurrency(p.base), App.formatCurrency(p.housing+p.transport+p.food), App.formatCurrency(p.absentDeduction+p.lateDeduction), App.formatCurrency(p.total)]; });
-    } else if (type==='leave') {
+    // ── بناء بيانات الجدول من نفس المصدر المعروض على الشاشة ──
+    let headers = [], rows = [], footerRow = null;
+
+    if (type === 'attendance') {
+      // استخدام _buildFullRecords لنفس بيانات الشاشة
+      const recs = (this._cache.type === 'attendance' && this._cache.records)
+        ? this._cache.records
+        : this._buildFullRecords(from, to, 'all');
+      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'دخول':'In', ar?'خروج':'Out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'];
+      rows = recs.map(a => {
+        const e   = DB.getEmployee(a.empId);
+        const hrs = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
+        return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', hrs, a.status];
+      });
+
+    } else if (type === 'late') {
+      const lates = (this._cache.type === 'late' && this._cache.records) ? this._cache.records
+        : DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
+      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)'];
+      rows = lates.map(a => {
+        const e   = DB.getEmployee(a.empId);
+        const sh  = e?.shift ? DB.shifts.find(s => s.id === e.shift) : null;
+        const ws  = sh?.start || DB.company.workPeriods?.[0]?.start || '08:00';
+        const [sh2,sm2] = ws.split(':').map(Number);
+        const [ch,cm]   = (a.checkIn||ws).split(':').map(Number);
+        const min = Math.max(0, (ch*60+cm)-(sh2*60+sm2));
+        return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, a.checkIn||'—', min+' '+(ar?'د':'m')];
+      });
+
+    } else if (type === 'payroll') {
+      // استخدام الصفوف المحسوبة من _payrollReport مباشرة
+      const cachedRows = this._cache.type === 'payroll' ? this._cache.rows : null;
+      if (cachedRows) {
+        const hasAllow = cachedRows.some(r => r.allow > 0);
+        const hasOT    = cachedRows.some(r => r.overtimeBonus > 0);
+        headers = [ar?'الموظف':'Employee', ar?'الأساسي':'Base',
+          ...(hasAllow ? [ar?'البدلات':'Allow.'] : []),
+          ar?'أيام الغياب':'Absent', ar?'خصومات':'Deductions',
+          ...(hasOT ? [ar?'إضافي':'OT'] : []),
+          ar?'الصافي':'Net'];
+        rows = cachedRows.map(r => [
+          r.emp.name,
+          App.formatCurrency(r.base),
+          ...(hasAllow ? [App.formatCurrency(r.allow)] : []),
+          r.absentDays > 0 ? `${r.absentDays} ${ar?'يوم':'days'}` : '—',
+          r.totalDed > 0 ? `-${App.formatCurrency(r.totalDed)}` : '—',
+          ...(hasOT ? [r.overtimeBonus > 0 ? `+${App.formatCurrency(r.overtimeBonus)}` : '—'] : []),
+          App.formatCurrency(r.net),
+        ]);
+        footerRow = [ar?'الإجمالي':'Total', App.formatCurrency(this._cache.totalBase),
+          ...(hasAllow ? [App.formatCurrency(this._cache.totalAllow)] : []),
+          '—', `-${App.formatCurrency(this._cache.totalDed)}`,
+          ...(hasOT ? [`+${App.formatCurrency(this._cache.totalOT)}`] : []),
+          App.formatCurrency(this._cache.totalNet)];
+      } else {
+        headers = [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'الخصومات':'Ded.', ar?'الصافي':'Net'];
+        rows = DB.payroll.map(p => { const e=DB.getEmployee(p.empId); return [e?.name||'—', App.formatCurrency(p.base), App.formatCurrency((p.absentDeduction||0)+(p.lateDeduction||0)), App.formatCurrency(p.total)]; });
+      }
+
+    } else if (type === 'leave') {
       headers = [ar?'الموظف':'Employee', ar?'النوع':'Type', ar?'من':'From', ar?'إلى':'To', ar?'الأيام':'Days', ar?'الحالة':'Status'];
-      rows = DB.leaves.map(l=>{ const e=DB.getEmployee(l.empId); return [e?.name||'—', l.type, l.from, l.to, l.days, l.status]; });
-    } else if (type==='overtime') {
-      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الساعات':'Hours'];
-      rows = DB.attendance.filter(a=>a.overtime&&a.date>=from&&a.date<=to).map(a=>{ const e=DB.getEmployee(a.empId); return [e?.name||'—', a.date, a.overtime]; });
+      rows = DB.leaves.map(l => { const e=DB.getEmployee(l.empId); return [e?.name||'—', l.type, l.from||'—', l.to||'—', l.days||'—', l.status]; });
+
+    } else if (type === 'overtime') {
+      const ots = DB.attendance.filter(a => a.overtime && a.date >= from && a.date <= to);
+      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'الساعات الإضافية':'OT (min)'];
+      rows = ots.map(a => { const e=DB.getEmployee(a.empId); return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, `${Math.floor(a.overtime/60)}:${String(a.overtime%60).padStart(2,'0')}`]; });
+
     } else {
       const s = DB.getAttendanceStats();
       headers = [ar?'المؤشر':'KPI', ar?'القيمة':'Value'];
       rows = [
         [ar?'إجمالي الموظفين':'Total Employees', s.total],
-        [ar?'حاضرون اليوم':'Present Today',     s.present+s.late],
-        [ar?'متأخرون':'Late',                    s.late],
-        [ar?'غائبون':'Absent',                   s.absent],
-        [ar?'في إجازة':'On Leave',               s.onLeave],
-        [ar?'معدل الحضور':'Attendance Rate',     s.attendanceRate+'%'],
-        [ar?'إجمالي الرواتب':'Total Payroll',    App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))],
+        [ar?'حاضرون اليوم':'Present Today',      s.present+s.late],
+        [ar?'متأخرون اليوم':'Late Today',         s.late],
+        [ar?'غائبون اليوم':'Absent Today',        s.absent],
+        [ar?'في إجازة':'On Leave',                s.onLeave],
+        [ar?'معدل الحضور':'Attendance Rate',      s.attendanceRate+'%'],
+        [ar?'إجمالي الرواتب':'Total Payroll',     App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.total||0),0))],
       ];
     }
 
@@ -997,17 +1049,20 @@ const ReportsModule = {
     <tbody>
       ${rows.map(row=>`<tr>${row.map(cell=>{
         const s = String(cell);
-        let cls = '';
-        if (s==='present'||s==='حاضر') cls='badge-status badge-present';
-        else if (s==='late'||s==='متأخر') cls='badge-status badge-late';
-        else if (s==='absent'||s==='غائب') cls='badge-status badge-absent';
-        else if (s==='approved'||s==='معتمد') cls='badge-status badge-approved';
-        else if (s==='pending'||s==='معلق') cls='badge-status badge-pending';
-        else if (s==='rejected'||s==='مرفوض') cls='badge-status badge-rejected';
+        const statusMap = {
+          present:'badge-present', حاضر:'badge-present',
+          late:'badge-late', متأخر:'badge-late',
+          absent:'badge-absent', غائب:'badge-absent',
+          leave:'badge-pending',  إجازة:'badge-pending',
+          approved:'badge-approved', معتمد:'badge-approved',
+          pending:'badge-pending', معلق:'badge-pending',
+          rejected:'badge-rejected', مرفوض:'badge-rejected',
+        };
+        const cls = statusMap[s] ? `badge-status ${statusMap[s]}` : '';
         return `<td>${cls?`<span class="${cls}">${s}</span>`:s}</td>`;
       }).join('')}</tr>`).join('')}
     </tbody>
-    ${type==='payroll' ? `<tfoot><tr class="tfoot-row"><td colspan="4">${ar?'إجمالي الرواتب الصافية':'Total Net Salaries'}</td><td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))}</td></tr></tfoot>` : ''}
+    ${footerRow ? `<tfoot><tr class="tfoot-row">${footerRow.map(c=>`<td>${c}</td>`).join('')}</tr></tfoot>` : ''}
   </table>
 
   <!-- Footer -->

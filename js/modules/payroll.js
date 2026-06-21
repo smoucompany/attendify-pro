@@ -75,67 +75,68 @@ const PayrollModule = {
       </div>
 
       <!-- Payroll Table -->
-      <div class="table-wrapper" style="margin-bottom:20px">
-        <table class="data-table">
-          <thead>
-            <tr>
+      ${(() => {
+        const hasHousing  = DB.payroll.some(p => p.housing  > 0);
+        const hasTransport= DB.payroll.some(p => p.transport> 0);
+        const hasFood     = DB.payroll.some(p => p.food     > 0);
+        const hasOvertime = DB.payroll.some(p => p.overtime > 0);
+        const ar = currentLang === 'ar';
+        return `
+        <div class="table-wrapper" style="margin-bottom:20px">
+          <table class="data-table">
+            <thead><tr>
               <th>${t('common.name')}</th>
               <th>${t('payroll.baseSalary')}</th>
-              <th>${t('payroll.housing')}</th>
-              <th>${t('payroll.transport')}</th>
-              <th>${t('payroll.food')}</th>
-              <th>${t('payroll.overtime')}</th>
+              ${hasHousing   ? `<th>${t('payroll.housing')}</th>`  : ''}
+              ${hasTransport ? `<th>${t('payroll.transport')}</th>`: ''}
+              ${hasFood      ? `<th>${t('payroll.food')}</th>`     : ''}
+              ${hasOvertime  ? `<th>${t('payroll.overtime')}</th>` : ''}
               <th>${t('payroll.deductions')}</th>
               <th>${t('payroll.netSalary')}</th>
               <th>${t('common.actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${DB.payroll.map(p => {
-              const emp        = DB.getEmployee(p.empId);
-              const deductions = p.absentDeduction + p.lateDeduction;
-              return `
-                <tr class="stagger-item">
-                  <td>
-                    <div class="table-avatar">
-                      <div class="avatar ${emp?.avatarColor}" style="width:30px;height:30px;font-size:11px">${emp?.avatar||'?'}</div>
-                      <div class="avatar-info">
-                        <div class="avatar-name">${emp?.name||'—'}</div>
-                        <div class="avatar-sub">${emp?.position||''}</div>
+            </tr></thead>
+            <tbody>
+              ${DB.payroll.map(p => {
+                const emp = DB.getEmployee(p.empId);
+                const ded = (p.absentDeduction||0) + (p.lateDeduction||0);
+                return `
+                  <tr class="stagger-item">
+                    <td>
+                      <div class="table-avatar">
+                        <div class="avatar ${emp?.avatarColor}" style="width:30px;height:30px;font-size:11px">${emp?.avatar||'?'}</div>
+                        <div class="avatar-info">
+                          <div class="avatar-name">${emp?.name||'—'}</div>
+                          <div class="avatar-sub">${emp?.position||''}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td style="font-weight:600">${App.formatCurrency(p.base)}</td>
-                  <td style="color:var(--success)">${App.formatCurrency(p.housing)}</td>
-                  <td style="color:var(--success)">${App.formatCurrency(p.transport)}</td>
-                  <td style="color:var(--success)">${App.formatCurrency(p.food)}</td>
-                  <td style="color:var(--info)">${p.overtime > 0 ? App.formatCurrency(p.overtime) : '<span style="color:var(--text-muted)">—</span>'}</td>
-                  <td style="color:var(--danger)">${deductions > 0 ? '-'+App.formatCurrency(deductions) : '<span style="color:var(--text-muted)">—</span>'}</td>
-                  <td style="font-weight:800;color:var(--primary);font-size:14px">${App.formatCurrency(p.total)}</td>
-                  <td>
-                    <button class="btn btn-outline-primary btn-sm" onclick="PayrollModule.viewPayslip('${p.empId}')">
-                      <i class="fas fa-file-invoice-dollar"></i> ${t('payroll.payslip')}
-                    </button>
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-          <tfoot>
-            <tr style="background:var(--bg-input);font-weight:800">
-              <td style="color:var(--text-primary)">${t('common.total')}</td>
-              <td>${App.formatCurrency(totalBase)}</td>
-              <td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.housing,0))}</td>
-              <td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.transport,0))}</td>
-              <td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.food,0))}</td>
-              <td style="color:var(--info)">${App.formatCurrency(totalOvertime)}</td>
-              <td style="color:var(--danger)">-${App.formatCurrency(totalDeductions)}</td>
-              <td style="color:var(--primary);font-size:15px">${App.formatCurrency(totalNet)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+                    </td>
+                    <td style="font-weight:600">${App.formatCurrency(p.base)}</td>
+                    ${hasHousing   ? `<td style="color:var(--success)">${App.formatCurrency(p.housing)}</td>`  : ''}
+                    ${hasTransport ? `<td style="color:var(--success)">${App.formatCurrency(p.transport)}</td>`: ''}
+                    ${hasFood      ? `<td style="color:var(--success)">${App.formatCurrency(p.food)}</td>`     : ''}
+                    ${hasOvertime  ? `<td style="color:var(--info)">${p.overtime>0?App.formatCurrency(p.overtime):'<span style="color:var(--text-muted)">—</span>'}</td>` : ''}
+                    <td style="color:var(--danger)">${ded>0?'-'+App.formatCurrency(ded):'<span style="color:var(--text-muted)">—</span>'}</td>
+                    <td style="font-weight:800;color:var(--primary);font-size:14px">${App.formatCurrency(p.total)}</td>
+                    <td><button class="btn btn-outline-primary btn-sm" onclick="PayrollModule.viewPayslip('${p.empId}')"><i class="fas fa-file-invoice-dollar"></i> ${t('payroll.payslip')}</button></td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="background:var(--bg-input);font-weight:800">
+                <td style="color:var(--text-primary)">${t('common.total')}</td>
+                <td>${App.formatCurrency(totalBase)}</td>
+                ${hasHousing   ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.housing||0),0))}</td>`  : ''}
+                ${hasTransport ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.transport||0),0))}</td>`: ''}
+                ${hasFood      ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.food||0),0))}</td>`     : ''}
+                ${hasOvertime  ? `<td style="color:var(--info)">${App.formatCurrency(totalOvertime)}</td>`        : ''}
+                <td style="color:var(--danger)">-${App.formatCurrency(totalDeductions)}</td>
+                <td style="color:var(--primary);font-size:15px">${App.formatCurrency(totalNet)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>`;
+      })()}
 
       <!-- Payroll Chart -->
       <div class="card">
@@ -186,10 +187,10 @@ const PayrollModule = {
           ${currentLang==='ar'?'الاستحقاقات':'Earnings'}
         </div>
         <div class="payslip-row"><span>${t('payroll.baseSalary')}</span><span style="color:var(--text-primary)">${App.formatCurrency(payroll.base)}</span></div>
-        <div class="payslip-row"><span>${t('payroll.housing')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.housing)}</span></div>
-        <div class="payslip-row"><span>${t('payroll.transport')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.transport)}</span></div>
-        <div class="payslip-row"><span>${t('payroll.food')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.food)}</span></div>
-        ${payroll.overtime > 0 ? `<div class="payslip-row"><span>${t('payroll.overtime')}</span><span style="color:var(--info)">${App.formatCurrency(payroll.overtime)}</span></div>` : ''}
+        ${payroll.housing   > 0 ? `<div class="payslip-row"><span>${t('payroll.housing')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.housing)}</span></div>`   : ''}
+        ${payroll.transport > 0 ? `<div class="payslip-row"><span>${t('payroll.transport')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.transport)}</span></div>`: ''}
+        ${payroll.food      > 0 ? `<div class="payslip-row"><span>${t('payroll.food')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.food)}</span></div>`         : ''}
+        ${payroll.overtime  > 0 ? `<div class="payslip-row"><span>${t('payroll.overtime')}</span><span style="color:var(--info)">${App.formatCurrency(payroll.overtime)}</span></div>`    : ''}
 
         <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px">
           ${currentLang==='ar'?'الخصومات':'Deductions'}
@@ -269,23 +270,19 @@ const PayrollModule = {
           empId:           emp.id,
           period,
           base,
-          housing:         Math.round(base * 0.25),
-          transport:       Math.round(base * 0.10),
-          food:            Math.round(base * 0.05),
+          housing:         0,
+          transport:       0,
+          food:            0,
           overtime:        0,
           absentDeduction: 0,
           lateDeduction:   0,
           absentDays:      0,
-          total:           Math.round(base * 1.40),
+          total:           base,
         });
       } else {
-        // تحديث الراتب الأساسي إذا تغيّر
         const p = DB.payroll.find(pr => pr.empId === emp.id);
         if (p && emp.salary && p.base !== emp.salary) {
-          p.base      = emp.salary;
-          p.housing   = Math.round(emp.salary * 0.25);
-          p.transport = Math.round(emp.salary * 0.10);
-          p.food      = Math.round(emp.salary * 0.05);
+          p.base = emp.salary;
         }
       }
     });

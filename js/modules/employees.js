@@ -371,14 +371,14 @@ const EmployeesModule = {
         empId:           newEmp.id,
         period:          new Date().toISOString().slice(0,7),
         base,
-        housing:         Math.round(base * 0.25),
-        transport:       Math.round(base * 0.10),
-        food:            Math.round(base * 0.05),
+        housing:         0,
+        transport:       0,
+        food:            0,
         overtime:        0,
         absentDeduction: 0,
         lateDeduction:   0,
         absentDays:      0,
-        total:           Math.round(base * 1.40),
+        total:           base,
       });
       DB.save();
       App.toast(`${t('employees.addEmployee')} ${fullName} ${currentLang==='ar'?'تم بنجاح':'added'}`, 'success');
