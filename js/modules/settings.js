@@ -245,7 +245,7 @@ const SettingsModule = {
   },
 
   saveCompany() {
-    const fields = {name:'co-name',nameEn:'co-name-en',email:'co-email',phone:'co-phone',website:'co-web',address:'co-addr',timezone:'co-tz',currency:'co-curr'};
+    const fields = {name:'co-name',nameEn:'co-name-en',email:'co-email',phone:'co-phone',website:'co-web',address:'co-addr',timezone:'co-tz',currency:'co-curr',dateFormat:'co-datefmt'};
     Object.entries(fields).forEach(([k,id])=>{
       const el = document.getElementById(id);
       if (el) DB.company[k] = el.value;
@@ -320,6 +320,7 @@ const SettingsModule = {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
     DB.company.branches.push({id:`b${Date.now()}`,name:d.name,city:d.city});
+    DB.saveCompany();
     App.closeModal();
     App.toast('تم إضافة الفرع','success');
     this._renderSection();
@@ -342,6 +343,7 @@ const SettingsModule = {
     const d = Object.fromEntries(new FormData(e.target));
     const b = DB.company.branches.find(x=>x.id===id);
     if(b){b.name=d.name;b.city=d.city;}
+    DB.saveCompany();
     App.closeModal();
     App.toast('تم تحديث الفرع','success');
     this._renderSection();
@@ -528,6 +530,7 @@ const SettingsModule = {
     const periods = DB.company.workPeriods;
     const newP = { id: `wp${Date.now()}`, label: `فترة ${periods.length+1}`, start: '08:00', end: '14:00' };
     periods.push(newP);
+    DB.saveCompany();
     const list = document.getElementById('periods-list');
     if (list) {
       const div = document.createElement('div');
@@ -539,17 +542,25 @@ const SettingsModule = {
 
   removePeriod(id) {
     DB.company.workPeriods = DB.company.workPeriods.filter(p => p.id !== id);
+    DB.saveCompany();
     document.getElementById(`period-row-${id}`)?.remove();
     this._refreshTotal();
-    // Re-render to update index numbers
     this._renderSection();
   },
 
   saveHours() {
     const l = document.getElementById('late-threshold');
     if (l) DB.company.lateThreshold = parseInt(l.value) || 15;
-    DB.company.breakEnabled    = false;
-    DB.company.overtimeEnabled = false;
+
+    // Save selected work days
+    const allDays = ['sat','sun','mon','tue','wed','thu','fri'];
+    const workDays = allDays.filter(k => document.getElementById(`day-${k}`)?.classList.contains('btn-primary'));
+    if (workDays.length) {
+      DB.company.workDays = workDays;
+      DB.company.weekend  = allDays.filter(k => !workDays.includes(k));
+    }
+
+    // Save period start/end
     const periods = DB.company.workPeriods;
     if (periods.length) {
       DB.company.workStart = periods[0].start;
@@ -718,6 +729,7 @@ const SettingsModule = {
     const defaultPass = 'Attendify@2025';
     DB.employees.forEach(emp => { emp.password = defaultPass; });
     DB.adminCredentials.password = defaultPass;
+    DB.save();
     DB.logAudit('admin', 'إعادة تعيين كلمات المرور', 'Security', `${DB.employees.length} موظف`);
     App.toast(`تم تعيين كلمة المرور الافتراضية: ${defaultPass}`, 'success', 5000);
   },
