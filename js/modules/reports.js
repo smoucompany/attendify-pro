@@ -1119,29 +1119,31 @@ ${type!=='summary'?`
 </div>
 
 <!-- SIGNATURES -->
+${(() => {
+  const savedSigs = DB.company.signatures || [];
+  // Build sig boxes: saved sigs first, then fallback to admin if none
+  const boxes = savedSigs.length ? savedSigs : [
+    { name: adminName, role: ar?'أعدّه':'Prepared By', title: adminEmail, signature: null }
+  ];
+  return `
 <div class="sig-section">
   <div class="sig-hd">${ar?'ـ توقيعات الاعتماد ـ':'— AUTHORIZATION SIGNATURES —'}</div>
-  <div class="sig-grid">
+  <div class="sig-grid" style="grid-template-columns:repeat(${Math.min(boxes.length,4)},1fr)">
+    ${boxes.map(s=>`
     <div class="sig-box">
-      <div class="sig-role">${ar?'أعدّه':'Prepared By'}</div>
-      <div class="sig-name">${_esc(adminName)}</div>
+      <div class="sig-role">${_esc(s.role||'')}</div>
+      <div class="sig-name">${_esc(s.name||'─────────────')}</div>
+      ${s.signature
+        ? `<div style="height:56px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px"><img src="${s.signature}" style="max-height:52px;max-width:140px;object-fit:contain"></div>`
+        : `<div style="height:56px"></div>`}
       <div class="sig-line-wrap">
         <div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div>
-        ${adminEmail?`<div class="sig-sub">${_esc(adminEmail)}</div>`:''}
+        ${s.title?`<div class="sig-sub">${_esc(s.title)}</div>`:''}
       </div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">${ar?'راجعه':'Reviewed By'}</div>
-      <div class="sig-name" style="color:#cbd5e1">─────────────</div>
-      <div class="sig-line-wrap"><div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div></div>
-    </div>
-    <div class="sig-box">
-      <div class="sig-role">${ar?'اعتمده':'Approved By'}</div>
-      <div class="sig-name" style="color:#cbd5e1">─────────────</div>
-      <div class="sig-line-wrap"><div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div></div>
-    </div>
+    </div>`).join('')}
   </div>
-</div>
+</div>`;
+})()}
 
 </div><!-- /content -->
 

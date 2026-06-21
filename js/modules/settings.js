@@ -12,6 +12,7 @@ const SettingsModule = {
     { key:'attendance',   icon:'fas fa-fingerprint',       label:'إعدادات الحضور',     labelEn:'Attendance' },
     { key:'leaves',       icon:'fas fa-calendar-minus',    label:'الإجازات',           labelEn:'Leaves' },
     { key:'payroll',      icon:'fas fa-money-bill-wave',   label:'الرواتب',            labelEn:'Payroll' },
+    { key:'signatures',   icon:'fas fa-signature',         label:'التواقيع',           labelEn:'Signatures' },
     { key:'portal',       icon:'fas fa-user',              label:'بوابة الموظف',       labelEn:'Employee Portal' },
     { key:'notifications',icon:'fas fa-bell',              label:'الإشعارات',          labelEn:'Notifications' },
     { key:'integrations', icon:'fas fa-plug',              label:'التكاملات',          labelEn:'Integrations' },
@@ -68,6 +69,7 @@ const SettingsModule = {
       attendance:    () => this._attendance(),
       leaves:        () => this._leavesSettings(),
       payroll:       () => this._payrollSettings(),
+      signatures:    () => this._signatures(),
       portal:        () => this._portal(),
       notifications: () => this._notifications(),
       integrations:  () => this._integrations(),
@@ -1817,6 +1819,328 @@ const SettingsModule = {
       if ((DB.attendance[i].date || '') < cutoffStr) { DB.attendance.splice(i, 1); deleted2++; }
     }
     App.toast(`تم حذف ${deleted} سجل مراجعة و${deleted2} سجل حضور قديم ✓`, 'success');
+  },
+
+  /* ══════════════════════════════════════════
+     SIGNATURES — Approvers & Free-draw / Upload
+  ══════════════════════════════════════════ */
+  _getSigs() {
+    if (!DB.company.signatures) DB.company.signatures = [];
+    return DB.company.signatures;
+  },
+
+  _signatures() {
+    const sigs = this._getSigs();
+    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b' };
+
+    return `
+      ${this._group(
+        'التواقيع والاعتماد',
+        'تواقيع المسؤولين التي تظهر في التقارير المطبوعة',
+        `
+        <div id="sigs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+          ${sigs.length ? sigs.map(s => this._sigCard(s)).join('') : `
+            <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-muted);font-size:13px">
+              <i class="fas fa-signature" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i>
+              لا توجد تواقيع بعد — اضغط "إضافة" لإنشاء أول توقيع
+            </div>
+          `}
+        </div>
+        <button class="btn btn-outline-primary btn-sm" onclick="SettingsModule.openSigEditor()">
+          <i class="fas fa-plus"></i> إضافة معتمد جديد
+        </button>
+        `,
+        `<span class="badge badge-primary">${sigs.length}</span>`
+      )}
+
+      <div style="background:var(--primary-bg);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;margin-top:4px">
+        <i class="fas fa-circle-info" style="color:var(--primary);margin-top:2px"></i>
+        <div style="font-size:12px;color:var(--text-secondary)">
+          تظهر التواقيع أسفل التقارير المطبوعة في خانات <strong>أعدّه / راجعه / اعتمده</strong>. يمكن إضافة أي عدد من المعتمدين ولكن يُفضل ثلاثة كحد أقصى للطباعة.
+        </div>
+      </div>
+    `;
+  },
+
+  _sigCard(s) {
+    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b' };
+    const col = roleColors[s.role] || '#64748b';
+    return `
+      <div class="card stagger-item" style="border-top:3px solid ${col};min-width:0" id="sigcard-${s.id}">
+        <div class="card-body" style="padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${col}18;color:${col}">${_esc(s.role)}</span>
+            <div style="display:flex;gap:4px">
+              <button class="btn-icon btn" onclick="SettingsModule.openSigEditor('${s.id}')" title="تعديل"><i class="fas fa-pencil"></i></button>
+              <button class="btn-icon btn" onclick="SettingsModule.deleteSig('${s.id}')" title="حذف"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+            </div>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:2px">${_esc(s.name)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">${_esc(s.title||'')}</div>
+          <div style="height:64px;border-radius:8px;border:1px dashed var(--border);background:var(--bg-input);display:flex;align-items:center;justify-content:center;overflow:hidden">
+            ${s.signature
+              ? `<img src="${s.signature}" style="max-height:60px;max-width:100%;object-fit:contain">`
+              : `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-signature"></i> لا يوجد توقيع</span>`}
+          </div>
+        </div>
+      </div>`;
+  },
+
+  openSigEditor(id) {
+    const sigs = this._getSigs();
+    const s    = id ? sigs.find(x => x.id === id) : null;
+    const roles= ['أعدّه','راجعه','اعتمده','مخصص'];
+
+    App.openModal(id ? 'تعديل معتمد' : 'إضافة معتمد جديد', `
+      <form onsubmit="SettingsModule.saveSig(event,'${id||''}')">
+        <!-- Info row -->
+        <div class="app-form-row">
+          <div class="app-form-group">
+            <label>الاسم <span style="color:var(--danger)">*</span></label>
+            <input class="app-form-input" name="name" value="${_esc(s?.name||'')}" placeholder="مثال: أحمد محمد" required>
+          </div>
+          <div class="app-form-group">
+            <label>الدور <span style="color:var(--danger)">*</span></label>
+            <select class="app-form-input app-form-select" name="role">
+              ${roles.map(r=>`<option value="${r}" ${s?.role===r?'selected':''}>${r}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="app-form-group">
+          <label>المسمى الوظيفي</label>
+          <input class="app-form-input" name="title" value="${_esc(s?.title||'')}" placeholder="مثال: مدير الموارد البشرية">
+        </div>
+
+        <!-- Signature tabs -->
+        <div style="margin-top:4px">
+          <div style="display:flex;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:12px">
+            <button type="button" id="sig-tab-draw"
+              style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:var(--primary);color:white"
+              onclick="SettingsModule._switchSigTab('draw')">
+              <i class="fas fa-pen-nib"></i> رسم حر
+            </button>
+            <button type="button" id="sig-tab-upload"
+              style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:var(--bg-input);color:var(--text-secondary)"
+              onclick="SettingsModule._switchSigTab('upload')">
+              <i class="fas fa-upload"></i> رفع صورة
+            </button>
+          </div>
+
+          <!-- Draw panel -->
+          <div id="sig-panel-draw">
+            <div style="position:relative;border-radius:10px;overflow:hidden;border:1.5px solid var(--border);background:#fff">
+              <canvas id="sig-canvas" width="460" height="160"
+                style="display:block;width:100%;height:160px;cursor:crosshair;touch-action:none"></canvas>
+              <div style="position:absolute;top:6px;inset-inline-end:8px;display:flex;gap:5px">
+                <select id="sig-color" onchange="SettingsModule._updatePen()" title="لون"
+                  style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer">
+                  <option value="#1e293b">🖊 أسود</option>
+                  <option value="#1e40af">🖊 أزرق</option>
+                  <option value="#991b1b">🖊 أحمر</option>
+                </select>
+                <select id="sig-size" onchange="SettingsModule._updatePen()" title="سماكة"
+                  style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer">
+                  <option value="2">رفيع</option>
+                  <option value="3" selected>متوسط</option>
+                  <option value="5">سميك</option>
+                </select>
+                <button type="button" onclick="SettingsModule._clearCanvas()"
+                  style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--danger)">
+                  <i class="fas fa-eraser"></i> مسح
+                </button>
+              </div>
+              <div style="position:absolute;bottom:6px;inset-inline-start:10px;font-size:10px;color:#94a3b8;pointer-events:none">ارسم توقيعك هنا</div>
+            </div>
+            ${s?.signature ? `
+              <div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--bg-input);display:flex;align-items:center;gap:8px">
+                <img src="${s.signature}" style="height:40px;max-width:120px;object-fit:contain;border-radius:4px">
+                <span style="font-size:11px;color:var(--text-muted)">التوقيع المحفوظ حالياً — ارسم جديداً للتحديث</span>
+              </div>` : ''}
+          </div>
+
+          <!-- Upload panel -->
+          <div id="sig-panel-upload" style="display:none">
+            <div id="sig-upload-zone"
+              style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:.2s"
+              onclick="document.getElementById('sig-file-input').click()"
+              ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+              ondragleave="this.style.borderColor='var(--border)'"
+              ondrop="SettingsModule._dropSig(event)">
+              <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--primary);opacity:.5;display:block;margin-bottom:8px"></i>
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">اضغط أو اسحب صورة التوقيع</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">PNG, JPG, SVG — شفاف الخلفية أفضل</div>
+            </div>
+            <input type="file" id="sig-file-input" accept="image/*" style="display:none" onchange="SettingsModule._loadSigFile(this)">
+            <div id="sig-upload-preview" style="display:none;margin-top:10px;text-align:center;padding:12px;border-radius:10px;background:var(--bg-input)">
+              <img id="sig-upload-img" style="max-height:80px;max-width:240px;object-fit:contain">
+              <div style="margin-top:8px">
+                <button type="button" class="btn btn-danger btn-sm" onclick="SettingsModule._clearUpload()">
+                  <i class="fas fa-trash"></i> إزالة
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding:0;margin-top:16px">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ التوقيع</button>
+        </div>
+      </form>
+    `, { size: 'md' });
+
+    // Init canvas AFTER modal is rendered
+    requestAnimationFrame(() => SettingsModule._initSigCanvas(s?.signature || null));
+  },
+
+  _switchSigTab(tab) {
+    const isDraw = tab === 'draw';
+    document.getElementById('sig-panel-draw').style.display   = isDraw ? ''       : 'none';
+    document.getElementById('sig-panel-upload').style.display = isDraw ? 'none'   : '';
+    document.getElementById('sig-tab-draw').style.background   = isDraw ? 'var(--primary)' : 'var(--bg-input)';
+    document.getElementById('sig-tab-draw').style.color        = isDraw ? 'white'          : 'var(--text-secondary)';
+    document.getElementById('sig-tab-upload').style.background = isDraw ? 'var(--bg-input)': 'var(--primary)';
+    document.getElementById('sig-tab-upload').style.color      = isDraw ? 'var(--text-secondary)' : 'white';
+  },
+
+  _initSigCanvas(existingSig) {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas) return;
+    const ctx    = canvas.getContext('2d');
+    let drawing  = false;
+
+    // Scale canvas to actual pixel size
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = rect.width  * (window.devicePixelRatio || 1);
+    canvas.height = rect.height * (window.devicePixelRatio || 1);
+    ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth   = 3;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    const pos = (e) => {
+      const r = canvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return { x: src.clientX - r.left, y: src.clientY - r.top };
+    };
+
+    canvas.addEventListener('mousedown',  e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+    canvas.addEventListener('mousemove',  e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+    canvas.addEventListener('mouseup',    ()=> drawing = false);
+    canvas.addEventListener('mouseleave', ()=> drawing = false);
+
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+    canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, { passive: false });
+    canvas.addEventListener('touchend',   e => { e.preventDefault(); drawing = false; }, { passive: false });
+
+    this._sigCtx = ctx;
+    this._sigCanvas = canvas;
+  },
+
+  _updatePen() {
+    if (!this._sigCtx) return;
+    this._sigCtx.strokeStyle = document.getElementById('sig-color')?.value || '#1e293b';
+    this._sigCtx.lineWidth   = parseInt(document.getElementById('sig-size')?.value) || 3;
+  },
+
+  _clearCanvas() {
+    if (!this._sigCanvas || !this._sigCtx) return;
+    const rect = this._sigCanvas.getBoundingClientRect();
+    this._sigCtx.clearRect(0, 0, rect.width, rect.height);
+  },
+
+  _isCanvasBlank() {
+    if (!this._sigCanvas) return true;
+    const data = this._sigCanvas.getContext('2d').getImageData(0, 0, this._sigCanvas.width, this._sigCanvas.height).data;
+    return !data.some(v => v !== 0);
+  },
+
+  _loadSigFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { App.toast('حجم الصورة يجب أن يكون أقل من 2MB', 'warning'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const preview = document.getElementById('sig-upload-preview');
+      const img     = document.getElementById('sig-upload-img');
+      const zone    = document.getElementById('sig-upload-zone');
+      if (img) img.src = e.target.result;
+      if (preview) preview.style.display = '';
+      if (zone)    zone.style.display    = 'none';
+    };
+    reader.readAsDataURL(file);
+  },
+
+  _dropSig(e) {
+    e.preventDefault();
+    document.getElementById('sig-upload-zone').style.borderColor = 'var(--border)';
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const input = document.getElementById('sig-file-input');
+    input.files = dt.files;
+    this._loadSigFile(input);
+  },
+
+  _clearUpload() {
+    document.getElementById('sig-upload-preview').style.display = 'none';
+    document.getElementById('sig-upload-zone').style.display    = '';
+    document.getElementById('sig-file-input').value = '';
+  },
+
+  saveSig(e, id) {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(e.target));
+    if (!data.name.trim()) { App.toast('الاسم مطلوب', 'error'); return; }
+
+    // Determine signature image source: draw vs upload
+    const isUpload  = document.getElementById('sig-panel-upload')?.style.display !== 'none';
+    let   sigData   = null;
+
+    if (isUpload) {
+      const img = document.getElementById('sig-upload-img');
+      sigData = img?.src && img.src !== window.location.href ? img.src : null;
+    } else {
+      if (!this._isCanvasBlank()) {
+        sigData = this._sigCanvas.toDataURL('image/png');
+      }
+    }
+
+    // If editing and no new sig provided, keep existing
+    const sigs = this._getSigs();
+    if (id) {
+      const idx = sigs.findIndex(s => s.id === id);
+      if (idx !== -1) {
+        sigs[idx] = { ...sigs[idx], name: data.name.trim(), role: data.role, title: data.title?.trim() || '' };
+        if (sigData) sigs[idx].signature = sigData;
+      }
+    } else {
+      sigs.push({
+        id:        `sg_${Date.now()}`,
+        name:      data.name.trim(),
+        role:      data.role,
+        title:     data.title?.trim() || '',
+        signature: sigData || null,
+      });
+    }
+
+    DB.saveCompany();
+    App.closeModal();
+    App.toast(`تم ${id?'تحديث':'إضافة'} توقيع ${data.name} ✓`, 'success');
+    this._renderSection();
+  },
+
+  deleteSig(id) {
+    App.confirm('هل تريد حذف هذا التوقيع نهائياً؟', () => {
+      DB.company.signatures = this._getSigs().filter(s => s.id !== id);
+      DB.saveCompany();
+      document.getElementById(`sigcard-${id}`)?.remove();
+      App.toast('تم حذف التوقيع', 'info');
+      this._renderSection();
+    });
   },
 
   hardReset() {
