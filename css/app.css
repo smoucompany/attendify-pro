@@ -71,8 +71,8 @@
   --radius-full: 9999px;
 
   /* Fonts */
-  --font-ar: 'Cairo', sans-serif;
-  --font-en: 'Inter', sans-serif;
+  --font-ar: 'ThmanyahSans', 'Cairo', sans-serif;
+  --font-en: 'TANHeadline', 'Inter', sans-serif;
 
   /* Sizes */
   --sidebar-w: 260px;
