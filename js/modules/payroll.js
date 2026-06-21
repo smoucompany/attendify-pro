@@ -94,6 +94,7 @@ const PayrollModule = {
               ${hasTransport ? `<th>${t('payroll.transport')}</th>`: ''}
               ${hasFood      ? `<th>${t('payroll.food')}</th>`     : ''}
               ${hasOvertime  ? `<th>${t('payroll.overtime')}</th>` : ''}
+              <th>${ar?'أيام الغياب':'Absent Days'}</th>
               <th>${t('payroll.deductions')}</th>
               <th>${t('payroll.netSalary')}</th>
               <th>${t('common.actions')}</th>
@@ -118,6 +119,9 @@ const PayrollModule = {
                     ${hasTransport ? `<td style="color:var(--success)">${App.formatCurrency(p.transport)}</td>`: ''}
                     ${hasFood      ? `<td style="color:var(--success)">${App.formatCurrency(p.food)}</td>`     : ''}
                     ${hasOvertime  ? `<td style="color:var(--info)">${p.overtime>0?App.formatCurrency(p.overtime):'<span style="color:var(--text-muted)">—</span>'}</td>` : ''}
+                    <td style="color:${(p.absentDays||0)>0?'var(--danger)':'var(--text-muted)'}">
+                      ${(p.absentDays||0)>0 ? `<strong>${p.absentDays}</strong> ${ar?'يوم':'d'}` : '—'}
+                    </td>
                     <td style="color:var(--danger)">${ded>0?'-'+App.formatCurrency(ded):'<span style="color:var(--text-muted)">—</span>'}</td>
                     <td style="font-weight:800;color:var(--primary);font-size:14px">${App.formatCurrency(p.total)}</td>
                     <td><button class="btn btn-outline-primary btn-sm" onclick="PayrollModule.viewPayslip('${p.empId}')"><i class="fas fa-file-invoice-dollar"></i> ${t('payroll.payslip')}</button></td>
@@ -132,6 +136,9 @@ const PayrollModule = {
                 ${hasTransport ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.transport||0),0))}</td>`: ''}
                 ${hasFood      ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.food||0),0))}</td>`     : ''}
                 ${hasOvertime  ? `<td style="color:var(--info)">${App.formatCurrency(totalOvertime)}</td>`        : ''}
+                <td style="color:var(--danger)">
+                  ${(() => { const tot = DB.payroll.reduce((s,p)=>s+(p.absentDays||0),0); return tot>0?`<strong>${tot}</strong> ${ar?'يوم':'d'}`:'—'; })()}
+                </td>
                 <td style="color:var(--danger)">-${App.formatCurrency(totalDeductions)}</td>
                 <td style="color:var(--primary);font-size:15px">${App.formatCurrency(totalNet)}</td>
                 <td></td>
