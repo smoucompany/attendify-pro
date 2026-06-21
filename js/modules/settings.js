@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    SETTINGS MODULE — Enterprise Full System Settings
    11 sections covering the entire platform
    ========================================================= */
@@ -1506,8 +1506,24 @@ const SettingsModule = {
         </a>
       `)}
 
-      ${this._saveBtn("App.toast('تم حفظ إعدادات الأمان','success')")}
+      ${this._saveBtn("SettingsModule.saveSecuritySettings()")}
     `;
+  },
+
+  saveSecuritySettings() {
+    if (!DB.company.securitySettings) DB.company.securitySettings = {};
+    const ss = DB.company.securitySettings;
+    [['twoFactor','sec-2fa'],['autoLogout','sec-auto-logout'],['singleSession','single-session'],
+     ['logLogins','log-logins'],['passNums','pass-num'],['passSymbols','pass-sym'],
+     ['passMixed','pass-case'],['passHistory','pass-history'],['ipRestrict','ip-restrict']
+    ].forEach(([k,id]) => { const el=document.getElementById(id); if(el) ss[k]=el.classList.contains('on'); });
+    const idleEl=document.getElementById('idle-timeout'); if(idleEl) ss.idleTimeout=idleEl.value;
+    const mlEl=document.getElementById('pass-min-len');   if(mlEl) ss.passMinLen=parseInt(mlEl.value)||8;
+    const rdEl=document.getElementById('pass-renewal');   if(rdEl) ss.passRenewalDays=parseInt(rdEl.value)||90;
+    const maEl=document.getElementById('pass-max-attempts'); if(maEl) ss.passMaxAttempts=parseInt(maEl.value)||5;
+    const ipEl=document.getElementById('allowed-ips');    if(ipEl) ss.allowedIPs=ipEl.value;
+    DB.saveCompany();
+    App.toast('تم حفظ إعدادات الأمان بنجاح ✓', 'success');
   },
 
   /* ══════════════════════════════════════════
@@ -1623,27 +1639,32 @@ const SettingsModule = {
       `)}
 
       ${this._group('النسخ الاحتياطي التلقائي','جدولة النسخ الاحتياطي الدوري',`
-        ${this._row('نسخ احتياطي تلقائي','إنشاء نسخة احتياطية دورية تلقائياً',this._toggle('auto-backup',true))}
-        <div class="app-form-row">
-          <div class="app-form-group">
-            <label>تكرار النسخ الاحتياطي</label>
-            ${this._select('backup-freq',[{v:'daily',l:'يومياً'},{v:'weekly',l:'أسبوعياً'},{v:'monthly',l:'شهرياً'}],'daily')}
-          </div>
-          <div class="app-form-group">
-            <label>وقت النسخ الاحتياطي</label>
-            <input class="app-form-input" type="time" value="02:00">
-          </div>
-          <div class="app-form-group">
-            <label>الاحتفاظ بالنسخ (أيام)</label>
-            <input class="app-form-input" type="number" value="30" min="7">
-          </div>
-        </div>
-        <div class="settings-item">
-          <div class="settings-item-info">
-            <div class="settings-item-label">مكان التخزين</div>
-          </div>
-          ${this._select('backup-loc',[{v:'local',l:'خادم محلي'},{v:'s3',l:'Amazon S3'},{v:'drive',l:'Google Drive'},{v:'azure',l:'Azure Blob'}],'local')}
-        </div>
+        ${(() => {
+          const bs = DB.company.backupSettings || {};
+          return `
+            ${this._row('نسخ احتياطي تلقائي','إنشاء نسخة احتياطية دورية تلقائياً',this._toggle('backup-auto', bs.auto !== false))}
+            <div class="app-form-row">
+              <div class="app-form-group">
+                <label>تكرار النسخ الاحتياطي</label>
+                ${this._select('backup-freq',[{v:'daily',l:'يومياً'},{v:'weekly',l:'أسبوعياً'},{v:'monthly',l:'شهرياً'}], bs.freq||'daily')}
+              </div>
+              <div class="app-form-group">
+                <label>وقت النسخ الاحتياطي</label>
+                <input class="app-form-input" id="backup-time" type="time" value="${bs.time||'02:00'}">
+              </div>
+              <div class="app-form-group">
+                <label>الاحتفاظ بالنسخ (أيام)</label>
+                <input class="app-form-input" id="backup-retention" type="number" value="${bs.retention||30}" min="7">
+              </div>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">مكان التخزين</div>
+              </div>
+              ${this._select('backup-loc',[{v:'local',l:'خادم محلي'},{v:'s3',l:'Amazon S3'},{v:'drive',l:'Google Drive'},{v:'azure',l:'Azure Blob'}], bs.loc||'local')}
+            </div>
+          `;
+        })()}
       `)}
 
       ${this._group('آخر نسخ احتياطية',`سجل النسخ الأخيرة`,`
@@ -1695,8 +1716,25 @@ const SettingsModule = {
         </div>
       `)}
 
-      ${this._saveBtn("App.toast('تم حفظ الإعدادات','success')")}
+      ${this._saveBtn("SettingsModule.saveBackupSettings()")}
     `;
+  },
+
+  saveBackupSettings() {
+    if (!DB.company.backupSettings) DB.company.backupSettings = {};
+    const bs = DB.company.backupSettings;
+    const autoEl  = document.getElementById('backup-auto');
+    const freqEl  = document.getElementById('backup-freq');
+    const timeEl  = document.getElementById('backup-time');
+    const retEl   = document.getElementById('backup-retention');
+    const locEl   = document.getElementById('backup-loc');
+    if (autoEl)  bs.auto      = autoEl.classList.contains('on');
+    if (freqEl)  bs.freq      = freqEl.value;
+    if (timeEl)  bs.time      = timeEl.value;
+    if (retEl)   bs.retention = parseInt(retEl.value) || 30;
+    if (locEl)   bs.loc       = locEl.value;
+    DB.saveCompany();
+    App.toast('تم حفظ إعدادات النسخ الاحتياطي بنجاح ✓', 'success');
   },
 
   // ── HELPER METHODS ───────────────────────────────────────

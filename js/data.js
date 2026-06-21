@@ -43,6 +43,16 @@ const DB = {
       enabled: true, checkin: true, leaves: true,
       payslip: true, profile: true, msg: false, forceChange: true,
     },
+    securitySettings: {
+      twoFactor: false, autoLogout: true, idleTimeout: '30',
+      singleSession: false, logLogins: true,
+      passMinLen: 8, passRenewalDays: 90, passMaxAttempts: 5,
+      passNums: true, passSymbols: false, passMixed: true, passHistory: true,
+      ipRestrict: false, allowedIPs: '',
+    },
+    backupSettings: {
+      auto: true, freq: 'daily', time: '02:00', retention: 30, loc: 'local',
+    },
   },
 
   // ─── DEPARTMENTS ──────────────────────────────────────────
