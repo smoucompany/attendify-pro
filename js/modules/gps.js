@@ -252,7 +252,7 @@ const GpsModule = {
         </div>
         <div class="app-form-group">
           <label>${t('gps.radius')} (${currentLang==='ar'?'متر':'meters'})</label>
-          <input class="app-form-input" type="number" name="radius" value="200" min="50" max="5000">
+          <input class="app-form-input" type="number" name="radius" value="200" min="30" max="5000">
         </div>
         <div class="app-form-group">
           <label>${currentLang==='ar'?'الفرع':'Branch'}</label>
@@ -340,7 +340,7 @@ const GpsModule = {
         </div>
         <div class="app-form-group">
           <label>${t('gps.radius')}</label>
-          <input class="app-form-input" type="number" name="radius" value="${loc.radius}">
+          <input class="app-form-input" type="number" name="radius" value="${loc.radius}" min="30" max="5000">
         </div>
         <div class="settings-item" style="padding:12px 0">
           <div class="settings-item-info">

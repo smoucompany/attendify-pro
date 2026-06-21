@@ -802,7 +802,7 @@ const SettingsModule = {
           <div class="app-form-group">
             <label>نطاق السياج (متر)</label>
             <input class="app-form-input" type="number" id="gps-radius"
-              value="${DB.company.gpsRadius||200}" min="50" max="5000">
+              value="${DB.company.gpsRadius||200}" min="30" max="5000">
           </div>
         </div>
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule.detectCompanyGPS()">
