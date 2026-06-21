@@ -44,10 +44,7 @@ const GpsModule = {
             </div>
           </div>
           <div class="card-body" style="padding:0">
-            <div class="map-container" style="height:400px;border-radius:0 0 var(--radius-lg) var(--radius-lg);overflow:hidden">
-              <div class="map-grid"></div>
-              ${this._renderLiveMap()}
-            </div>
+            <div id="leaflet-map" style="height:420px;border-radius:0 0 var(--radius-lg) var(--radius-lg);z-index:0"></div>
           </div>
         </div>
 
@@ -120,115 +117,110 @@ const GpsModule = {
         </div>
       </div>
     `;
+
+    // Init Leaflet after DOM ready
+    setTimeout(() => this._initLeafletMap(), 120);
   },
 
-  _renderLiveMap() {
-    const locs = DB.locations.filter(l => l.active);
-    const legend = `
-      <div style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.72);backdrop-filter:blur(8px);border-radius:8px;padding:10px 14px;z-index:10">
-        <div style="color:white;font-size:12px;font-weight:700;margin-bottom:6px">${currentLang==='ar'?'المفتاح':'Legend'}</div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#6366f1"></div>${currentLang==='ar'?'موقع العمل':'Work Location'}</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#10b981"></div>${currentLang==='ar'?'داخل النطاق':'In Zone'}</div>
-          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:rgba(255,255,255,0.85)"><div style="width:8px;height:8px;border-radius:50%;background:#ef4444"></div>${currentLang==='ar'?'خارج النطاق':'Out of Zone'}</div>
-        </div>
-      </div>`;
+  _leafletMap: null,
 
-    if (!locs.length) {
-      return `
-        ${legend}
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:rgba(255,255,255,0.4)">
-          <i class="fas fa-map-location-dot" style="font-size:40px"></i>
-          <div style="font-size:13px">${currentLang==='ar'?'لا توجد مواقع مضافة بعد':'No locations added yet'}</div>
-          <button class="btn btn-primary btn-sm" onclick="GpsModule.openAdd()"><i class="fas fa-plus"></i> ${currentLang==='ar'?'أضف موقعاً':'Add Location'}</button>
-        </div>`;
+  _initLeafletMap() {
+    const el = document.getElementById('leaflet-map');
+    if (!el || typeof L === 'undefined') return;
+
+    // Destroy previous instance if exists
+    if (this._leafletMap) {
+      this._leafletMap.remove();
+      this._leafletMap = null;
     }
 
-    // Bounding box
-    const lats = locs.map(l => l.lat), lngs = locs.map(l => l.lng);
-    let minLat = Math.min(...lats), maxLat = Math.max(...lats);
-    let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const locs = DB.locations.filter(l => l.active);
+    const colors = ['#6366f1','#10b981','#f59e0b','#06b6d4','#ec4899','#8b5cf6','#ef4444'];
 
-    // Padding: at least 0.002° or 35% of span
-    const latPad = Math.max((maxLat - minLat) * 0.45, 0.002);
-    const lngPad = Math.max((maxLng - minLng) * 0.45, 0.002);
-    minLat -= latPad; maxLat += latPad;
-    minLng -= lngPad; maxLng += lngPad;
+    // Default center: Saudi Arabia if no locations
+    const defaultCenter = locs.length
+      ? [locs[0].lat, locs[0].lng]
+      : [24.7136, 46.6753];
+    const defaultZoom = locs.length ? 15 : 6;
 
-    const latSpan = maxLat - minLat;
-    const lngSpan = maxLng - minLng;
-    const latMeters = latSpan * 111000; // approx meters for lat span
+    const map = L.map(el, {
+      center: defaultCenter,
+      zoom: defaultZoom,
+      zoomControl: true,
+      attributionControl: false,
+    });
 
-    // pin colors cycle
-    const pinColors = ['#6366f1','#10b981','#f59e0b','#06b6d4','#ec4899','#8b5cf6','#ef4444'];
+    // OpenStreetMap tiles (free, no API key)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(map);
 
-    const pins = locs.map((loc, i) => {
-      const top  = ((maxLat - loc.lat) / latSpan * 100).toFixed(2);
-      const left = ((loc.lng - minLng) / lngSpan * 100).toFixed(2);
-      const color = pinColors[i % pinColors.length];
-      // radius circle: radius_m → % of map height (400px represents latMeters)
-      const radiusPct = (loc.radius / latMeters * 100).toFixed(3);
-      // circle width in % of map width (approximate, compensate for aspect ratio)
-      const mapH = 400, mapW = 700; // approx container size
-      const radiusPx = (loc.radius / latMeters) * mapH;
-      const circleW = radiusPx * 2;
-      const circleH = radiusPx * 2;
+    // Small attribution in corner
+    L.control.attribution({ position: 'bottomleft', prefix: false })
+      .addAttribution('© <a href="https://openstreetmap.org">OSM</a>')
+      .addTo(map);
 
-      return `
-        <!-- Geofence ring for ${loc.name} -->
-        <div style="
-          position:absolute;
-          top:${top}%; left:${left}%;
-          width:${circleW}px; height:${circleH}px;
-          margin-left:-${radiusPx}px; margin-top:-${radiusPx}px;
-          border:2px dashed ${color}88;
-          border-radius:50%;
-          background:${color}11;
-          pointer-events:none;
-          animation:pulse-ring 3s ease infinite;
-          animation-delay:${i*0.6}s;
-        "></div>
+    const bounds = [];
 
-        <!-- Pin -->
-        <div class="map-pin" style="
-          top:${top}%; left:${left}%;
+    locs.forEach((loc, i) => {
+      const color = colors[i % colors.length];
+
+      // Custom colored marker icon
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="
+          width:32px;height:32px;
           background:${color};
-          transform:translate(-50%,-100%);
-          position:absolute;
-          z-index:5;
-        "></div>
+          border:3px solid white;
+          border-radius:50% 50% 50% 0;
+          transform:rotate(-45deg);
+          box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        "></div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+        popupAnchor: [0, -34],
+      });
 
-        <!-- Name label -->
-        <div style="
-          position:absolute;
-          top:${top}%; left:${left}%;
-          transform:translate(-50%, calc(-100% - 26px));
-          background:rgba(0,0,0,0.78);
-          color:white;
-          font-size:10.5px;
-          font-weight:700;
-          padding:3px 8px;
-          border-radius:5px;
-          white-space:nowrap;
-          pointer-events:none;
-          z-index:6;
-          border:1px solid ${color}88;
-        ">${loc.name}</div>
+      const marker = L.marker([loc.lat, loc.lng], { icon }).addTo(map);
+      marker.bindPopup(`
+        <div style="font-family:inherit;min-width:160px;direction:rtl">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px;color:#1e293b">${loc.name}</div>
+          <div style="font-size:12px;color:#64748b;margin-bottom:4px">
+            <i class="fas fa-circle-dot" style="color:${color}"></i>
+            ${currentLang==='ar'?'نطاق السماح':'Radius'}: <b>${loc.radius} ${currentLang==='ar'?'متر':'m'}</b>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;font-family:monospace">${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}</div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <button onclick="GpsModule.editLocation('${loc.id}');App.closeModal?.()"
+              style="font-size:11px;padding:3px 8px;background:${color};color:white;border:none;border-radius:5px;cursor:pointer">
+              <i class="fas fa-pencil"></i> ${currentLang==='ar'?'تعديل':'Edit'}
+            </button>
+          </div>
+        </div>
+      `, { maxWidth: 220 });
 
-        <!-- Coord tooltip on hover — invisible dot for tap -->
-        <div title="${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}" style="
-          position:absolute;
-          top:${top}%; left:${left}%;
-          width:28px;height:28px;
-          margin:-14px 0 0 -14px;
-          border-radius:50%;
-          cursor:pointer;
-          z-index:7;
-        "></div>
-      `;
-    }).join('');
+      // Geofence circle
+      L.circle([loc.lat, loc.lng], {
+        radius: loc.radius,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.08,
+        weight: 2,
+        dashArray: '6, 4',
+      }).addTo(map);
 
-    return legend + pins;
+      bounds.push([loc.lat, loc.lng]);
+    });
+
+    // Fit map to show all locations
+    if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [60, 60] });
+    } else if (bounds.length === 1) {
+      map.setView(bounds[0], 15);
+    }
+
+    this._leafletMap = map;
   },
 
   // Haversine formula — returns distance in meters between two lat/lng points
@@ -286,6 +278,21 @@ const GpsModule = {
           </div>
         `;
         DB.logAudit('admin', currentLang==='ar'?'تتبع GPS':'GPS Track', 'GPS', `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+
+        // Show user location on the Leaflet map
+        if (this._leafletMap) {
+          const userIcon = L.divIcon({
+            className: '',
+            html: `<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 0 4px rgba(59,130,246,0.3)"></div>`,
+            iconSize: [16,16], iconAnchor: [8,8],
+          });
+          if (this._userMarker) this._leafletMap.removeLayer(this._userMarker);
+          this._userMarker = L.marker([lat, lng], { icon: userIcon })
+            .addTo(this._leafletMap)
+            .bindPopup(`<b>${currentLang==='ar'?'موقعك الحالي':'Your location'}</b><br><small>${lat.toFixed(5)}, ${lng.toFixed(5)}</small>`)
+            .openPopup();
+          this._leafletMap.setView([lat, lng], 16);
+        }
       },
       err => {
         const msgs = { 1: currentLang==='ar'?'تم رفض إذن الموقع':'Location permission denied', 2: currentLang==='ar'?'الموقع غير متاح':'Location unavailable', 3: currentLang==='ar'?'انتهت مهلة الطلب':'Request timed out' };
