@@ -962,42 +962,61 @@ const SettingsModule = {
       `)}
 
       ${this._group('مكونات الراتب','تفعيل وتعطيل بنود الراتب',`
-        ${[
-          {l:'الراتب الأساسي',        d:'المرتب الثابت الشهري',                  on:true,  fixed:true},
-          {l:'بدل السكن',             d:'حسب سياسة الشركة',                       on:true,  fixed:false},
-          {l:'بدل المواصلات',         d:'بدل التنقل اليومي',                      on:true,  fixed:false},
-          {l:'بدل الاتصالات',         d:'رسوم الهاتف والإنترنت',                  on:false, fixed:false},
-          {l:'بدل الطبيعة الخاصة',   d:'مقابل المهن ذات الطبيعة الخاصة',        on:false, fixed:false},
-          {l:'العلاوة السنوية',       d:'زيادة الأجر السنوية',                    on:true,  fixed:false},
-          {l:'مكافأة الأداء',         d:'بونص ربع سنوي أو سنوي',                 on:true,  fixed:false},
-        ].map(c=>`
-          <div class="settings-item">
-            <div class="settings-item-info">
-              <div class="settings-item-label">${c.l} ${c.fixed?'<span style="font-size:10px;background:var(--primary-bg);color:var(--primary);padding:2px 6px;border-radius:4px;font-weight:600">إلزامي</span>':''}</div>
-              <div class="settings-item-desc">${c.d}</div>
+        ${(() => {
+          const pc = DB.company.payrollComponents || {};
+          return [
+            {l:'الراتب الأساسي',       d:'المرتب الثابت الشهري',              key:null,              fixed:true},
+            {l:'بدل السكن',            d:'حسب سياسة الشركة',                  key:'housing',         fixed:false},
+            {l:'بدل المواصلات',        d:'بدل التنقل اليومي',                 key:'transport',       fixed:false},
+            {l:'بدل الاتصالات',        d:'رسوم الهاتف والإنترنت',             key:'phone',           fixed:false},
+            {l:'بدل الطبيعة الخاصة',  d:'مقابل المهن ذات الطبيعة الخاصة',   key:'special',         fixed:false},
+            {l:'العلاوة السنوية',      d:'زيادة الأجر السنوية',               key:'annualBonus',     fixed:false},
+            {l:'مكافأة الأداء',        d:'بونص ربع سنوي أو سنوي',            key:'performanceBonus',fixed:false},
+          ].map(c=>`
+            <div class="settings-item">
+              <div class="settings-item-info">
+                <div class="settings-item-label">${c.l} ${c.fixed?'<span style="font-size:10px;background:var(--primary-bg);color:var(--primary);padding:2px 6px;border-radius:4px;font-weight:600">إلزامي</span>':''}</div>
+                <div class="settings-item-desc">${c.d}</div>
+              </div>
+              ${c.fixed ? '<span style="font-size:12px;color:var(--text-muted)">مفعّل دائماً</span>' : this._toggle('pc-'+c.key, !!pc[c.key])}
             </div>
-            ${c.fixed ? '<span style="font-size:12px;color:var(--text-muted)">مفعّل دائماً</span>' : this._toggle('pay-'+c.l,c.on)}
-          </div>
-        `).join('')}
+          `).join('');
+        })()}
       `)}
 
-
-      ${this._saveBtn("App.toast('تم حفظ إعدادات الرواتب','success')")}
+      ${this._saveBtn("SettingsModule.savePayrollSettings()")}
     `;
+  },
+
+  savePayrollSettings() {
+    if (!DB.company.payrollComponents) DB.company.payrollComponents = {};
+    const pc = DB.company.payrollComponents;
+    ['housing','transport','phone','special','annualBonus','performanceBonus'].forEach(k => {
+      const el = document.getElementById('pc-' + k);
+      if (el) pc[k] = el.classList.contains('on');
+    });
+    // Also save payroll cycle settings
+    const cycleEl  = document.getElementById('pay-cycle');
+    const currEl   = document.getElementById('pay-curr');
+    if (cycleEl) DB.company.payrollCycle    = cycleEl.value;
+    if (currEl)  DB.company.payrollCurrency = currEl.value;
+    DB.saveCompany();
+    App.toast('تم حفظ إعدادات الرواتب بنجاح ✓', 'success');
   },
 
   /* ══════════════════════════════════════════
      6. EMPLOYEE PORTAL
   ══════════════════════════════════════════ */
   _portal() {
+    const ps = DB.company.portalSettings || {};
     return `
       ${this._group('تفعيل بوابة الموظف','التحكم في ميزات البوابة الذاتية للموظفين',`
-        ${this._row('تفعيل البوابة','السماح للموظفين بالدخول لبوابتهم الشخصية',this._toggle('portal-enabled',true))}
-        ${this._row('تسجيل الحضور من البوابة','السماح بتسجيل الحضور عبر البوابة',this._toggle('portal-checkin',true))}
-        ${this._row('طلب الإجازات من البوابة','السماح بتقديم طلبات الإجازة',this._toggle('portal-leaves',true))}
-        ${this._row('عرض كشف الراتب','تمكين الموظف من رؤية راتبه وبنوده',this._toggle('portal-payslip',true))}
-        ${this._row('عرض السجل الشخصي','الاطلاع على بيانات الملف الشخصي',this._toggle('portal-profile',true))}
-        ${this._row('مراسلة الإدارة','إرسال رسائل للموارد البشرية',this._toggle('portal-msg',false))}
+        ${this._row('تفعيل البوابة','السماح للموظفين بالدخول لبوابتهم الشخصية',this._toggle('ps-enabled',  ps.enabled  !== false))}
+        ${this._row('تسجيل الحضور من البوابة','السماح بتسجيل الحضور عبر البوابة',this._toggle('ps-checkin',  ps.checkin  !== false))}
+        ${this._row('طلب الإجازات من البوابة','السماح بتقديم طلبات الإجازة',this._toggle('ps-leaves',   ps.leaves   !== false))}
+        ${this._row('عرض كشف الراتب','تمكين الموظف من رؤية راتبه وبنوده',this._toggle('ps-payslip',  ps.payslip  !== false))}
+        ${this._row('عرض السجل الشخصي','الاطلاع على بيانات الملف الشخصي',this._toggle('ps-profile',  ps.profile  !== false))}
+        ${this._row('مراسلة الإدارة','إرسال رسائل للموارد البشرية',this._toggle('ps-msg',      !!ps.msg))}
       `)}
 
       ${this._group('إعدادات كلمة مرور الموظف','قواعد كلمة السر لبوابة الموظف',`
@@ -1011,7 +1030,7 @@ const SettingsModule = {
             <input class="app-form-input" type="number" value="6" min="4">
           </div>
         </div>
-        ${this._row('إلزام تغيير الكلمة عند أول دخول','يُجبر الموظف على تغيير كلمة المرور',this._toggle('portal-forcechange',true))}
+        ${this._row('إلزام تغيير الكلمة عند أول دخول','يُجبر الموظف على تغيير كلمة المرور',this._toggle('ps-forceChange', ps.forceChange !== false))}
       `)}
 
       ${this._group('إعادة تعيين كلمات المرور','تطبيق إعادة ضبط جماعية لكلمات المرور',`
@@ -1026,8 +1045,19 @@ const SettingsModule = {
         </button>
       `)}
 
-      ${this._saveBtn("App.toast('تم حفظ إعدادات البوابة','success')")}
+      ${this._saveBtn("SettingsModule.savePortalSettings()")}
     `;
+  },
+
+  savePortalSettings() {
+    if (!DB.company.portalSettings) DB.company.portalSettings = {};
+    const ps = DB.company.portalSettings;
+    ['enabled','checkin','leaves','payslip','profile','msg','forceChange'].forEach(k => {
+      const el = document.getElementById('ps-' + k);
+      if (el) ps[k] = el.classList.contains('on');
+    });
+    DB.saveCompany();
+    App.toast('تم حفظ إعدادات بوابة الموظف بنجاح ✓', 'success');
   },
 
   /* ══════════════════════════════════════════

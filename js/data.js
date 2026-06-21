@@ -30,10 +30,19 @@ const DB = {
       { id: 'wp1', label: 'فترة العمل', start: '08:00', end: '17:00' },
     ],
     workDays: ['sat','sun','mon','tue','wed','thu'],
+    weekend:  ['fri'],
     branches: [],
     holidays: [
       { id: 'h1', name: 'اليوم الوطني', date: '2025-09-23', days: 2 },
     ],
+    payrollComponents: {
+      housing: false, transport: false, phone: false,
+      special: false, annualBonus: false, performanceBonus: false,
+    },
+    portalSettings: {
+      enabled: true, checkin: true, leaves: true,
+      payslip: true, profile: true, msg: false, forceChange: true,
+    },
   },
 
   // ─── DEPARTMENTS ──────────────────────────────────────────
