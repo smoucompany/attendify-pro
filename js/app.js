@@ -481,6 +481,7 @@ const App = {
           reports:       () => ReportsModule.render(content),
           notifications: () => NotificationsModule.render(content),
           payroll:       () => PayrollModule.render(content),
+          deductions:    () => DeductionsModule.render(content),
           gps:           () => GpsModule.render(content),
           audit:         () => AuditModule.render(content),
           settings:      () => SettingsModule.render(content),

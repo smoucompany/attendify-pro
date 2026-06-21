@@ -220,7 +220,7 @@ const ShiftsModule = {
         <div class="app-form-group">
           <label>${currentLang==='ar'?'الوردية':'Shift'}</label>
           <select class="app-form-input app-form-select" name="shiftId" required>
-            ${DB.shifts.map(s=>`<option value="${s.id}">${s.name} (${s.start}–${s.end})</option>`).join('')}
+            ${DB.shifts.filter(s=>s.type!=='assignment').map(s=>`<option value="${s.id}">${s.name} (${s.start}–${s.end})</option>`).join('')}
           </select>
         </div>
         <div class="app-form-row">

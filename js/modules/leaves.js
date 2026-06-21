@@ -196,47 +196,50 @@ const LeavesModule = {
   approve(id) {
     const leave = DB.leaves.find(l => l.id === id);
     if (!leave) return;
-    leave.status = 'approved';
-    leave.approvedBy = App.state.user?.id || 'admin';
-
-    // خصم أيام الإجازة من رصيد الموظف (الحقول المستخدمة هي from/to)
-    const leaveFrom = leave.from || leave.startDate;
-    const leaveTo   = leave.to   || leave.endDate;
-    if (leaveFrom && leaveTo) {
-      const days = leave.days || Math.max(1, Math.round((new Date(leaveTo) - new Date(leaveFrom)) / 86400000) + 1);
-      if (!DB.leaveBalances[leave.empId]) DB.leaveBalances[leave.empId] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0 };
-      const bal = DB.leaveBalances[leave.empId];
-      bal.taken     = (bal.taken || 0) + days;
-      bal.remaining = Math.max(0, (bal.remaining ?? 21) - days);
-    }
-
-    DB.save();
-    App.toast(currentLang==='ar'?'تمت الموافقة على الإجازة':'Leave approved', 'success');
-    App._updateBadges();
-    this._renderList();
-    if (App.state.currentPage === 'dashboard') DashboardModule.render(document.getElementById('page-content'));
-    // WhatsApp notification
     const emp = DB.getEmployee(leave.empId);
-    if (emp) {
-      if (WhatsApp.config.enabled) WhatsApp.notifyLeaveApproved(emp, leave);
-      else this._offerWA(() => WhatsApp.notifyLeaveApproved(emp, leave));
-    }
+    const days = leave.days || 1;
+    App.confirm(`الموافقة على إجازة ${emp?.name||''} لمدة ${days} يوم؟`, () => {
+      leave.status     = 'approved';
+      leave.approvedBy = App.state.user?.id || 'admin';
+      leave.approvedAt = new Date().toISOString();
+
+      // خصم أيام الإجازة من رصيد الموظف حسب النوع
+      if (!DB.leaveBalances[leave.empId]) {
+        DB.leaveBalances[leave.empId] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0, sickTaken: 0, emergencyTaken: 0 };
+      }
+      const bal = DB.leaveBalances[leave.empId];
+      if (leave.type === 'sick') {
+        bal.sickTaken = (bal.sickTaken||0) + days;
+      } else if (leave.type === 'emergency') {
+        bal.emergencyTaken = (bal.emergencyTaken||0) + days;
+      } else {
+        bal.taken     = (bal.taken||0) + days;
+        bal.remaining = Math.max(0, (bal.remaining ?? 21) - days);
+      }
+
+      DB.save();
+      App.toast('تمت الموافقة على الإجازة ✓', 'success');
+      App._updateBadges();
+      this._renderList();
+      DB.logAudit('admin', 'موافقة إجازة', 'الإجازات', `${emp?.name} — ${days} يوم`);
+      if (emp && WhatsApp.config.enabled) WhatsApp.notifyLeaveApproved(emp, leave);
+    });
   },
 
   reject(id) {
     const leave = DB.leaves.find(l => l.id === id);
     if (!leave) return;
-    leave.status = 'rejected';
-    DB.save();
-    App.toast(currentLang==='ar'?'تم رفض الإجازة':'Leave rejected', 'error');
-    App._updateBadges();
-    this._renderList();
-    // WhatsApp notification
     const emp = DB.getEmployee(leave.empId);
-    if (emp) {
-      if (WhatsApp.config.enabled) WhatsApp.notifyLeaveRejected(emp, leave);
-      else this._offerWA(() => WhatsApp.notifyLeaveRejected(emp, leave));
-    }
+    App.confirm(`رفض طلب إجازة ${emp?.name||''}؟`, () => {
+      leave.status     = 'rejected';
+      leave.rejectedAt = new Date().toISOString();
+      DB.save();
+      App.toast('تم رفض الإجازة', 'error');
+      App._updateBadges();
+      this._renderList();
+      DB.logAudit('admin', 'رفض إجازة', 'الإجازات', emp?.name||'');
+      if (emp && WhatsApp.config.enabled) WhatsApp.notifyLeaveRejected(emp, leave);
+    });
   },
 
   _offerWA(sendFn) {

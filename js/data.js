@@ -82,6 +82,9 @@ const DB = {
   // ─── PAYROLL ──────────────────────────────────────────────
   payroll: [],
 
+  // ─── DEDUCTIONS ───────────────────────────────────────────
+  deductions: [],
+
   // ─── GPS LOCATIONS ────────────────────────────────────────
   locations: [],
 
@@ -273,6 +276,7 @@ const DB = {
         requests:      Array.from(this.requests),
         notifications: Array.from(this.notifications),
         payroll:       Array.from(this.payroll),
+        deductions:    Array.from(this.deductions),
         locations:     Array.from(this.locations),
         roles:         Array.from(this.roles),
         audit:         Array.from(this.audit).slice(0, 300),
@@ -298,7 +302,7 @@ const DB = {
       if (snap.adminCreds?.email) Object.assign(this.adminCredentials, snap.adminCreds);
 
       const arrays = ['departments','employees','shifts','attendance','leaves',
-                      'requests','notifications','payroll','locations','roles','audit'];
+                      'requests','notifications','payroll','deductions','locations','roles','audit'];
       arrays.forEach(k => {
         if (Array.isArray(snap[k]) && snap[k].length) {
           this[k].length = 0;
@@ -326,7 +330,7 @@ const DB = {
   _wrapArrays() {
     const db = this;
     const keys = ['departments','employees','shifts','attendance','leaves',
-                  'requests','notifications','payroll','locations','roles','audit'];
+                  'requests','notifications','payroll','deductions','locations','roles','audit'];
     keys.forEach(key => {
       const arr = this[key];
       this[key] = new Proxy(arr, {

@@ -157,58 +157,137 @@ const PayrollModule = {
     const payroll = DB.payroll.find(p => p.empId === empId);
     if (!emp || !payroll) return;
 
-    const deductions = payroll.absentDeduction + payroll.lateDeduction;
-    const allowances = payroll.housing + payroll.transport + payroll.food;
+    const deductions  = (payroll.absentDeduction||0) + (payroll.lateDeduction||0) + (payroll.customDeduction||0);
+    const allowances  = (payroll.housing||0) + (payroll.transport||0) + (payroll.food||0) + (payroll.overtime||0);
+    const gross       = (payroll.base||0) + allowances;
+    const dept        = DB.getDepartment(emp.dept)?.name || '—';
+    const periodLabel = new Date(((payroll.period||this._getPeriod())+'-01')).toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{year:'numeric',month:'long'});
+    const customDeds  = typeof DeductionsModule !== 'undefined'
+      ? DB.deductions.filter(d => d.empId === empId && d.period === (payroll.period||this._getPeriod()) && d.status === 'applied')
+      : [];
 
     App.openModal(t('payroll.payslip'), `
-      <div class="payslip">
-        <div class="payslip-header">
-          <div class="payslip-company">${DB.company.name}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${DB.company.address}</div>
-          <div class="payslip-title">${t('payroll.payslip')} — ${new Date(((payroll.period||this._getPeriod())+'-01')).toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{year:'numeric',month:'long'})}</div>
-        </div>
+      <div id="payslip-print-area" style="font-family:var(--font-ar);direction:rtl">
 
-        <div style="display:flex;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px dashed var(--border)">
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:20px 24px;border-radius:14px 14px 0 0;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-size:11px;color:var(--text-muted)">${t('common.name')}</div>
-            <div style="font-weight:700;color:var(--text-primary)">${emp.name}</div>
+            ${DB.company.logo ? `<img src="${DB.company.logo}" style="height:40px;border-radius:6px;margin-bottom:8px;display:block">` : ''}
+            <div style="font-size:18px;font-weight:800">${_esc(DB.company.name||'الشركة')}</div>
+            <div style="font-size:11px;opacity:.8;margin-top:2px">${_esc(DB.company.address||'')}</div>
           </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted)">${t('employees.employeeId')}</div>
-            <div style="font-weight:700;color:var(--text-primary)">${emp.no}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:var(--text-muted)">${t('common.department')}</div>
-            <div style="font-weight:700;color:var(--text-primary)">${DB.getDepartment(emp.dept)?.name||''}</div>
+          <div style="text-align:left">
+            <div style="font-size:13px;font-weight:700;opacity:.8">قسيمة الراتب</div>
+            <div style="font-size:16px;font-weight:800;margin-top:2px">${periodLabel}</div>
           </div>
         </div>
 
-        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">
-          ${currentLang==='ar'?'الاستحقاقات':'Earnings'}
+        <!-- Employee Info -->
+        <div style="background:var(--bg-input,#f8fafc);padding:14px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border,#e2e8f0)">
+          ${[
+            { label:'اسم الموظف',   val: emp.name },
+            { label:'رقم الموظف',   val: '#'+emp.no },
+            { label:'القسم',         val: dept },
+            { label:'المسمى الوظيفي', val: emp.position||'—' },
+          ].map(f => `
+            <div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${f.label}</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text-primary,#1e293b)">${_esc(f.val)}</div>
+            </div>
+          `).join('')}
         </div>
-        <div class="payslip-row"><span>${t('payroll.baseSalary')}</span><span style="color:var(--text-primary)">${App.formatCurrency(payroll.base)}</span></div>
-        ${payroll.housing   > 0 ? `<div class="payslip-row"><span>${t('payroll.housing')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.housing)}</span></div>`   : ''}
-        ${payroll.transport > 0 ? `<div class="payslip-row"><span>${t('payroll.transport')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.transport)}</span></div>`: ''}
-        ${payroll.food      > 0 ? `<div class="payslip-row"><span>${t('payroll.food')}</span><span style="color:var(--success)">${App.formatCurrency(payroll.food)}</span></div>`         : ''}
-        ${payroll.overtime  > 0 ? `<div class="payslip-row"><span>${t('payroll.overtime')}</span><span style="color:var(--info)">${App.formatCurrency(payroll.overtime)}</span></div>`    : ''}
 
-        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px">
-          ${currentLang==='ar'?'الخصومات':'Deductions'}
+        <!-- Earnings + Deductions side by side -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:1px solid var(--border,#e2e8f0)">
+
+          <!-- Earnings -->
+          <div style="padding:16px 20px;border-left:1px solid var(--border,#e2e8f0)">
+            <div style="font-size:11px;font-weight:800;color:#10b981;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <i class="fas fa-plus-circle"></i> الاستحقاقات
+            </div>
+            ${this._payslipRow('الراتب الأساسي', payroll.base, '#10b981')}
+            ${(payroll.housing||0)   > 0 ? this._payslipRow('بدل السكن',     payroll.housing,   '#10b981') : ''}
+            ${(payroll.transport||0) > 0 ? this._payslipRow('بدل المواصلات', payroll.transport, '#10b981') : ''}
+            ${(payroll.food||0)      > 0 ? this._payslipRow('بدل الطعام',    payroll.food,      '#10b981') : ''}
+            ${(payroll.overtime||0)  > 0 ? this._payslipRow('إضافي',         payroll.overtime,  '#06b6d4') : ''}
+            <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #10b98140;display:flex;justify-content:space-between;font-weight:800">
+              <span style="font-size:12px;color:var(--text-muted)">إجمالي الاستحقاقات</span>
+              <span style="color:#10b981">${App.formatCurrency(gross)}</span>
+            </div>
+          </div>
+
+          <!-- Deductions -->
+          <div style="padding:16px 20px">
+            <div style="font-size:11px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+              <i class="fas fa-minus-circle"></i> الخصومات
+            </div>
+            ${(payroll.absentDeduction||0) > 0 ? this._payslipRow('خصم الغياب',  payroll.absentDeduction, '#ef4444', true) : ''}
+            ${(payroll.lateDeduction||0)   > 0 ? this._payslipRow('خصم التأخير', payroll.lateDeduction,   '#f59e0b', true) : ''}
+            ${customDeds.map(d => {
+              const tp = DeductionsModule._types[d.type] || DeductionsModule._types.other;
+              return this._payslipRow(tp.label + (d.reason ? ` (${d.reason})` : ''), d.amount, '#ef4444', true);
+            }).join('')}
+            ${deductions === 0 ? `<div style="color:var(--text-muted);font-size:12px;padding:6px 0">لا توجد خصومات</div>` : ''}
+            <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #ef444440;display:flex;justify-content:space-between;font-weight:800">
+              <span style="font-size:12px;color:var(--text-muted)">إجمالي الخصومات</span>
+              <span style="color:#ef4444">-${App.formatCurrency(deductions)}</span>
+            </div>
+          </div>
         </div>
-        ${payroll.absentDeduction > 0 ? `<div class="payslip-row"><span>${t('payroll.absentDeduction')}</span><span style="color:var(--danger)">-${App.formatCurrency(payroll.absentDeduction)}</span></div>` : ''}
-        ${payroll.lateDeduction > 0 ? `<div class="payslip-row"><span>${t('payroll.lateDeduction')}</span><span style="color:var(--danger)">-${App.formatCurrency(payroll.lateDeduction)}</span></div>` : ''}
-        ${deductions === 0 ? `<div class="payslip-row"><span style="color:var(--text-muted)">${currentLang==='ar'?'لا توجد خصومات':'No deductions'}</span><span>—</span></div>` : ''}
 
-        <div style="margin-top:16px;padding:14px;background:var(--primary-bg);border-radius:10px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:14px;font-weight:700;color:var(--text-primary)">${t('payroll.netSalary')}</span>
-          <span class="payslip-total">${App.formatCurrency(payroll.total)}</span>
+        <!-- Net Salary -->
+        <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:18px 24px;border-radius:0 0 14px 14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:12px;opacity:.8;font-weight:600">صافي الراتب</div>
+            <div style="font-size:12px;opacity:.7;margin-top:2px">${_esc(DB.company.name||'')} · ${periodLabel}</div>
+          </div>
+          <div style="font-size:26px;font-weight:900;font-family:var(--font-en)">${App.formatCurrency(payroll.total)}</div>
+        </div>
+
+        <!-- Attendance summary -->
+        <div style="padding:12px 24px;display:flex;gap:20px;border-top:1px solid var(--border,#e2e8f0);margin-top:1px;background:var(--bg-input,#f8fafc);border-radius:0 0 14px 14px">
+          <div style="font-size:11px;color:var(--text-muted)">أيام العمل: <strong>${payroll.absentDays >= 0 ? '—' : '—'}</strong></div>
+          <div style="font-size:11px;color:var(--text-muted)">أيام الغياب: <strong style="color:#ef4444">${payroll.absentDays||0}</strong></div>
+          <div style="font-size:11px;color:var(--text-muted)">أيام الحضور: <strong style="color:#10b981">${Math.max(0, (payroll.workdays||22) - (payroll.absentDays||0))}</strong></div>
         </div>
       </div>
+
       <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn btn-danger w-full" onclick="App.printPage()"><i class="fas fa-print"></i> ${currentLang==='ar'?'طباعة القسيمة':'Print Payslip'}</button>
-        <button class="btn btn-secondary w-full" onclick="App.closeModal()">${t('common.close')}</button>
+        <button class="btn btn-primary" style="flex:1" onclick="DeductionsModule && DeductionsModule.openAdd('${emp.id}')">
+          <i class="fas fa-plus"></i> إضافة خصم
+        </button>
+        <button class="btn btn-danger" style="flex:1" onclick="PayrollModule._printPayslip()">
+          <i class="fas fa-print"></i> طباعة القسيمة
+        </button>
+        <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.close')}</button>
       </div>
-    `);
+    `, { size: 'lg' });
+  },
+
+  _payslipRow(label, amount, color = 'var(--text-primary)', minus = false) {
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#e2e8f0)22">
+        <span style="font-size:13px;color:var(--text-secondary,#64748b)">${_esc(label)}</span>
+        <span style="font-size:13px;font-weight:700;color:${color}">${minus?'-':''}${App.formatCurrency(amount)}</span>
+      </div>`;
+  },
+
+  _printPayslip() {
+    const area = document.getElementById('payslip-print-area');
+    if (!area) return;
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html dir="rtl"><head>
+      <meta charset="UTF-8"><title>قسيمة الراتب</title>
+      <link rel="stylesheet" href="${location.origin}/css/fonts.css">
+      <style>
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'ThmanyahSans','Cairo',sans-serif; background:#fff; padding:20px; }
+        @media print { body { padding:0; } }
+      </style>
+    </head><body>${area.outerHTML}</body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 500);
   },
 
   runPayroll() {
@@ -321,12 +400,16 @@ const PayrollModule = {
         }
       });
 
+      const customDed = typeof DeductionsModule !== 'undefined'
+        ? DeductionsModule.getTotal(p.empId, period) : 0;
+
       p.period          = period;
       p.absentDays      = absentDays;
       p.absentDeduction = Math.round(absentDays * dailyRate);
       p.lateDeduction   = Math.round((totalLateMinutes / 60) * hourlyRate * 0.5);
       p.overtime        = Math.round((totalOvertimeMinutes / 60) * hourlyRate * 1.5);
-      p.total = Math.max(0, p.base + p.housing + p.transport + p.food + p.overtime - p.absentDeduction - p.lateDeduction);
+      p.customDeduction = customDed;
+      p.total = Math.max(0, p.base + p.housing + p.transport + p.food + p.overtime - p.absentDeduction - p.lateDeduction - customDed);
     });
 
     if (bar) bar.style.width = '100%';

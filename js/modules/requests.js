@@ -133,25 +133,34 @@ const RequestsModule = {
   approve(id) {
     const req = DB.requests.find(r => r.id === id);
     if (!req) return;
-    req.status = 'approved';
-    DB.save();
-    App.toast(currentLang==='ar'?'تمت الموافقة على الطلب':'Request approved', 'success');
-    App._updateBadges();
-    this._renderList();
     const emp = DB.getEmployee(req.empId);
-    if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestApproved(emp, req);
+    App.confirm(`الموافقة على طلب ${emp?.name||''}؟`, () => {
+      req.status     = 'approved';
+      req.approvedBy = App.state.user?.id || 'admin';
+      req.approvedAt = new Date().toISOString();
+      DB.save();
+      App.toast('تمت الموافقة على الطلب ✓', 'success');
+      App._updateBadges();
+      this._renderList();
+      DB.logAudit('admin', 'موافقة طلب', 'الطلبات', `${emp?.name} — ${App.getRequestTypeLabel(req.type)}`);
+      if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestApproved(emp, req);
+    });
   },
 
   reject(id) {
     const req = DB.requests.find(r => r.id === id);
     if (!req) return;
-    req.status = 'rejected';
-    DB.save();
-    App.toast(currentLang==='ar'?'تم رفض الطلب':'Request rejected', 'error');
-    App._updateBadges();
-    this._renderList();
     const emp = DB.getEmployee(req.empId);
-    if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestRejected(emp, req);
+    App.confirm(`رفض طلب ${emp?.name||''}؟`, () => {
+      req.status     = 'rejected';
+      req.rejectedAt = new Date().toISOString();
+      DB.save();
+      App.toast('تم رفض الطلب', 'error');
+      App._updateBadges();
+      this._renderList();
+      DB.logAudit('admin', 'رفض طلب', 'الطلبات', `${emp?.name} — ${App.getRequestTypeLabel(req.type)}`);
+      if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestRejected(emp, req);
+    });
   },
 
   view(id) {
