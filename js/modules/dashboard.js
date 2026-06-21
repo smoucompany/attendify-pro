@@ -202,29 +202,47 @@ const DashboardModule = {
   },
 
   _recentActivity(today) {
-    const items = today.slice(0, 8).map(att => {
-      const emp = DB.getEmployee(att.empId);
-      if (!emp) return '';
+    const todayStr   = new Date().toISOString().split('T')[0];
+    const attMap     = {};
+    today.forEach(a => { attMap[a.empId] = a; });
+
+    // On-leave today
+    const leaveSet = new Set(
+      DB.leaves.filter(l => l.status === 'approved' && l.from <= todayStr && l.to >= todayStr)
+                .map(l => l.empId)
+    );
+
+    const allEmps = DB.employees.filter(e => e.status === 'active');
+    if (!allEmps.length) return `<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div><p class="empty-desc">${t('common.noData')}</p></div>`;
+
+    // Sort: checked-in first, then leave, then absent
+    const sortOrder = { present:0, late:1, leave:2, absent:3 };
+    const rows = allEmps.map(emp => {
+      const att    = attMap[emp.id];
+      const onLeave = leaveSet.has(emp.id);
+      const status  = att ? att.status : (onLeave ? 'leave' : 'absent');
+      return { emp, att, status };
+    }).sort((a, b) => (sortOrder[a.status]||4) - (sortOrder[b.status]||4));
+
+    return rows.map(({ emp, att, status }) => {
+      const dept    = DB.getDepartment(emp.dept);
+      const checkIn = att?.checkIn || '—';
+      const method  = att?.method  || '';
       return `
         <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
           <div class="avatar ${emp.avatarColor}">${emp.avatar}</div>
           <div style="flex:1;min-width:0">
             <div style="font-size:13.5px;font-weight:600;color:var(--text-primary)">${emp.name}</div>
-            <div style="font-size:11.5px;color:var(--text-muted)">${emp.position}</div>
+            <div style="font-size:11.5px;color:var(--text-muted)">${emp.position}${dept?' · '+dept.name:''}</div>
           </div>
-          <div style="text-align:center">
-            ${App.getMethodIcon(att.method)}
-            <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${att.method}</div>
-          </div>
+          ${att ? `<div style="text-align:center">${App.getMethodIcon(method)}<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${method}</div></div>` : ''}
           <div style="text-align:center;min-width:60px">
-            <div style="font-size:13px;font-weight:700;color:var(--text-primary);font-family:var(--font-en)">${att.checkIn}</div>
-            <div>${App.getStatusBadge(att.status)}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary);font-family:var(--font-en)">${checkIn}</div>
+            <div>${App.getStatusBadge(status)}</div>
           </div>
         </div>
       `;
     }).join('');
-
-    return items || `<div class="empty-state"><div class="empty-icon"><i class="fas fa-clock"></i></div><p class="empty-desc">${t('common.noData')}</p></div>`;
   },
 
   _renderTrendChart(trend) {
@@ -292,19 +310,20 @@ const DashboardModule = {
     const legend = document.getElementById('dept-legend');
     if (!canvas) return;
 
-    const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
+    const palette = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#f43f5e','#14b8a6','#a855f7','#ec4899','#84cc16','#f97316'];
     const { font } = App.getChartDefaults();
 
-    // Count active employees per department
-    const depts = DB.departments.slice(0, 6).map(d => ({
+    // Count active employees per department — ALL depts, sorted by count desc, top 8
+    const allDepts = DB.departments.map((d, i) => ({
       ...d,
-      count: DB.employees.filter(e => e.dept === d.id && e.status !== 'terminated').length,
-    })).filter(d => d.count > 0);
+      count: DB.employees.filter(e => e.dept === d.id && e.status === 'active').length,
+      color: palette[i % palette.length],
+    })).sort((a, b) => b.count - a.count);
 
-    // Fallback: if no dept data, show total by status
-    const data  = depts.length ? depts.map(d => d.count) : [1];
-    const labels = depts.length ? depts.map(d => d.name) : [currentLang==='ar'?'لا توجد بيانات':'No data'];
-    const bgColors = depts.length ? colors.slice(0, depts.length) : ['#e2e8f0'];
+    const depts    = allDepts.filter(d => d.count > 0).slice(0, 8);
+    const data     = depts.length ? depts.map(d => d.count) : [1];
+    const labels   = depts.length ? depts.map(d => d.name)  : [currentLang==='ar'?'لا يوجد موظفون':'No employees'];
+    const bgColors = depts.length ? depts.map(d => d.color)  : ['#e2e8f0'];
 
     const chart = new Chart(canvas, {
       type: 'doughnut',
@@ -315,7 +334,7 @@ const DashboardModule = {
           backgroundColor: bgColors,
           borderColor: App.state.theme === 'dark' ? '#0f172a' : '#fff',
           borderWidth: 3,
-          hoverOffset: 6,
+          hoverOffset: 8,
         }]
       },
       options: {
@@ -324,30 +343,28 @@ const DashboardModule = {
         cutout: '68%',
         plugins: {
           legend: { display: false },
-          tooltip: { rtl: currentLang === 'ar', bodyFont: { family: font }, titleFont: { family: font } }
+          tooltip: { rtl: currentLang === 'ar', bodyFont: { family: font }, titleFont: { family: font },
+            callbacks: {
+              label: ctx => ` ${ctx.label}: ${ctx.raw} ${currentLang==='ar'?'موظف':'emp'}`,
+            }
+          }
         }
       }
     });
     App.registerChart('dept', chart);
 
-    // Custom legend — show all depts even with 0 employees
     if (legend) {
-      const allDepts = DB.departments.slice(0, 6).map((d, i) => ({
-        ...d,
-        count: DB.employees.filter(e => e.dept === d.id && e.status !== 'terminated').length,
-        color: colors[i],
-      }));
-      legend.innerHTML = allDepts.length
-        ? allDepts.map(d => `
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0">
+      legend.innerHTML = depts.length
+        ? depts.map(d => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:center;gap:8px">
               <div style="width:10px;height:10px;border-radius:3px;background:${d.color};flex-shrink:0"></div>
               <span style="font-size:12px;color:var(--text-secondary)">${d.name}</span>
             </div>
-            <span style="font-size:12px;font-weight:700;color:var(--text-primary)">${d.count}</span>
+            <span style="font-size:13px;font-weight:700;color:var(--text-primary)">${d.count}</span>
           </div>
         `).join('')
-        : `<p style="text-align:center;color:var(--text-muted);font-size:12px">${currentLang==='ar'?'لا توجد أقسام':'No departments'}</p>`;
+        : `<p style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px">${currentLang==='ar'?'لا يوجد موظفون في الأقسام':'No employees assigned to departments'}</p>`;
     }
   }
 };
