@@ -933,150 +933,235 @@ const ReportsModule = {
       ];
     }
 
+    // ── Meta info ──
+    const adminName     = DB.adminCredentials.name || DB.adminCredentials.email || (ar?'مدير النظام':'System Admin');
+    const adminEmail    = DB.adminCredentials.email || '';
+    const rptNo         = `RPT-${type.toUpperCase().slice(0,3)}-${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}-${Math.floor(Math.random()*9000)+1000}`;
+    const printTime     = new Date().toLocaleTimeString(ar?'ar-EG':'en-US',{hour:'2-digit',minute:'2-digit'});
+    const printDateFull = new Date().toLocaleDateString(ar?'ar-EG':'en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const activeCount   = DB.employees.filter(e=>e.status==='active').length;
+    const sStats        = DB.getAttendanceStats();
+    const logoHTML      = company.logo
+      ? `<img src="${company.logo}" class="co-logo-img" alt="logo">`
+      : `<div class="co-logo-ph">${(company.name||'A').charAt(0).toUpperCase()}</div>`;
+    const statusMap2 = {
+      present:'bs-present', حاضر:'bs-present',
+      late:'bs-late', متأخر:'bs-late',
+      absent:'bs-absent', غائب:'bs-absent',
+      leave:'bs-leave', إجازة:'bs-leave',
+      approved:'bs-approved', معتمد:'bs-approved',
+      pending:'bs-pending', معلق:'bs-pending',
+      rejected:'bs-rejected', مرفوض:'bs-rejected',
+    };
+
     const html = `<!DOCTYPE html>
 <html lang="${ar?'ar':'en'}" dir="${ar?'rtl':'ltr'}">
 <head>
 <meta charset="UTF-8">
 <title>${t('reports.'+type)} — ${company.name||'Attendify Pro'}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:${ar?"'Cairo','Segoe UI'":"'Segoe UI','Cairo'"},sans-serif;font-size:12px;color:#1e293b;background:#fff;direction:${ar?'rtl':'ltr'}}
-  .page{max-width:900px;margin:0 auto;padding:32px}
-  /* Header */
-  .print-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:3px solid #6366f1;margin-bottom:24px}
-  .print-logo{display:flex;align-items:center;gap:12px}
-  .print-logo-icon{width:48px;height:48px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:14px;display:flex;align-items:center;justify-content:center;color:white;font-size:22px}
-  .print-company{font-size:20px;font-weight:900;color:#1e1b4b;letter-spacing:-0.5px}
-  .print-company-sub{font-size:11px;color:#6b7280;margin-top:2px}
-  .print-meta{text-align:${ar?'left':'right'}}
-  .print-meta-date{font-size:11px;color:#6b7280}
-  .print-meta-title{font-size:14px;font-weight:800;color:#6366f1;margin-top:4px}
-  /* Report header */
-  .rpt-header{background:linear-gradient(135deg,#eff6ff,#eef2ff);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-  .rpt-header-left{display:flex;flex-direction:column;gap:3px}
-  .rpt-header-title{font-size:16px;font-weight:800;color:#1e1b4b}
-  .rpt-header-range{font-size:11.5px;color:#6366f1;font-weight:600}
-  .rpt-header-count{font-size:11px;color:#6b7280;margin-top:4px}
-  .rpt-header-badge{background:#6366f1;color:white;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700}
-  /* KPI row */
-  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-  .kpi-box{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;background:#f8fafc}
-  .kpi-value{font-size:20px;font-weight:900;color:#1e1b4b}
-  .kpi-label{font-size:10.5px;color:#64748b;margin-top:2px}
-  /* Table */
-  table{width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0}
-  thead tr{background:linear-gradient(135deg,#6366f1,#4f46e5);color:white}
-  th{padding:10px 12px;text-align:${ar?'right':'left'};font-size:11.5px;font-weight:700}
-  td{padding:9px 12px;font-size:11.5px;color:#334155;border-bottom:1px solid #f1f5f9}
-  tbody tr:nth-child(even){background:#f8fafc}
+  body{font-family:'Cairo','Segoe UI',sans-serif;font-size:11.5px;color:#1e293b;background:#eef2f7;direction:${ar?'rtl':'ltr'}}
+  .toolbar{position:sticky;top:0;z-index:100;background:white;border-bottom:1px solid #e2e8f0;padding:10px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .tbrand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#4f46e5}
+  .tbrand-icon{width:30px;height:30px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:14px}
+  .tbtn-print{background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;padding:9px 22px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
+  .tbtn-close{background:#f8fafc;color:#374151;border:1px solid #e2e8f0;padding:9px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .rpt-no-badge{font-size:10px;color:#94a3b8;font-family:monospace;background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 10px;border-radius:6px}
+  .page{max-width:210mm;margin:20px auto 40px;background:white;box-shadow:0 4px 32px rgba(0,0,0,.10);border-radius:4px;overflow:hidden}
+  .top-band{height:7px;background:linear-gradient(90deg,#1e1b4b 0%,#4f46e5 40%,#6366f1 70%,#8b5cf6 100%)}
+  .hdr{padding:26px 36px 22px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f1f5f9}
+  .co-block{display:flex;align-items:center;gap:16px}
+  .co-logo-img{width:70px;height:70px;border-radius:14px;object-fit:contain;border:2px solid #e2e8f0;padding:4px;background:white}
+  .co-logo-ph{width:70px;height:70px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:white;flex-shrink:0}
+  .co-name{font-size:22px;font-weight:900;color:#1e1b4b;letter-spacing:-.5px;line-height:1.2}
+  .co-name-en{font-size:12px;color:#6b7280;margin-top:2px;font-weight:600}
+  .co-contact{font-size:10px;color:#9ca3af;margin-top:5px;line-height:1.9}
+  .co-contact span{margin-${ar?'left':'right'}:16px}
+  .hdr-meta{text-align:${ar?'left':'right'};display:flex;flex-direction:column;align-items:flex-${ar?'start':'end'};gap:6px}
+  .hdr-rpt-title{font-size:20px;font-weight:900;color:#4338ca}
+  .hdr-rpt-no{font-size:9.5px;color:#94a3b8;font-family:monospace;background:#f8fafc;border:1px solid #e2e8f0;padding:3px 10px;border-radius:6px;letter-spacing:.5px}
+  .hdr-date{font-size:10.5px;color:#6b7280;line-height:1.8;margin-top:2px}
+  .info-band{background:linear-gradient(135deg,#eff6ff,#eef2ff);border-top:1px solid rgba(99,102,241,.12);border-bottom:1px solid rgba(99,102,241,.12);padding:14px 36px;display:flex;align-items:center;flex-wrap:wrap;gap:0}
+  .ib-item{display:flex;align-items:center;gap:10px;padding:0 20px;border-${ar?'left':'right'}:1px solid rgba(99,102,241,.2)}
+  .ib-item:first-child{padding-${ar?'right':'left'}:0}
+  .ib-item:last-child{border:none}
+  .ib-icon{width:34px;height:34px;border-radius:9px;background:white;border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .ib-label{font-size:9px;color:#9ca3af;margin-bottom:1px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+  .ib-value{font-size:12px;font-weight:700;color:#1e1b4b}
+  .content{padding:24px 36px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+  .kpi-box{border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:#f8fafc;border-top:3px solid var(--kc,#6366f1)}
+  .kpi-val{font-size:22px;font-weight:900;color:#1e1b4b}
+  .kpi-lbl{font-size:9.5px;color:#64748b;margin-top:3px;font-weight:600}
+  .tbl-wrap{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:linear-gradient(135deg,#1e1b4b 0%,#4f46e5 100%)}
+  th{padding:11px 14px;text-align:${ar?'right':'left'};font-size:11px;font-weight:700;color:white;letter-spacing:.3px}
+  td{padding:10px 14px;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tbody tr:nth-child(even){background:#f9fafb}
   tbody tr:last-child td{border-bottom:none}
-  tbody tr:hover{background:#eff6ff}
-  .tfoot-row td{background:#eef2ff;font-weight:700;color:#1e1b4b;border-top:2px solid #6366f1}
-  /* Footer */
-  .print-footer{margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
-  .print-footer-left{font-size:10px;color:#94a3b8}
-  .print-footer-sig{text-align:${ar?'left':'right'}}
-  .sig-line{border-top:1px solid #cbd5e1;width:160px;margin-top:40px;padding-top:6px;font-size:10px;color:#64748b}
-  .badge-status{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10.5px;font-weight:600}
-  .badge-present{background:#d1fae5;color:#065f46}
-  .badge-late{background:#fef3c7;color:#92400e}
-  .badge-absent{background:#fee2e2;color:#991b1b}
-  .badge-approved{background:#d1fae5;color:#065f46}
-  .badge-pending{background:#fef3c7;color:#92400e}
-  .badge-rejected{background:#fee2e2;color:#991b1b}
+  .tfoot-row td{background:linear-gradient(135deg,#eff6ff,#eef2ff);font-weight:800;color:#1e1b4b;border-top:2px solid #6366f1}
+  .bs{display:inline-block;padding:2px 10px;border-radius:6px;font-size:10px;font-weight:700}
+  .bs-present{background:#d1fae5;color:#065f46}
+  .bs-late{background:#fef3c7;color:#92400e}
+  .bs-absent{background:#fee2e2;color:#991b1b}
+  .bs-leave{background:#dbeafe;color:#1e40af}
+  .bs-approved{background:#d1fae5;color:#065f46}
+  .bs-pending{background:#fef3c7;color:#92400e}
+  .bs-rejected{background:#fee2e2;color:#991b1b}
+  .sig-section{margin-top:40px;padding-top:24px;border-top:2px dashed #e2e8f0}
+  .sig-hd{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:22px;text-align:center}
+  .sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+  .sig-box{text-align:center}
+  .sig-role{font-size:10px;color:#9ca3af;margin-bottom:3px;font-weight:600}
+  .sig-name{font-size:13px;font-weight:800;color:#1e1b4b;margin-bottom:56px}
+  .sig-line-wrap{border-top:1.5px solid #94a3b8;padding-top:7px}
+  .sig-line-lbl{font-size:10px;color:#64748b;font-weight:600}
+  .sig-sub{font-size:9px;color:#94a3b8;margin-top:2px}
+  .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 36px;display:flex;align-items:center;justify-content:space-between;margin-top:28px}
+  .footer-l{font-size:9.5px;color:#9ca3af;line-height:1.9}
+  .footer-r{font-size:9.5px;color:#9ca3af;text-align:${ar?'left':'right'};line-height:1.9}
+  .footer-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;padding:3px 10px;border-radius:5px;font-size:9.5px;font-weight:700;margin-top:4px}
+  .bot-band{height:5px;background:linear-gradient(90deg,#8b5cf6,#6366f1,#4f46e5,#1e1b4b)}
+  .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-42deg);font-size:90px;font-weight:900;color:rgba(99,102,241,.035);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:6px;user-select:none}
   @media print{
+    body{background:white}
+    .toolbar,.no-print{display:none!important}
+    .page{box-shadow:none;margin:0;border-radius:0;max-width:100%}
+    @page{margin:8mm;size:A4 portrait}
     body{print-color-adjust:exact;-webkit-print-color-adjust:exact}
-    .no-print{display:none!important}
-    .page{padding:20px}
+    thead{display:table-header-group}
   }
 </style>
 </head>
 <body>
-<div class="page">
 
-  <!-- Print toolbar (no-print) -->
-  <div class="no-print" style="display:flex;gap:8px;margin-bottom:20px;justify-content:flex-end">
-    <button onclick="window.print()" style="background:#6366f1;color:white;border:none;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
-      🖨️ ${ar?'طباعة':'Print'}
-    </button>
-    <button onclick="window.close()" style="background:#f1f5f9;color:#374151;border:1px solid #e2e8f0;padding:9px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
-      ${ar?'إغلاق':'Close'}
-    </button>
+<div class="toolbar no-print">
+  <div class="tbrand"><div class="tbrand-icon">📊</div>${ar?'معاينة قبل الطباعة':'Print Preview'}</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="rpt-no-badge">${rptNo}</span>
+    <button class="tbtn-print" onclick="window.print()">🖨️ ${ar?'طباعة':'Print'}</button>
+    <button class="tbtn-close" onclick="window.close()">${ar?'إغلاق':'Close'}</button>
   </div>
+</div>
 
-  <!-- Header -->
-  <div class="print-header">
-    <div class="print-logo">
-      <div class="print-logo-icon">📊</div>
-      <div>
-        <div class="print-company">${company.name||'Attendify Pro'}</div>
-        <div class="print-company-sub">${ar?'نظام إدارة الحضور والانصراف':'Attendance Management System'}</div>
+<div class="wm">${company.name||'ATTENDIFY'}</div>
+
+<div class="page">
+<div class="top-band"></div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="co-block">
+    ${logoHTML}
+    <div>
+      <div class="co-name">${_esc(company.name||'اسم الشركة')}</div>
+      ${company.nameEn?`<div class="co-name-en">${_esc(company.nameEn)}</div>`:''}
+      <div class="co-contact">
+        ${company.address?`<span>📍 ${_esc(company.address)}</span>`:''}
+        ${company.phone?`<span>📞 ${_esc(company.phone)}</span>`:''}
+        ${company.email?`<span>✉️ ${_esc(company.email)}</span>`:''}
       </div>
     </div>
-    <div class="print-meta">
-      <div class="print-meta-date">${ar?'تاريخ الطباعة:':'Print Date:'} ${printDate}</div>
-      <div class="print-meta-title">${t('reports.'+type)}</div>
-    </div>
   </div>
-
-  <!-- Report header box -->
-  <div class="rpt-header">
-    <div class="rpt-header-left">
-      <div class="rpt-header-title">${t('reports.'+type)}</div>
-      <div class="rpt-header-range"><i>📅</i> ${ar?'الفترة:':'Period:'} ${rangeStr}</div>
-      <div class="rpt-header-count">${ar?'إجمالي السجلات:':'Total records:'} ${rows.length}</div>
-    </div>
-    <div class="rpt-header-badge">${company.name||'Attendify Pro'}</div>
+  <div class="hdr-meta">
+    <div class="hdr-rpt-title">${t('reports.'+type)}</div>
+    <div class="hdr-rpt-no">${rptNo}</div>
+    <div class="hdr-date">📅 ${ar?'تاريخ الطباعة:':'Print Date:'} ${printDateFull}<br>🕐 ${ar?'الوقت:':'Time:'} ${printTime}</div>
   </div>
+</div>
 
-  <!-- KPI row -->
-  ${type==='summary' ? '' : `
-  <div class="kpi-row">
-    ${(()=>{
-      const s = DB.getAttendanceStats();
-      return [
-        {v:DB.employees.filter(e=>e.status==='active').length, l:ar?'موظف نشط':'Active Employees'},
-        {v:rows.length, l:ar?'عدد السجلات':'Records'},
-        {v:s.attendanceRate+'%', l:ar?'معدل الحضور':'Attendance Rate'},
-        {v:new Date().toLocaleDateString(ar?'ar-EG':'en-US',{month:'long',year:'numeric'}), l:ar?'الشهر الحالي':'Current Month'},
-      ].map(k=>`<div class="kpi-box"><div class="kpi-value">${k.v}</div><div class="kpi-label">${k.l}</div></div>`).join('');
-    })()}
-  </div>`}
+<!-- INFO BAND -->
+<div class="info-band">
+  <div class="ib-item">
+    <div class="ib-icon">📋</div>
+    <div><div class="ib-label">${ar?'نوع التقرير':'Report Type'}</div><div class="ib-value">${t('reports.'+type)}</div></div>
+  </div>
+  <div class="ib-item">
+    <div class="ib-icon">📅</div>
+    <div><div class="ib-label">${ar?'الفترة الزمنية':'Period'}</div><div class="ib-value">${from} — ${to}</div></div>
+  </div>
+  <div class="ib-item">
+    <div class="ib-icon">📊</div>
+    <div><div class="ib-label">${ar?'إجمالي السجلات':'Total Records'}</div><div class="ib-value">${rows.length}</div></div>
+  </div>
+  <div class="ib-item">
+    <div class="ib-icon">👤</div>
+    <div><div class="ib-label">${ar?'أعدّه':'Prepared By'}</div><div class="ib-value">${_esc(adminName)}</div></div>
+  </div>
+</div>
 
-  <!-- Table -->
+<!-- CONTENT -->
+<div class="content">
+
+${type!=='summary'?`
+<div class="kpi-grid">
+  <div class="kpi-box" style="--kc:#6366f1"><div class="kpi-val">${activeCount}</div><div class="kpi-lbl">${ar?'الموظفون النشطون':'Active Employees'}</div></div>
+  <div class="kpi-box" style="--kc:#10b981"><div class="kpi-val">${rows.length}</div><div class="kpi-lbl">${ar?'عدد السجلات':'Records'}</div></div>
+  <div class="kpi-box" style="--kc:#8b5cf6"><div class="kpi-val">${sStats.attendanceRate}%</div><div class="kpi-lbl">${ar?'معدل الحضور اليوم':'Attendance Rate Today'}</div></div>
+  <div class="kpi-box" style="--kc:#f59e0b"><div class="kpi-val">${new Date().toLocaleDateString(ar?'ar-EG':'en-US',{month:'short',year:'numeric'})}</div><div class="kpi-lbl">${ar?'الشهر الحالي':'Current Month'}</div></div>
+</div>`:''}
+
+<div class="tbl-wrap">
   <table>
     <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>
       ${rows.map(row=>`<tr>${row.map(cell=>{
-        const s = String(cell);
-        const statusMap = {
-          present:'badge-present', حاضر:'badge-present',
-          late:'badge-late', متأخر:'badge-late',
-          absent:'badge-absent', غائب:'badge-absent',
-          leave:'badge-pending',  إجازة:'badge-pending',
-          approved:'badge-approved', معتمد:'badge-approved',
-          pending:'badge-pending', معلق:'badge-pending',
-          rejected:'badge-rejected', مرفوض:'badge-rejected',
-        };
-        const cls = statusMap[s] ? `badge-status ${statusMap[s]}` : '';
-        return `<td>${cls?`<span class="${cls}">${s}</span>`:s}</td>`;
+        const sv=String(cell);
+        const cls=statusMap2[sv];
+        return `<td>${cls?`<span class="bs ${cls}">${sv}</span>`:sv}</td>`;
       }).join('')}</tr>`).join('')}
     </tbody>
-    ${footerRow ? `<tfoot><tr class="tfoot-row">${footerRow.map(c=>`<td>${c}</td>`).join('')}</tr></tfoot>` : ''}
+    ${footerRow?`<tfoot><tr class="tfoot-row">${footerRow.map(c=>`<td>${c}</td>`).join('')}</tr></tfoot>`:''}
   </table>
+</div>
 
-  <!-- Footer -->
-  <div class="print-footer">
-    <div class="print-footer-left">
-      <div>Attendify Pro © ${new Date().getFullYear()}</div>
-      <div>${ar?'تم إنشاؤه تلقائياً — غير رسمي بدون توقيع':'Auto-generated — not official without signature'}</div>
+<!-- SIGNATURES -->
+<div class="sig-section">
+  <div class="sig-hd">${ar?'ـ توقيعات الاعتماد ـ':'— AUTHORIZATION SIGNATURES —'}</div>
+  <div class="sig-grid">
+    <div class="sig-box">
+      <div class="sig-role">${ar?'أعدّه':'Prepared By'}</div>
+      <div class="sig-name">${_esc(adminName)}</div>
+      <div class="sig-line-wrap">
+        <div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div>
+        ${adminEmail?`<div class="sig-sub">${_esc(adminEmail)}</div>`:''}
+      </div>
     </div>
-    <div class="print-footer-sig">
-      <div class="sig-line">${ar?'توقيع المدير المسؤول':'Authorized Signature'}</div>
+    <div class="sig-box">
+      <div class="sig-role">${ar?'راجعه':'Reviewed By'}</div>
+      <div class="sig-name" style="color:#cbd5e1">─────────────</div>
+      <div class="sig-line-wrap"><div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div></div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-role">${ar?'اعتمده':'Approved By'}</div>
+      <div class="sig-name" style="color:#cbd5e1">─────────────</div>
+      <div class="sig-line-wrap"><div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div></div>
     </div>
   </div>
-
 </div>
+
+</div><!-- /content -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-l">
+    <div style="font-weight:700;color:#475569;margin-bottom:2px">${_esc(company.name||'Attendify Pro')}</div>
+    ${company.address?`<div>📍 ${_esc(company.address)}</div>`:''}
+    <div>📄 ${ar?'رقم التقرير:':'Report No:'} <strong style="color:#4f46e5">${rptNo}</strong></div>
+    <div style="margin-top:3px;font-size:9px;color:#cbd5e1">${ar?'هذا المستند سري ومخصص للاستخدام الداخلي فقط':'This document is confidential — for internal use only'}</div>
+  </div>
+  <div class="footer-r">
+    <div>🕐 ${printDateFull} — ${printTime}</div>
+    <div>👤 ${ar?'أعدّه:':'By:'} <strong>${_esc(adminName)}</strong></div>
+    <div><span class="footer-badge">📊 Attendify Pro</span></div>
+  </div>
+</div>
+
+<div class="bot-band"></div>
+</div><!-- /page -->
 </body>
 </html>`;
 
