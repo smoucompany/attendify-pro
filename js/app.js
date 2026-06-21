@@ -96,6 +96,9 @@ const App = {
       document.getElementById('login-page').style.display = 'flex';
     }
 
+    // Inject demo button under login form
+    setTimeout(() => this._injectDemoBtn(), 50);
+
     // Start live clock
     this._startClock();
   },
@@ -748,6 +751,133 @@ const App = {
   },
 
   // Confirm dialog
+  // ─── DEMO MODE ───────────────────────────────────────────
+  _injectDemoBtn() {
+    const form = document.getElementById('login-form') || document.getElementById('setup-form');
+    if (!form || document.getElementById('demo-btn')) return;
+    const div = document.createElement('div');
+    div.style.cssText = 'text-align:center;margin-top:12px';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--text-muted)">أو</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <button id="demo-btn" type="button" onclick="App.loadDemo()"
+        style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#10b981,#059669);
+               color:white;font-family:var(--font-ar);font-size:14px;font-weight:700;cursor:pointer;
+               border:none;display:flex;align-items:center;justify-content:center;gap:8px;
+               box-shadow:0 4px 14px rgba(16,185,129,0.3);transition:opacity 0.2s"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+        <i class="fas fa-rocket"></i> جرب النظام مجاناً — بيانات تجريبية جاهزة
+      </button>
+      <p style="font-size:11px;color:var(--text-muted);margin-top:8px">لا يحتاج تسجيل · يعمل فوراً</p>
+    `;
+    form.after(div);
+  },
+
+  loadDemo() {
+    const btn = document.getElementById('demo-btn');
+    if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ تحميل البيانات...'; btn.disabled = true; }
+
+    // Seed demo credentials
+    DB.adminCredentials = { email: 'demo@attendify.pro', password: 'demo1234' };
+
+    // Seed company
+    Object.assign(DB.company, {
+      name: 'شركة سمو للخدمات', nameEn: 'Sumou Services Co.',
+      address: 'الرياض، المملكة العربية السعودية',
+      phone: '+966 50 000 0000', email: 'info@sumou.sa',
+      timezone: 'Asia/Riyadh', currency: 'SAR',
+      workStart: '08:00', workEnd: '17:00', lateThreshold: 15,
+      workDays: ['sat','sun','mon','tue','wed','thu'], weekend: ['fri'],
+    });
+
+    // Departments
+    const depts = [
+      { id: 'd1', name: 'الإدارة',       nameEn: 'Management',   color: '#6366f1', manager: '' },
+      { id: 'd2', name: 'المبيعات',       nameEn: 'Sales',        color: '#10b981', manager: '' },
+      { id: 'd3', name: 'تقنية المعلومات',nameEn: 'IT',           color: '#06b6d4', manager: '' },
+      { id: 'd4', name: 'الموارد البشرية',nameEn: 'HR',           color: '#f59e0b', manager: '' },
+      { id: 'd5', name: 'المحاسبة',       nameEn: 'Accounting',   color: '#8b5cf6', manager: '' },
+    ];
+    depts.forEach(d => { if (!DB.departments.find(x=>x.id===d.id)) DB.departments.push(d); });
+
+    // Employees
+    const emps = [
+      { id:'e1', no:'001', name:'أحمد محمد الغامدي', nameEn:'Ahmed Al-Ghamdi',   dept:'d1', position:'مدير عام',           salary:15000, status:'active', avatar:'أ', avatarColor:'gradient-primary',  email:'ahmed@sumou.sa',   hireDate:'2022-01-15', phone:'+966501111111' },
+      { id:'e2', no:'002', name:'سارة عبدالله الشهري',nameEn:'Sara Al-Shahri',    dept:'d4', position:'مديرة الموارد البشرية',salary:10000, status:'active', avatar:'س', avatarColor:'gradient-success',  email:'sara@sumou.sa',    hireDate:'2022-03-10', phone:'+966502222222' },
+      { id:'e3', no:'003', name:'محمد سالم القحطاني', nameEn:'Mohammed Al-Qahtani',dept:'d2', position:'مدير المبيعات',      salary:9500,  status:'active', avatar:'م', avatarColor:'gradient-warning',  email:'mohammed@sumou.sa',hireDate:'2022-06-01', phone:'+966503333333' },
+      { id:'e4', no:'004', name:'فاطمة علي الزهراني', nameEn:'Fatima Al-Zahrani', dept:'d3', position:'مهندسة برمجيات',     salary:11000, status:'active', avatar:'ف', avatarColor:'gradient-indigo',   email:'fatima@sumou.sa',  hireDate:'2023-01-20', phone:'+966504444444' },
+      { id:'e5', no:'005', name:'خالد عمر العتيبي',   nameEn:'Khalid Al-Otaibi',  dept:'d5', position:'محاسب أول',          salary:8000,  status:'active', avatar:'خ', avatarColor:'gradient-cyan',     email:'khalid@sumou.sa',  hireDate:'2023-04-05', phone:'+966505555555' },
+      { id:'e6', no:'006', name:'نورة سعد المالكي',   nameEn:'Noura Al-Malki',    dept:'d2', position:'مندوبة مبيعات',      salary:7000,  status:'active', avatar:'ن', avatarColor:'gradient-rose',     email:'noura@sumou.sa',   hireDate:'2023-07-15', phone:'+966506666666' },
+      { id:'e7', no:'007', name:'عبدالرحمن يوسف الدوسري',nameEn:'AbdulRahman',    dept:'d3', position:'مطور واجهات',        salary:9000,  status:'active', avatar:'ع', avatarColor:'gradient-danger',   email:'abdulrahman@sumou.sa',hireDate:'2023-09-01',phone:'+966507777777'},
+      { id:'e8', no:'008', name:'ريم إبراهيم السبيعي', nameEn:'Reem Al-Subaie',   dept:'d4', position:'أخصائية تدريب',      salary:7500,  status:'active', avatar:'ر', avatarColor:'gradient-secondary',email:'reem@sumou.sa',    hireDate:'2024-01-10', phone:'+966508888888' },
+    ];
+    emps.forEach(e => { if (!DB.employees.find(x=>x.id===e.id)) DB.employees.push(e); });
+
+    // Attendance — last 7 days
+    const today = new Date();
+    const workDays = DB.company.workDays;
+    const dayMap = {0:'sun',1:'mon',2:'tue',3:'wed',4:'thu',5:'fri',6:'sat'};
+    DB.attendance.splice(0); // clear
+    for (let d = 6; d >= 0; d--) {
+      const dt = new Date(today); dt.setDate(today.getDate() - d);
+      const ds = dt.toISOString().split('T')[0];
+      const dw = dayMap[dt.getDay()];
+      if (!workDays.includes(dw)) continue;
+      emps.forEach((emp, i) => {
+        if (d === 0 && i > 4) return; // some not arrived today
+        const lateChance = Math.random();
+        const absent = d > 0 && i === 5 && d % 3 === 0;
+        if (absent) return;
+        const baseH = 8, baseM = lateChance < 0.25 ? Math.floor(Math.random()*30)+5 : Math.floor(Math.random()*10);
+        const checkIn  = `${String(baseH).padStart(2,'0')}:${String(baseM).padStart(2,'0')}`;
+        const outH = 17 + (Math.random()>0.7?1:0), outM = Math.floor(Math.random()*30);
+        const checkOut = `${String(outH).padStart(2,'0')}:${String(outM).padStart(2,'0')}`;
+        const late = baseM > 15;
+        DB.attendance.push({
+          id: DB.nextId('at'), empId: emp.id, date: ds,
+          checkIn, checkOut: d === 0 ? null : checkOut,
+          status: late ? 'late' : 'present',
+          method: ['manual','qr','face','fingerprint'][i%4],
+          overtime: outH > 17 ? (outH-17)*60+outM : 0,
+          lateMin: late ? baseM - 15 : 0,
+        });
+      });
+    }
+
+    // Payroll
+    DB.payroll.splice(0);
+    emps.forEach(emp => {
+      DB.payroll.push({ id:DB.nextId('p'), empId:emp.id, base:emp.salary, housing:Math.round(emp.salary*.25), transport:Math.round(emp.salary*.1), food:0, overtime:0, absentDeduction:0, lateDeduction:0, total:Math.round(emp.salary*1.35), month: today.toISOString().slice(0,7), status:'pending' });
+    });
+
+    // Leaves
+    DB.leaves.splice(0);
+    const leaveEmp = emps[2];
+    const fromDate = new Date(today); fromDate.setDate(today.getDate()+3);
+    DB.leaves.push({ id:'l1', empId:leaveEmp.id, type:'annual', from:fromDate.toISOString().split('T')[0], to:new Date(fromDate.getTime()+5*86400000).toISOString().split('T')[0], days:5, status:'pending', reason:'إجازة سنوية', createdAt:new Date().toISOString() });
+
+    // Notifications
+    DB.notifications.splice(0);
+    DB.notifications.push(
+      { id:'n1', title:'طلب إجازة جديد', desc:`${leaveEmp.name} طلب إجازة سنوية 5 أيام`, type:'leave',   icon:'fas fa-calendar', iconBg:'gradient-warning', time:new Date().toISOString(), read:false },
+      { id:'n2', title:'موظف متأخر',      desc:'نورة المالكي تأخرت 22 دقيقة اليوم',       type:'attendance',icon:'fas fa-clock',    iconBg:'gradient-danger',  time:new Date().toISOString(), read:false },
+      { id:'n3', title:'مرحباً بك في Attendify Pro', desc:'النظام جاهز للاستخدام',        type:'system',  icon:'fas fa-rocket',   iconBg:'gradient-primary', time:new Date().toISOString(), read:false },
+    );
+
+    DB.saveCompany();
+
+    setTimeout(() => {
+      this.state.user = { id:'admin', name:'مدير النظام', avatar:'م', position:'مدير النظام', email:'demo@attendify.pro', avatarColor:'gradient-primary' };
+      sessionStorage.setItem('app-user', JSON.stringify(this.state.user));
+      document.getElementById('login-page').style.display = 'none';
+      this._showApp();
+      this.toast('🎉 مرحباً! تم تحميل البيانات التجريبية', 'success', 4000);
+    }, 600);
+  },
+
   _confirmCb: null,
 
   confirm(message, onConfirm) {
