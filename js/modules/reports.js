@@ -192,39 +192,93 @@ const ReportsModule = {
     }, 80);
   },
 
+  // ── HELPERS ──────────────────────────────────────────────
+
+  // يُعيد قائمة أيام العمل في النطاق (يستثني عطل نهاية الأسبوع والإجازات الرسمية)
+  _workingDays(from, to) {
+    const days = [];
+    const weekend = DB.company.weekend || ['friday','saturday'];
+    const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const holidays = (DB.company.holidays || []).map(h => h.date || h);
+    for (let d = new Date(from); d <= new Date(to); d.setDate(d.getDate()+1)) {
+      const ds  = d.toISOString().split('T')[0];
+      const dow = dayNames[d.getDay()];
+      if (!weekend.includes(dow) && !holidays.includes(ds)) days.push(ds);
+    }
+    return days;
+  },
+
+  // يُعيد سجلات الحضور الكاملة مع سجلات الغياب التلقائية
+  _buildFullRecords(from, to, dept) {
+    let emps = DB.employees.filter(e => e.status === 'active');
+    if (dept && dept !== 'all') emps = emps.filter(e => e.dept === dept);
+
+    const attMap = {};
+    DB.attendance.filter(a => a.date >= from && a.date <= to).forEach(a => {
+      if (!attMap[a.date]) attMap[a.date] = {};
+      attMap[a.date][a.empId] = a;
+    });
+
+    const leaveDates = {}; // empId → Set of dates on leave
+    DB.leaves.filter(l => l.status === 'approved').forEach(l => {
+      if (!leaveDates[l.empId]) leaveDates[l.empId] = new Set();
+      for (let d = new Date(l.from || l.startDate); d <= new Date(l.to || l.endDate); d.setDate(d.getDate()+1)) {
+        leaveDates[l.empId].add(d.toISOString().split('T')[0]);
+      }
+    });
+
+    const records = [];
+    this._workingDays(from, to).forEach(dateStr => {
+      emps.forEach(emp => {
+        const rec = attMap[dateStr]?.[emp.id];
+        if (rec) {
+          records.push({ ...rec });
+        } else if (leaveDates[emp.id]?.has(dateStr)) {
+          records.push({ empId: emp.id, date: dateStr, status: 'leave', checkIn: null, checkOut: null, method: 'auto', _virtual: true });
+        } else {
+          records.push({ empId: emp.id, date: dateStr, status: 'absent', checkIn: null, checkOut: null, method: 'auto', _virtual: true });
+        }
+      });
+    });
+    return records.sort((a, b) => b.date.localeCompare(a.date) || (a.empId > b.empId ? 1 : -1));
+  },
+
   // ── REPORT RENDERERS ─────────────────────────────────────
 
   _attendanceReport(container, from, to, dept) {
-    const ar = currentLang === 'ar';
-    let records = DB.attendance.filter(a => a.date >= from && a.date <= to);
-    if (dept !== 'all') records = records.filter(a => DB.getEmployee(a.empId)?.dept === dept);
+    const ar      = currentLang === 'ar';
+    const records = this._buildFullRecords(from, to, dept);
     const present = records.filter(a => a.status === 'present').length;
     const late    = records.filter(a => a.status === 'late').length;
     const absent  = records.filter(a => a.status === 'absent').length;
-    const pct     = records.length > 0 ? Math.round(((present+late)/records.length)*100) : 0;
+    const onLeave = records.filter(a => a.status === 'leave').length;
+    const total   = present + late + absent + onLeave;
+    const pct     = total > 0 ? Math.round(((present+late)/total)*100) : 0;
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:records.length, l:ar?'إجمالي السجلات':'Total Records',    c:'#6366f1', i:'fas fa-list'},
-        {v:present,        l:ar?'حاضر':'Present',                     c:'#10b981', i:'fas fa-user-check'},
-        {v:late,           l:ar?'متأخر':'Late',                       c:'#f59e0b', i:'fas fa-clock'},
-        {v:absent,         l:ar?'غائب':'Absent',                      c:'#ef4444', i:'fas fa-user-xmark'},
-        {v:pct+'%',        l:ar?'معدل الحضور':'Attendance Rate',      c:'#8b5cf6', i:'fas fa-percent'},
+        {v:total,          l:ar?'إجمالي السجلات':'Total Records',  c:'#6366f1', i:'fas fa-list'},
+        {v:present,        l:ar?'حاضر':'Present',                   c:'#10b981', i:'fas fa-user-check'},
+        {v:late,           l:ar?'متأخر':'Late',                     c:'#f59e0b', i:'fas fa-clock'},
+        {v:absent,         l:ar?'غائب':'Absent',                    c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:onLeave,        l:ar?'إجازة':'On Leave',                 c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:pct+'%',        l:ar?'معدل الحضور':'Attendance Rate',    c:'#8b5cf6', i:'fas fa-percent'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الدخول':'Check-in', ar?'الخروج':'Check-out', ar?'الطريقة':'Method', ar?'الحالة':'Status'],
-        records.slice(0,50).map(a => {
-          const emp = DB.getEmployee(a.empId);
+        [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الدخول':'Check-in', ar?'الخروج':'Check-out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'],
+        records.slice(0,100).map(a => {
+          const emp  = DB.getEmployee(a.empId);
+          const hrs  = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div>`,
-            `<span style="font-family:var(--font-en);color:var(--text-muted)">${a.date}</span>`,
-            `<span style="color:var(--success);font-weight:700;font-family:var(--font-en)">${a.checkIn||'—'}</span>`,
-            `<span style="color:var(--danger);font-family:var(--font-en)">${a.checkOut||'—'}</span>`,
-            App.getMethodIcon(a.method||'manual'),
+            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
+            `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
+            a.checkIn ? `<span style="color:var(--success);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>` : '<span style="color:var(--text-muted)">—</span>',
+            a.checkOut ? `<span style="color:var(--danger);font-family:var(--font-en)">${a.checkOut}</span>` : '<span style="color:var(--text-muted)">—</span>',
+            `<span style="font-family:var(--font-en)">${hrs}</span>`,
             App.getStatusBadge(a.status||'present'),
           ];
         }),
-        records.length > 50 ? `<div class="rpt-more-note"><i class="fas fa-info-circle"></i> ${ar?`عرض أول 50 من ${records.length} سجل`:`Showing first 50 of ${records.length} records`}</div>` : ''
+        records.length > 100 ? `<div class="rpt-more-note"><i class="fas fa-info-circle"></i> ${ar?`عرض أول 100 من ${records.length} سجل`:`Showing first 100 of ${records.length} records`}</div>` : ''
       )}
     `;
   },
@@ -233,27 +287,82 @@ const ReportsModule = {
     const ar = currentLang === 'ar';
     let lates = DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
     if (dept !== 'all') lates = lates.filter(a => DB.getEmployee(a.empId)?.dept === dept);
-    const workStart = DB.company.workPeriods?.[0] ? (() => { const [h,m] = DB.company.workPeriods[0].start.split(':').map(Number); return h*60+m; })() : 8*60;
-    const totalMin  = lates.reduce((s,a) => { const [h,m]=(a.checkIn||'08:00').split(':').map(Number); return s+Math.max(0,(h*60+m)-workStart); },0);
-    const totalCost = lates.reduce((s,a) => { const [h,m]=(a.checkIn||'08:00').split(':').map(Number); const min=Math.max(0,(h*60+m)-workStart); return s+Math.round(((DB.payroll.find(p=>p.empId===a.empId)?.base||10000)/30/8)*(min/60)); },0);
+
+    // حساب دقائق التأخر لكل سجل بناءً على وردية الموظف الفعلية
+    const _lateMin = (a) => {
+      const emp = DB.getEmployee(a.empId);
+      const empShift = emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      const shiftStart = empShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
+      const [sh, sm] = shiftStart.split(':').map(Number);
+      const [ch, cm] = (a.checkIn || shiftStart).split(':').map(Number);
+      return Math.max(0, (ch*60+cm) - (sh*60+sm));
+    };
+    const _dailyRate = (empId) => {
+      const base = DB.payroll.find(p => p.empId === empId)?.base || DB.getEmployee(empId)?.salary || 0;
+      return base / 30 / 8;
+    };
+
+    const totalMin  = lates.reduce((s, a) => s + _lateMin(a), 0);
+    const totalCost = lates.reduce((s, a) => s + Math.round(_dailyRate(a.empId) * (_lateMin(a) / 60)), 0);
+
+    // تجميع لكل موظف
+    const empMap = {};
+    lates.forEach(a => {
+      const min = _lateMin(a);
+      const ded = Math.round(_dailyRate(a.empId) * (min / 60));
+      if (!empMap[a.empId]) empMap[a.empId] = { count: 0, totalMin: 0, totalDed: 0 };
+      empMap[a.empId].count++;
+      empMap[a.empId].totalMin += min;
+      empMap[a.empId].totalDed += ded;
+    });
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:lates.length,           l:ar?'حالات التأخر':'Late Cases',       c:'#f59e0b', i:'fas fa-clock-rotate-left'},
-        {v:totalMin+' '+(ar?'د':'m'), l:ar?'إجمالي الدقائق':'Total Minutes', c:'#ef4444', i:'fas fa-stopwatch'},
+        {v:lates.length,                  l:ar?'حالات التأخر':'Late Cases',         c:'#f59e0b', i:'fas fa-clock-rotate-left'},
+        {v:Object.keys(empMap).length,    l:ar?'موظفون متأخرون':'Late Employees',    c:'#ef4444', i:'fas fa-user-clock'},
+        {v:totalMin+' '+(ar?'د':'m'),     l:ar?'إجمالي الدقائق':'Total Minutes',     c:'#ef4444', i:'fas fa-stopwatch'},
         {v:App.formatCurrency(totalCost), l:ar?'إجمالي الخصومات':'Total Deductions', c:'#6366f1', i:'fas fa-money-bill-wave'},
-        {v:lates.length>0?Math.round(totalMin/lates.length)+(ar?' د':' m'):'0', l:ar?'متوسط التأخر':'Avg Late', c:'#8b5cf6', i:'fas fa-calculator'},
+        {v:lates.length>0?Math.round(totalMin/lates.length)+(ar?' د':' m'):'0',l:ar?'متوسط التأخر/حالة':'Avg per Case', c:'#8b5cf6', i:'fas fa-calculator'},
       ])}
+
+      <!-- ملخص بالموظف -->
+      ${Object.keys(empMap).length ? `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><h3 style="font-size:13px;font-weight:700">${ar?'ملخص التأخرات لكل موظف':'Late Summary per Employee'}</h3></div>
+        <div class="table-wrapper" style="border:none">
+          <table class="data-table">
+            <thead><tr>
+              <th>${ar?'الموظف':'Employee'}</th>
+              <th>${ar?'عدد مرات التأخر':'Times Late'}</th>
+              <th>${ar?'إجمالي الدقائق':'Total Minutes'}</th>
+              <th>${ar?'إجمالي الخصم':'Total Deduction'}</th>
+            </tr></thead>
+            <tbody>
+              ${Object.entries(empMap).sort((a,b)=>b[1].totalMin-a[1].totalMin).map(([eid, d]) => {
+                const emp = DB.getEmployee(eid);
+                return `<tr>
+                  <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-warning'}" style="width:28px;height:28px;font-size:10px">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div></td>
+                  <td><span class="badge badge-warning">${d.count} ${ar?'مرة':'times'}</span></td>
+                  <td><span style="color:var(--warning);font-weight:700">${d.totalMin} ${ar?'د':'m'}</span></td>
+                  <td><span style="color:var(--danger);font-weight:700">${App.formatCurrency(d.totalDed)}</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : ''}
+
+      <!-- التفاصيل اليومية -->
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)', ar?'الخصم المقدر':'Est. Deduction'],
-        lates.slice(0,50).map(a => {
-          const emp = DB.getEmployee(a.empId);
-          const [h,m] = (a.checkIn||'08:00').split(':').map(Number);
-          const min   = Math.max(0,(h*60+m)-workStart);
-          const ded   = Math.round(((DB.payroll.find(p=>p.empId===a.empId)?.base||10000)/30/8)*(min/60));
+        [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)', ar?'الخصم المقدر':'Est. Deduction'],
+        lates.slice(0,100).map(a => {
+          const emp  = DB.getEmployee(a.empId);
+          const min  = _lateMin(a);
+          const ded  = Math.round(_dailyRate(a.empId) * (min / 60));
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-warning'}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div>`,
-            `<span style="font-family:var(--font-en);color:var(--text-muted)">${a.date}</span>`,
+            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-warning'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
+            `<span style="font-size:12px;color:var(--text-muted)">${DB.getDepartment(emp?.dept)?.name||'—'}</span>`,
+            `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
             `<span style="color:var(--warning);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>`,
             `<span class="badge" style="background:rgba(239,68,68,0.1);color:var(--danger);border-radius:8px">+${min} ${ar?'د':'m'}</span>`,
             `<span style="color:var(--danger);font-weight:700">${ded>0?App.formatCurrency(ded):'—'}</span>`,
@@ -330,43 +439,129 @@ const ReportsModule = {
   },
 
   _payrollReport(container, dept) {
-    const ar = currentLang === 'ar';
-    let payrolls = [...DB.payroll];
-    if (dept !== 'all') payrolls = payrolls.filter(p => DB.getEmployee(p.empId)?.dept === dept);
-    const totalBase  = payrolls.reduce((s,p)=>s+p.base,0);
-    const totalAllow = payrolls.reduce((s,p)=>s+(p.housing+p.transport+p.food),0);
-    const totalDed   = payrolls.reduce((s,p)=>s+(p.absentDeduction+p.lateDeduction),0);
-    const totalNet   = payrolls.reduce((s,p)=>s+p.total,0);
+    const ar   = currentLang === 'ar';
+    const from = document.getElementById('rpt-from')?.value || new Date().toISOString().slice(0,7)+'-01';
+    const to   = document.getElementById('rpt-to')?.value   || new Date().toISOString().slice(0,10);
+
+    let emps = DB.employees.filter(e => e.status === 'active');
+    if (dept !== 'all') emps = emps.filter(e => e.dept === dept);
+
+    const workingDayCount = this._workingDays(from, to).length;
+
+    // حساب الرواتب ديناميكياً من بيانات الحضور الفعلية
+    const rows = emps.map(emp => {
+      const payRec  = DB.payroll.find(p => p.empId === emp.id);
+      const base    = payRec?.base || emp.salary || 0;
+      const housing = payRec?.housing   ?? Math.round(base * 0.25);
+      const transp  = payRec?.transport ?? Math.round(base * 0.10);
+      const food    = payRec?.food      ?? Math.round(base * 0.05);
+      const allow   = housing + transp + food;
+
+      // سجلات الحضور في الفترة
+      const attRecs = DB.attendance.filter(a => a.empId === emp.id && a.date >= from && a.date <= to);
+
+      // عدد أيام الغياب الفعلي
+      const empShift   = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      const shiftStart = empShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
+      const lateThresh = DB.company.lateThreshold || 15;
+      const [sh, sm]   = shiftStart.split(':').map(Number);
+
+      // أيام الإجازة الموافق عليها
+      const leaveDays = new Set();
+      DB.leaves.filter(l => l.empId === emp.id && l.status === 'approved').forEach(l => {
+        for (let d = new Date(l.from || l.startDate); d <= new Date(l.to || l.endDate); d.setDate(d.getDate()+1))
+          leaveDays.add(d.toISOString().split('T')[0]);
+      });
+
+      const workDays  = this._workingDays(from, to);
+      let absentDays  = 0;
+      let lateMins    = 0;
+      let overtimeMins = 0;
+
+      workDays.forEach(dateStr => {
+        if (leaveDays.has(dateStr)) return;
+        const rec = attRecs.find(a => a.date === dateStr);
+        if (!rec) {
+          absentDays++;
+        } else {
+          // حساب التأخر
+          if (rec.checkIn) {
+            const [ch, cm] = rec.checkIn.split(':').map(Number);
+            const diff = (ch*60+cm) - (sh*60+sm);
+            if (diff > lateThresh) lateMins += diff;
+          }
+          // حساب الأوفرتايم
+          if (rec.workedMins) {
+            const shiftHours = empShift ? (() => {
+              const [eh, em] = (empShift.end||'17:00').split(':').map(Number);
+              let d = (eh*60+em) - (sh*60+sm); if (d < 0) d += 24*60; return d;
+            })() : 8*60;
+            const ot = rec.workedMins - shiftHours;
+            if (ot > 30) overtimeMins += ot;
+          }
+        }
+      });
+
+      const dailyRate      = base / 30;
+      const hourlyRate     = dailyRate / 8;
+      const absentDed      = Math.round(dailyRate * absentDays);
+      const lateDed        = Math.round(hourlyRate * (lateMins / 60));
+      const overtimeBonus  = Math.round(hourlyRate * (overtimeMins / 60) * 1.5);
+      const totalDed       = absentDed + lateDed;
+      const net            = Math.max(0, base + allow + overtimeBonus - totalDed);
+
+      return { emp, base, allow, housing, transp, food, absentDays, lateMins, absentDed, lateDed, overtimeBonus, totalDed, net, workDays: workingDayCount };
+    });
+
+    const totalBase  = rows.reduce((s, r) => s + r.base, 0);
+    const totalAllow = rows.reduce((s, r) => s + r.allow, 0);
+    const totalDed   = rows.reduce((s, r) => s + r.totalDed, 0);
+    const totalOT    = rows.reduce((s, r) => s + r.overtimeBonus, 0);
+    const totalNet   = rows.reduce((s, r) => s + r.net, 0);
 
     container.innerHTML = `
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:var(--bg-input);border-radius:8px;padding:10px 14px">
+        <i class="fas fa-calendar"></i> ${ar?'الفترة:':'Period:'} <strong>${from}</strong> ${ar?'إلى':'to'} <strong>${to}</strong>
+        &nbsp;|&nbsp; ${ar?'أيام العمل:':'Working days:'} <strong>${workingDayCount}</strong>
+        &nbsp;|&nbsp; ${ar?'إجمالي الموظفين:':'Employees:'} <strong>${rows.length}</strong>
+      </div>
       ${this._miniStats([
-        {v:payrolls.length,           l:ar?'عدد الموظفين':'Employees',    c:'#6366f1', i:'fas fa-users'},
-        {v:App.formatCurrency(totalBase), l:ar?'إجمالي الأساسي':'Base Total', c:'#10b981', i:'fas fa-coins'},
-        {v:App.formatCurrency(totalAllow),l:ar?'إجمالي البدلات':'Allowances', c:'#8b5cf6', i:'fas fa-plus-circle'},
-        {v:App.formatCurrency(totalDed),  l:ar?'إجمالي الخصومات':'Deductions',c:'#ef4444', i:'fas fa-minus-circle'},
-        {v:App.formatCurrency(totalNet),  l:ar?'إجمالي الصافي':'Net Total',   c:'#06b6d4', i:'fas fa-money-bill-wave'},
+        {v:rows.length,               l:ar?'عدد الموظفين':'Employees',     c:'#6366f1', i:'fas fa-users'},
+        {v:App.formatCurrency(totalBase),  l:ar?'إجمالي الأساسي':'Base Total',    c:'#10b981', i:'fas fa-coins'},
+        {v:App.formatCurrency(totalAllow), l:ar?'إجمالي البدلات':'Allowances',    c:'#8b5cf6', i:'fas fa-plus-circle'},
+        {v:App.formatCurrency(totalDed),   l:ar?'إجمالي الخصومات':'Deductions',   c:'#ef4444', i:'fas fa-minus-circle'},
+        {v:App.formatCurrency(totalOT),    l:ar?'إضافي':'Overtime',               c:'#06b6d4', i:'fas fa-hourglass-half'},
+        {v:App.formatCurrency(totalNet),   l:ar?'إجمالي الصافي':'Net Total',      c:'#14b8a6', i:'fas fa-money-bill-wave'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'البدلات':'Allowances', ar?'الخصومات':'Deductions', ar?'إضافي':'Overtime', ar?'الصافي':'Net'],
-        payrolls.map(p => {
-          const emp   = DB.getEmployee(p.empId);
-          const allow = p.housing+p.transport+p.food;
-          const ded   = p.absentDeduction+p.lateDeduction;
-          return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div>`,
-            `<span>${App.formatCurrency(p.base)}</span>`,
-            `<span style="color:var(--success)">${App.formatCurrency(allow)}</span>`,
-            `<span style="color:var(--danger)">${ded>0?'-'+App.formatCurrency(ded):'—'}</span>`,
-            `<span style="color:var(--info)">${p.overtime>0?App.formatCurrency(p.overtime):'—'}</span>`,
-            `<span style="font-weight:800;color:var(--primary)">${App.formatCurrency(p.total)}</span>`,
-          ];
-        }),
-        `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:0;border-top:2px solid var(--border);padding:12px 16px;background:var(--bg-input)">
-          <div style="font-weight:800;color:var(--text-primary)">${ar?'الإجمالي':'Total'}</div>
+        [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'البدلات':'Allowances',
+         ar?'أيام الغياب':'Absent', ar?'التأخر':'Late', ar?'الخصومات':'Deductions',
+         ar?'إضافي':'Overtime', ar?'الصافي':'Net'],
+        rows.map(r => [
+          `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${r.emp.avatarColor||'gradient-primary'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${r.emp.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${r.emp.name||'—'}</span></div>`,
+          `<span style="font-weight:600">${App.formatCurrency(r.base)}</span>`,
+          `<span style="color:var(--success)">${App.formatCurrency(r.allow)}</span>`,
+          r.absentDays > 0
+            ? `<span class="badge badge-danger">${r.absentDays} ${ar?'يوم':'days'}</span>`
+            : '<span style="color:var(--text-muted)">—</span>',
+          r.lateMins > 0
+            ? `<span class="badge badge-warning">${r.lateMins} ${ar?'د':'m'}</span>`
+            : '<span style="color:var(--text-muted)">—</span>',
+          r.totalDed > 0
+            ? `<span style="color:var(--danger);font-weight:700">-${App.formatCurrency(r.totalDed)}</span>`
+            : '<span style="color:var(--text-muted)">—</span>',
+          r.overtimeBonus > 0
+            ? `<span style="color:var(--info);font-weight:700">+${App.formatCurrency(r.overtimeBonus)}</span>`
+            : '<span style="color:var(--text-muted)">—</span>',
+          `<span style="font-weight:800;color:var(--primary);font-size:13px">${App.formatCurrency(r.net)}</span>`,
+        ]),
+        `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:0;border-top:2px solid var(--primary);padding:12px 16px;background:var(--bg-input)">
+          <div style="font-weight:800;color:var(--text-primary)">${ar?'المجموع':'Total'}</div>
           <div style="font-weight:700">${App.formatCurrency(totalBase)}</div>
           <div style="font-weight:700;color:var(--success)">${App.formatCurrency(totalAllow)}</div>
-          <div style="font-weight:700;color:var(--danger)">${totalDed>0?'-'+App.formatCurrency(totalDed):'—'}</div>
-          <div>—</div>
+          <div>—</div><div>—</div>
+          <div style="font-weight:700;color:var(--danger)">-${App.formatCurrency(totalDed)}</div>
+          <div style="font-weight:700;color:var(--info)">+${App.formatCurrency(totalOT)}</div>
           <div style="font-weight:800;color:var(--primary)">${App.formatCurrency(totalNet)}</div>
         </div>`
       )}
@@ -375,40 +570,91 @@ const ReportsModule = {
 
   _summaryReport(container) {
     const ar    = currentLang === 'ar';
-    const stats = DB.getAttendanceStats();
-    const today = DB.getTodayAttendance();
-    const totalPay = DB.payroll.reduce((s,p)=>s+p.total,0);
-    const totalOT  = DB.attendance.filter(a=>a.overtime).reduce((s,a)=>s+(parseInt(a.overtime)||0),0);
+    const now   = new Date();
+    const from  = now.toISOString().slice(0,7)+'-01';
+    const to    = now.toISOString().split('T')[0];
+
+    const todayStats = DB.getAttendanceStats();
+    const monthRecs  = this._buildFullRecords(from, to, 'all');
+
+    // إحصائيات الشهر الحالي
+    const mPresent = monthRecs.filter(a => a.status === 'present').length;
+    const mLate    = monthRecs.filter(a => a.status === 'late').length;
+    const mAbsent  = monthRecs.filter(a => a.status === 'absent').length;
+    const mLeave   = monthRecs.filter(a => a.status === 'leave').length;
+    const mTotal   = mPresent + mLate + mAbsent + mLeave;
+    const mRate    = mTotal > 0 ? Math.round(((mPresent+mLate)/mTotal)*100) : 0;
+
+    const workDays  = this._workingDays(from, to).length;
+    const activeEmp = DB.employees.filter(e => e.status === 'active').length;
+
+    // حساب الأوفرتايم الفعلي
+    const totalOTMins = DB.attendance
+      .filter(a => a.date >= from && a.date <= to && a.workedMins > 0)
+      .reduce((s, a) => {
+        const emp      = DB.getEmployee(a.empId);
+        const shift    = emp?.shift ? DB.shifts.find(sh => sh.id === emp.shift) : null;
+        const shiftH   = shift ? (() => { const [sh,sm]=(shift.start||'08:00').split(':').map(Number); const [eh,em]=(shift.end||'17:00').split(':').map(Number); let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=24*60; return d; })() : 8*60;
+        return s + Math.max(0, a.workedMins - shiftH);
+      }, 0);
+
     const pendingL = DB.leaves.filter(l=>l.status==='pending').length;
     const pendingR = DB.requests.filter(r=>r.status==='pending').length;
+    const totalPay = DB.employees.filter(e=>e.status==='active').reduce((s,e)=>{
+      const p = DB.payroll.find(pr => pr.empId === e.id);
+      return s + (p?.total || e.salary || 0);
+    }, 0);
 
     container.innerHTML = `
+      <!-- اليوم -->
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">${ar?'الوضع الحالي (اليوم)':'Current Status (Today)'}</div>
       ${this._miniStats([
-        {v:stats.total,              l:ar?'إجمالي الموظفين':'Total Employees', c:'#6366f1', i:'fas fa-users'},
-        {v:stats.present+stats.late, l:ar?'حاضرون اليوم':'Present Today',     c:'#10b981', i:'fas fa-user-check'},
-        {v:stats.attendanceRate+'%', l:ar?'معدل الحضور':'Attendance Rate',     c:'#8b5cf6', i:'fas fa-percent'},
-        {v:stats.late,               l:ar?'متأخرون':'Late',                    c:'#f59e0b', i:'fas fa-clock'},
-        {v:stats.absent,             l:ar?'غائبون':'Absent',                   c:'#ef4444', i:'fas fa-user-xmark'},
-        {v:stats.onLeave,            l:ar?'في إجازة':'On Leave',               c:'#06b6d4', i:'fas fa-calendar-minus'},
-        {v:totalOT+' '+(ar?'س':'h'),l:ar?'إجمالي الإضافي':'Total Overtime',  c:'#a855f7', i:'fas fa-hourglass-half'},
-        {v:pendingL+pendingR,         l:ar?'طلبات معلقة':'Pending Requests',   c:'#f43f5e', i:'fas fa-file'},
-        {v:App.formatCurrency(totalPay), l:ar?'إجمالي الرواتب':'Total Payroll',c:'#14b8a6', i:'fas fa-money-bill-wave'},
+        {v:todayStats.total,              l:ar?'إجمالي الموظفين':'Total Employees', c:'#6366f1', i:'fas fa-users'},
+        {v:todayStats.present+todayStats.late, l:ar?'حاضرون اليوم':'Present Today', c:'#10b981', i:'fas fa-user-check'},
+        {v:todayStats.late,               l:ar?'متأخرون':'Late Today',              c:'#f59e0b', i:'fas fa-clock'},
+        {v:todayStats.absent,             l:ar?'غائبون':'Absent Today',             c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:todayStats.onLeave,            l:ar?'في إجازة':'On Leave',              c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:todayStats.attendanceRate+'%', l:ar?'معدل الحضور اليوم':'Rate Today',   c:'#8b5cf6', i:'fas fa-percent'},
       ])}
 
+      <!-- الشهر الحالي -->
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin:16px 0 8px;text-transform:uppercase">
+        ${ar?'إحصائيات الشهر الحالي':'Current Month Statistics'}
+        <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-right:8px">(${from} — ${to}) | ${ar?'أيام العمل:':'Working days:'} ${workDays}</span>
+      </div>
+      ${this._miniStats([
+        {v:mPresent,      l:ar?'سجلات حضور':'Present Records',  c:'#10b981', i:'fas fa-user-check'},
+        {v:mLate,         l:ar?'حالات تأخر':'Late Cases',        c:'#f59e0b', i:'fas fa-clock'},
+        {v:mAbsent,       l:ar?'أيام غياب':'Absent Days',        c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:mLeave,        l:ar?'أيام إجازة':'Leave Days',        c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:mRate+'%',     l:ar?'معدل الحضور الشهري':'Monthly Rate', c:'#8b5cf6', i:'fas fa-percent'},
+        {v:Math.round(totalOTMins/60)+(ar?' س':' h'), l:ar?'ساعات إضافي':'Overtime Hrs', c:'#a855f7', i:'fas fa-hourglass-half'},
+        {v:pendingL+pendingR, l:ar?'طلبات معلقة':'Pending',      c:'#f43f5e', i:'fas fa-file-circle-exclamation'},
+        {v:App.formatCurrency(totalPay), l:ar?'إجمالي الرواتب':'Total Payroll', c:'#14b8a6', i:'fas fa-money-bill-wave'},
+      ])}
+
+      <!-- أعلى الأقسام -->
       <div class="card" style="margin-top:16px">
-        <div class="card-header"><h3 style="font-size:14px;font-weight:700">${ar?'أعلى 5 أقسام حضوراً اليوم':'Top 5 Departments by Attendance Today'}</h3></div>
+        <div class="card-header"><h3 style="font-size:14px;font-weight:700">${ar?'معدل الحضور الشهري حسب القسم':'Monthly Attendance Rate by Department'}</h3></div>
         <div class="card-body" style="padding:0">
-          ${DB.departments.slice(0,5).map(d=>{
-            const dCount = today.filter(a=>a.status!=='absent'&&DB.getEmployee(a.empId)?.dept===d.id).length;
-            const dTotal = DB.employees.filter(e=>e.dept===d.id&&e.status==='active').length;
-            const pct    = dTotal>0?Math.round((dCount/dTotal)*100):0;
+          ${DB.departments.map(d=>{
+            const dEmps  = DB.employees.filter(e=>e.dept===d.id&&e.status==='active');
+            const dRecs  = monthRecs.filter(a=>DB.getEmployee(a.empId)?.dept===d.id);
+            const dPres  = dRecs.filter(a=>a.status==='present'||a.status==='late').length;
+            const dTotal = dRecs.length;
+            const pct    = dTotal>0?Math.round((dPres/dTotal)*100):0;
+            const hex    = d.hex||'#6366f1';
             return `
-              <div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border)">
-                <div style="width:120px;font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-                <div style="flex:1;background:var(--border);border-radius:99px;height:8px;overflow:hidden">
-                  <div style="height:100%;border-radius:99px;background:linear-gradient(90deg,#6366f1,#8b5cf6);width:${pct}%;transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1)"></div>
+              <div style="display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--border)">
+                <div style="width:4px;height:36px;background:${hex};border-radius:2px;flex-shrink:0"></div>
+                <div style="width:130px;font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
+                <div style="flex:1;background:var(--border);border-radius:99px;height:10px;overflow:hidden">
+                  <div style="height:100%;border-radius:99px;background:${hex};width:${pct}%;transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)"></div>
                 </div>
-                <div style="width:70px;text-align:center;font-size:12px;font-weight:700;color:var(--primary)">${dCount}/${dTotal} <span style="color:var(--text-muted)">(${pct}%)</span></div>
+                <div style="font-size:12px;font-weight:700;color:${pct>=80?'var(--success)':pct>=60?'var(--warning)':'var(--danger)'};min-width:80px;text-align:center">
+                  ${dPres}/${dTotal} <span style="color:var(--text-muted)">(${pct}%)</span>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);min-width:50px;text-align:center">${dEmps.length} ${ar?'موظف':'emp'}</div>
               </div>`;
           }).join('')}
         </div>
