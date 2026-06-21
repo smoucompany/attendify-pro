@@ -151,6 +151,31 @@ const App = {
     }, 800);
   },
 
+  _debugLogin(e) {
+    e && e.preventDefault();
+    try {
+      const db    = JSON.parse(localStorage.getItem('attendify-db') || '{}');
+      const leg   = JSON.parse(localStorage.getItem('admin-credentials') || '{}');
+      const creds = DB.adminCredentials;
+      const msg = [
+        '=== تشخيص تسجيل الدخول ===',
+        '',
+        `DB.adminCredentials.email:    "${creds?.email || '(فارغ)'}"`,
+        `DB.adminCredentials.password: "${creds?.password ? '***' + creds.password.slice(-2) : '(فارغة)'}"`,
+        '',
+        `attendify-db.adminCreds.email:    "${db.adminCreds?.email || '(غير موجود)'}"`,
+        `attendify-db.adminCreds.password: "${db.adminCreds?.password ? '***' + db.adminCreds.password.slice(-2) : '(غير موجود)'}"`,
+        '',
+        `admin-credentials (legacy): "${leg?.email || '(غير موجود)'}"`,
+        '',
+        `الصفحة الحالية: ${document.getElementById('login-page')?.style.display}`,
+      ].join('\n');
+      alert(msg);
+    } catch(err) {
+      alert('خطأ في التشخيص: ' + err.message);
+    }
+  },
+
   forgotPassword(e) {
     e && e.preventDefault();
     // Build a full-page overlay — works even before app loads
