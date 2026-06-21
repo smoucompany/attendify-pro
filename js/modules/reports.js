@@ -1092,26 +1092,51 @@ const ReportsModule = {
     const canvas = document.getElementById('dept-bar-chart');
     if (!canvas) return;
     const { color, grid, font } = App.getChartDefaults();
+    const ar     = currentLang === 'ar';
     const depts  = DB.departments;
-    const today  = DB.getTodayAttendance();
-    const counts = depts.map(d => today.filter(a=>a.status!=='absent'&&DB.getEmployee(a.empId)?.dept===d.id).length);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayAtt = DB.attendance.filter(a => a.date === todayStr);
+
+    // present today per dept (from actual check-ins)
+    const presentCounts = depts.map(d =>
+      todayAtt.filter(a => (a.status === 'present' || a.status === 'late') && DB.getEmployee(a.empId)?.dept === d.id).length
+    );
+    // total active employees per dept (always non-zero if dept has employees)
+    const totalCounts = depts.map(d =>
+      DB.employees.filter(e => e.status === 'active' && e.dept === d.id).length
+    );
+    const palette = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#f43f5e','#14b8a6','#a855f7','#ec4899','#84cc16','#f97316'];
+
     const chart = new Chart(canvas, {
       type: 'bar',
       data: {
-        labels: depts.map(d=>d.name.length>8?d.name.substring(0,8)+'…':d.name),
-        datasets: [{
-          label: currentLang==='ar'?'حاضر':'Present',
-          data: counts,
-          backgroundColor: ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6','#f43f5e'],
-          borderRadius: 8, borderSkipped: false,
-        }]
+        labels: depts.map(d => d.name.length > 8 ? d.name.substring(0,8)+'…' : d.name),
+        datasets: [
+          {
+            label: ar ? 'حاضر اليوم' : 'Present Today',
+            data: presentCounts,
+            backgroundColor: palette.map(c => c + 'cc'),
+            borderRadius: 6, borderSkipped: false,
+          },
+          {
+            label: ar ? 'إجمالي الموظفين' : 'Total Employees',
+            data: totalCounts,
+            backgroundColor: palette.map(c => c + '22'),
+            borderColor: palette.map(c => c + '55'),
+            borderWidth: 1,
+            borderRadius: 6, borderSkipped: false,
+          },
+        ]
       },
       options: {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{rtl:currentLang==='ar',bodyFont:{family:font},titleFont:{family:font}} },
-        scales:{
-          x:{grid:{color:grid},ticks:{color,font:{family:font,size:10}}},
-          y:{grid:{color:grid},ticks:{color,font:{family:font,size:11}},beginAtZero:true}
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position:'top', labels:{ color, font:{family:font,size:11}, usePointStyle:true } },
+          tooltip: { rtl: ar, bodyFont:{family:font}, titleFont:{family:font} }
+        },
+        scales: {
+          x: { grid:{color:grid}, ticks:{color,font:{family:font,size:10}}, stacked:false },
+          y: { grid:{color:grid}, ticks:{color,font:{family:font,size:11},stepSize:1}, beginAtZero:true }
         }
       }
     });
@@ -1122,24 +1147,63 @@ const ReportsModule = {
     const canvas = document.getElementById('monthly-chart');
     if (!canvas) return;
     const { color, grid, font } = App.getChartDefaults();
-    const months = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-5+i); return d.toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{month:'short'}); });
-    const data1  = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-5+i); const m=d.toISOString().slice(0,7); return DB.attendance.filter(a=>a.date.startsWith(m)&&a.status==='present').length; });
-    const data2  = Array.from({length:6},(_,i)=>{ const d=new Date(); d.setMonth(d.getMonth()-5+i); const m=d.toISOString().slice(0,7); return DB.attendance.filter(a=>a.date.startsWith(m)&&a.status==='late').length; });
-    const chart  = new Chart(canvas, {
+    const ar     = currentLang === 'ar';
+    const active = DB.employees.filter(e => e.status === 'active').length;
+    const workDayNames = DB.company.workDays || ['sat','sun','mon','tue','wed','thu'];
+    const allDayNames  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+    const months  = [];
+    const present = [];
+    const late    = [];
+    const absent  = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      const m     = d.toISOString().slice(0, 7);
+      const year  = d.getFullYear();
+      const month = d.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const cutoff = i === 0 ? new Date().getDate() : daysInMonth;
+
+      // count working days up to cutoff
+      let workDays = 0;
+      for (let day = 1; day <= cutoff; day++) {
+        const dow = allDayNames[new Date(year, month, day).getDay()];
+        if (workDayNames.includes(dow)) workDays++;
+      }
+
+      const mAtt    = DB.attendance.filter(a => a.date.startsWith(m));
+      const pCount  = mAtt.filter(a => a.status === 'present').length;
+      const lCount  = mAtt.filter(a => a.status === 'late').length;
+      const abCount = Math.max(0, active * workDays - pCount - lCount);
+
+      months.push(d.toLocaleDateString(ar ? 'ar-SA' : 'en-US', { month: 'short' }));
+      present.push(pCount);
+      late.push(lCount);
+      absent.push(abCount);
+    }
+
+    const chart = new Chart(canvas, {
       type: 'line',
       data: {
         labels: months,
         datasets: [
-          { label:t('attendance.present'), data:data1, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#10b981' },
-          { label:t('attendance.late'),    data:data2, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#f59e0b' },
+          { label: t('attendance.present'), data: present, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#10b981' },
+          { label: t('attendance.late'),    data: late,    borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#f59e0b' },
+          { label: ar ? 'غائب' : 'Absent', data: absent,  borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.05)',  fill:true, tension:0.4, borderWidth:2, borderDash:[4,4], pointRadius:4, pointBackgroundColor:'#ef4444' },
         ]
       },
       options: {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{position:'top',labels:{color,font:{family:font,size:11},usePointStyle:true}}, tooltip:{rtl:currentLang==='ar',bodyFont:{family:font},titleFont:{family:font}} },
-        scales:{
-          x:{grid:{color:grid},ticks:{color,font:{family:font,size:11}}},
-          y:{grid:{color:grid},ticks:{color,font:{family:font,size:11}},beginAtZero:true}
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position:'top', labels:{color,font:{family:font,size:11},usePointStyle:true} },
+          tooltip: { rtl: ar, bodyFont:{family:font}, titleFont:{family:font} }
+        },
+        scales: {
+          x: { grid:{color:grid}, ticks:{color,font:{family:font,size:11}} },
+          y: { grid:{color:grid}, ticks:{color,font:{family:font,size:11}}, beginAtZero:true }
         }
       }
     });

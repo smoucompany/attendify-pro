@@ -185,19 +185,22 @@ const DB = {
   },
 
   getAttendanceTrend() {
-    const trend = [];
-    const today = new Date();
+    const trend      = [];
+    const today      = new Date();
+    const active     = this.employees.filter(e => e.status === 'active').length;
+    const workDayNames = this.company.workDays || ['sat','sun','mon','tue','wed','thu'];
+    const allDayNames  = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayAtt  = this.attendance.filter(a => a.date === dateStr);
-      trend.push({
-        date:    dateStr,
-        present: dayAtt.filter(a => a.status === 'present').length,
-        late:    dayAtt.filter(a => a.status === 'late').length,
-        total:   dayAtt.length,
-      });
+      const dateStr  = d.toISOString().split('T')[0];
+      const isWorkDay = workDayNames.includes(allDayNames[d.getDay()]);
+      const dayAtt   = this.attendance.filter(a => a.date === dateStr);
+      const present  = dayAtt.filter(a => a.status === 'present').length;
+      const late     = dayAtt.filter(a => a.status === 'late').length;
+      // Compute absent: active employees minus those who checked in (only for work days)
+      const absent   = isWorkDay ? Math.max(0, active - present - late) : 0;
+      trend.push({ date: dateStr, present, late, absent, total: active });
     }
     return trend;
   },

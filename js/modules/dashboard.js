@@ -256,12 +256,17 @@ const DashboardModule = {
             data: trend.map(d => d.late),
             borderColor: '#f59e0b',
             backgroundColor: 'rgba(245,158,11,0.06)',
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#f59e0b',
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            borderWidth: 2.5,
+            fill: true, tension: 0.4,
+            pointBackgroundColor: '#f59e0b', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5,
+          },
+          {
+            label: currentLang === 'ar' ? 'غائب' : 'Absent',
+            data: trend.map(d => d.absent || 0),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.05)',
+            fill: true, tension: 0.4,
+            borderDash: [5, 4],
+            pointBackgroundColor: '#ef4444', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2,
           }
         ]
       },
