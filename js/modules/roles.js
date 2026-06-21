@@ -117,20 +117,33 @@ const RolesModule = {
                 </tr>
               </thead>
               <tbody>
-                ${DB.employees.slice(0, 8).map(emp => {
+                ${DB.employees.filter(e=>e.status!=='terminated').map(emp => {
                   const role = DB.roles.find(r => r.users.includes(emp.id));
+                  const roleName = role ? role.name : (currentLang==='ar'?'غير محدد':'Unassigned');
+                  const badgeStyle = role
+                    ? `background:var(--primary-bg);color:var(--primary)`
+                    : `background:var(--bg-input);color:var(--text-muted)`;
                   return `
                     <tr>
-                      <td><div class="table-avatar"><div class="avatar ${emp.avatarColor}" style="width:28px;height:28px;font-size:10px">${emp.avatar}</div><span style="font-weight:600">${emp.name}</span></div></td>
-                      <td><span class="badge badge-primary">${DB.getDepartment(emp.dept)?.name||''}</span></td>
                       <td>
-                        <span style="padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;background:var(--primary-bg);color:var(--primary)">
-                          ${role?.name||currentLang==='ar'?'غير محدد':'Unassigned'}
+                        <div class="table-avatar">
+                          <div class="avatar ${emp.avatarColor}" style="width:30px;height:30px;font-size:11px">${emp.avatar}</div>
+                          <div class="avatar-info">
+                            <div class="avatar-name">${emp.name}</div>
+                            <div class="avatar-sub">${emp.position||''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td><span class="badge badge-primary">${DB.getDepartment(emp.dept)?.name||'—'}</span></td>
+                      <td>
+                        <span style="padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;${badgeStyle}">
+                          ${roleName}
                         </span>
                       </td>
                       <td>
-                        <select class="app-form-input app-form-select" style="font-size:12px;padding:5px 10px;width:auto"
+                        <select class="app-form-input app-form-select" style="font-size:12px;padding:6px 10px;min-width:160px"
                           onchange="RolesModule.changeRole('${emp.id}', this.value)">
+                          <option value="" ${!role?'selected':''}>— ${currentLang==='ar'?'بدون دور':'No role'} —</option>
                           ${DB.roles.map(r=>`<option value="${r.id}" ${role?.id===r.id?'selected':''}>${r.name}</option>`).join('')}
                         </select>
                       </td>
@@ -229,11 +242,22 @@ const RolesModule = {
   },
 
   changeRole(empId, roleId) {
-    DB.roles.forEach(r => { r.users = r.users.filter(u => u !== empId); });
-    const newRole = DB.roles.find(r => r.id === roleId);
-    if (newRole && !newRole.users.includes(empId)) newRole.users.push(empId);
+    // Remove from all roles first
+    DB.roles.forEach(r => {
+      const i = r.users.indexOf(empId);
+      if (i !== -1) r.users.splice(i, 1);
+    });
+    // Assign new role if selected
+    if (roleId) {
+      const newRole = DB.roles.find(r => r.id === roleId);
+      if (newRole) newRole.users.push(empId);
+    }
     DB.save();
-    App.toast(currentLang==='ar'?'تم تحديث الدور':'Role updated', 'success');
+    const emp = DB.getEmployee(empId);
+    const roleName = roleId ? DB.roles.find(r=>r.id===roleId)?.name : (currentLang==='ar'?'بدون دور':'No role');
+    App.toast(`${emp?.name} ← ${roleName}`, 'success');
+    // Refresh badge in table row immediately
+    this.render(document.getElementById('page-content'));
   },
 
   saveMatrix() {
