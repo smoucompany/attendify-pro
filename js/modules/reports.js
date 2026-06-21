@@ -954,215 +954,501 @@ const ReportsModule = {
       rejected:'bs-rejected', مرفوض:'bs-rejected',
     };
 
+    const origin  = window.location.origin;
+    const fontUrl = name => `${origin}/font/arabic/thmanyahsans-${name}.otf`;
+    const savedSigs = DB.company.signatures || [];
+    const sigBoxes  = savedSigs.length ? savedSigs
+      : [{ name: adminName, role: ar?'أعدّه':'Prepared By', title: adminEmail, signature: null }];
+    const logoSm = company.logo
+      ? `<img src="${company.logo}" class="ph-logo-img" alt="">`
+      : `<div class="ph-logo-ph">${(company.name||'A').charAt(0)}</div>`;
+
+    const qrData = encodeURIComponent(`${rptNo}|${company.name||''}|${printDateFull}`);
+    const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${qrData}&color=1a2e4a&bgcolor=ffffff`;
+
     const html = `<!DOCTYPE html>
-<html lang="${ar?'ar':'en'}" dir="${ar?'rtl':'ltr'}">
+<html lang="${ar?'ar':'en'}" dir="${ar?'rtl':'ltr'}" data-tpl="corp" data-orient="portrait">
 <head>
 <meta charset="UTF-8">
-<title>${t('reports.'+type)} — ${company.name||'Attendify Pro'}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<title>${t('reports.'+type)} — ${_esc(company.name||'')}</title>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:'Cairo','Segoe UI',sans-serif;font-size:11.5px;color:#1e293b;background:#eef2f7;direction:${ar?'rtl':'ltr'}}
-  .toolbar{position:sticky;top:0;z-index:100;background:white;border-bottom:1px solid #e2e8f0;padding:10px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(0,0,0,.06)}
-  .tbrand{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:#4f46e5}
-  .tbrand-icon{width:30px;height:30px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:14px}
-  .tbtn-print{background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;padding:9px 22px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px}
-  .tbtn-close{background:#f8fafc;color:#374151;border:1px solid #e2e8f0;padding:9px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
-  .rpt-no-badge{font-size:10px;color:#94a3b8;font-family:monospace;background:#f1f5f9;border:1px solid #e2e8f0;padding:4px 10px;border-radius:6px}
-  .page{max-width:210mm;margin:20px auto 40px;background:white;box-shadow:0 4px 32px rgba(0,0,0,.10);border-radius:4px;overflow:hidden}
-  .top-band{height:7px;background:linear-gradient(90deg,#1e1b4b 0%,#4f46e5 40%,#6366f1 70%,#8b5cf6 100%)}
-  .hdr{padding:26px 36px 22px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:1px solid #f1f5f9}
-  .co-block{display:flex;align-items:center;gap:16px}
-  .co-logo-img{width:70px;height:70px;border-radius:14px;object-fit:contain;border:2px solid #e2e8f0;padding:4px;background:white}
-  .co-logo-ph{width:70px;height:70px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:white;flex-shrink:0}
-  .co-name{font-size:22px;font-weight:900;color:#1e1b4b;letter-spacing:-.5px;line-height:1.2}
-  .co-name-en{font-size:12px;color:#6b7280;margin-top:2px;font-weight:600}
-  .co-contact{font-size:10px;color:#9ca3af;margin-top:5px;line-height:1.9}
-  .co-contact span{margin-${ar?'left':'right'}:16px}
-  .hdr-meta{text-align:${ar?'left':'right'};display:flex;flex-direction:column;align-items:flex-${ar?'start':'end'};gap:6px}
-  .hdr-rpt-title{font-size:20px;font-weight:900;color:#4338ca}
-  .hdr-rpt-no{font-size:9.5px;color:#94a3b8;font-family:monospace;background:#f8fafc;border:1px solid #e2e8f0;padding:3px 10px;border-radius:6px;letter-spacing:.5px}
-  .hdr-date{font-size:10.5px;color:#6b7280;line-height:1.8;margin-top:2px}
-  .info-band{background:linear-gradient(135deg,#eff6ff,#eef2ff);border-top:1px solid rgba(99,102,241,.12);border-bottom:1px solid rgba(99,102,241,.12);padding:14px 36px;display:flex;align-items:center;flex-wrap:wrap;gap:0}
-  .ib-item{display:flex;align-items:center;gap:10px;padding:0 20px;border-${ar?'left':'right'}:1px solid rgba(99,102,241,.2)}
-  .ib-item:first-child{padding-${ar?'right':'left'}:0}
-  .ib-item:last-child{border:none}
-  .ib-icon{width:34px;height:34px;border-radius:9px;background:white;border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-  .ib-label{font-size:9px;color:#9ca3af;margin-bottom:1px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-  .ib-value{font-size:12px;font-weight:700;color:#1e1b4b}
-  .content{padding:24px 36px}
-  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
-  .kpi-box{border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;background:#f8fafc;border-top:3px solid var(--kc,#6366f1)}
-  .kpi-val{font-size:22px;font-weight:900;color:#1e1b4b}
-  .kpi-lbl{font-size:9.5px;color:#64748b;margin-top:3px;font-weight:600}
-  .tbl-wrap{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.04)}
-  table{width:100%;border-collapse:collapse}
-  thead tr{background:linear-gradient(135deg,#1e1b4b 0%,#4f46e5 100%)}
-  th{padding:11px 14px;text-align:${ar?'right':'left'};font-size:11px;font-weight:700;color:white;letter-spacing:.3px}
-  td{padding:10px 14px;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
-  tbody tr:nth-child(even){background:#f9fafb}
-  tbody tr:last-child td{border-bottom:none}
-  .tfoot-row td{background:linear-gradient(135deg,#eff6ff,#eef2ff);font-weight:800;color:#1e1b4b;border-top:2px solid #6366f1}
-  .bs{display:inline-block;padding:2px 10px;border-radius:6px;font-size:10px;font-weight:700}
-  .bs-present{background:#d1fae5;color:#065f46}
-  .bs-late{background:#fef3c7;color:#92400e}
-  .bs-absent{background:#fee2e2;color:#991b1b}
-  .bs-leave{background:#dbeafe;color:#1e40af}
-  .bs-approved{background:#d1fae5;color:#065f46}
-  .bs-pending{background:#fef3c7;color:#92400e}
-  .bs-rejected{background:#fee2e2;color:#991b1b}
-  .sig-section{margin-top:40px;padding-top:24px;border-top:2px dashed #e2e8f0}
-  .sig-hd{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:22px;text-align:center}
-  .sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
-  .sig-box{text-align:center;display:flex;flex-direction:column}
-  .sig-role{font-size:10px;color:#9ca3af;margin-bottom:3px;font-weight:600}
-  .sig-name{font-size:13px;font-weight:800;color:#1e1b4b;margin-bottom:4px}
-  .sig-sub{font-size:10px;color:#64748b;margin-bottom:0}
-  .sig-space{flex:1;min-height:52px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px}
-  .sig-line-wrap{border-top:1.5px solid #94a3b8;padding-top:6px;margin-top:0}
-  .sig-line-lbl{font-size:10px;color:#64748b;font-weight:600}
-  .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 36px;display:flex;align-items:center;justify-content:space-between;margin-top:28px}
-  .footer-l{font-size:9.5px;color:#9ca3af;line-height:1.9}
-  .footer-r{font-size:9.5px;color:#9ca3af;text-align:${ar?'left':'right'};line-height:1.9}
-  .footer-badge{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;padding:3px 10px;border-radius:5px;font-size:9.5px;font-weight:700;margin-top:4px}
-  .bot-band{height:5px;background:linear-gradient(90deg,#8b5cf6,#6366f1,#4f46e5,#1e1b4b)}
-  .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-42deg);font-size:90px;font-weight:900;color:rgba(99,102,241,.035);white-space:nowrap;pointer-events:none;z-index:0;letter-spacing:6px;user-select:none}
-  @media print{
-    body{background:white}
-    .toolbar,.no-print{display:none!important}
-    .page{box-shadow:none;margin:0;border-radius:0;max-width:100%}
-    @page{margin:8mm;size:A4 portrait}
-    body{print-color-adjust:exact;-webkit-print-color-adjust:exact}
-    thead{display:table-header-group}
-  }
+@font-face{font-family:'F';src:url('${fontUrl("Light")}') format('opentype');font-weight:300}
+@font-face{font-family:'F';src:url('${fontUrl("Regular")}') format('opentype');font-weight:400}
+@font-face{font-family:'F';src:url('${fontUrl("Medium")}') format('opentype');font-weight:500}
+@font-face{font-family:'F';src:url('${fontUrl("Bold")}') format('opentype');font-weight:700}
+@font-face{font-family:'F';src:url('${fontUrl("Black")}') format('opentype');font-weight:900}
+
+/* ══════════════════════════════════════════════════════════════
+   RESET + BASE
+══════════════════════════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
+body{font-family:'F','Cairo',Arial,sans-serif;font-size:11px;direction:${ar?'rtl':'ltr'};background:#c8cdd6;color:#1a1a1a}
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPLATE 1 — GOVERNMENT (حكومي رسمي)
+   Navy + Gold — هيكل حكومي رسمي
+══════════════════════════════════════════════════════════════ */
+[data-tpl="gov"]{
+  --P:#0c2340;--P2:#0a1c30;--PA:#c8971f;--PB:#e8b830;
+  --TX:#0c1a28;--TM:#4a6278;--BD:#b0c4d6;--BG:#f2f6fa;--BW:#fff;
+  --OK:#145a32;--WR:#7d6608;--ER:#7b241c;--IN:#154360;
+}
+/* ── Gov: decorative stripe + header ── */
+[data-tpl="gov"] .doc-hdr{border-bottom:3px solid var(--PA)}
+[data-tpl="gov"] .hdr-band{height:6px;background:repeating-linear-gradient(90deg,var(--PA) 0,var(--PA) 30px,var(--P) 30px,var(--P) 60px)}
+[data-tpl="gov"] .hdr-main{background:var(--P);padding:18px 14mm;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px}
+[data-tpl="gov"] .hdr-logo-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+[data-tpl="gov"] .hdr-logo-img{width:64px;height:64px;border-radius:50%;object-fit:contain;border:2px solid var(--PA);padding:4px;background:rgba(255,255,255,.08)}
+[data-tpl="gov"] .hdr-logo-ph{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.12);border:2px solid var(--PA);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:var(--PA)}
+[data-tpl="gov"] .hdr-center{text-align:center}
+[data-tpl="gov"] .hdr-org{font-size:18px;font-weight:900;color:#fff;letter-spacing:.3px;line-height:1.2}
+[data-tpl="gov"] .hdr-sub{font-size:9px;color:rgba(255,255,255,.45);margin-top:2px}
+[data-tpl="gov"] .hdr-title-wrap{margin-top:10px;background:rgba(200,151,31,.15);border:1px solid rgba(200,151,31,.4);border-radius:3px;padding:6px 18px;display:inline-block}
+[data-tpl="gov"] .hdr-rpt-type{font-size:13px;font-weight:900;color:var(--PB);letter-spacing:.5px}
+[data-tpl="gov"] .hdr-meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:90px}
+[data-tpl="gov"] .hdr-qr{width:70px;height:70px;background:#fff;padding:3px;display:block;border:1px solid var(--PA)}
+[data-tpl="gov"] .hdr-ref{font-size:8px;color:rgba(255,255,255,.35);letter-spacing:.4px;text-align:center;margin-top:3px}
+[data-tpl="gov"] .hdr-date{font-size:8px;color:rgba(255,255,255,.35);text-align:center}
+[data-tpl="gov"] .hdr-rule{height:1px;background:linear-gradient(90deg,transparent,var(--PA) 30%,var(--PA) 70%,transparent);margin:0 14mm}
+[data-tpl="gov"] .hdr-rule2{height:2px;background:var(--P);margin-top:1px}
+/* Gov: meta strip */
+[data-tpl="gov"] .meta-strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:2px solid var(--P)}
+[data-tpl="gov"] .ms-cell{padding:8px 12px;border-inline-end:1px solid var(--BD);background:var(--BG)}
+[data-tpl="gov"] .ms-cell:last-child{border-inline-end:none}
+[data-tpl="gov"] .ms-cell:first-child{background:var(--P)}
+[data-tpl="gov"] .ms-cell:first-child .ms-lbl,[data-tpl="gov"] .ms-cell:first-child .ms-val{color:#fff}
+[data-tpl="gov"] .ms-lbl{font-size:7.5px;font-weight:700;color:var(--TM);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px}
+[data-tpl="gov"] .ms-val{font-size:11.5px;font-weight:800;color:var(--TX)}
+/* Gov: KPI */
+[data-tpl="gov"] .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--BD);border-bottom:none;margin-bottom:16px}
+[data-tpl="gov"] .kpi-card{padding:11px 14px;border-bottom:1px solid var(--BD);border-inline-end:1px solid var(--BD);background:var(--BW)}
+[data-tpl="gov"] .kpi-card:last-child{border-inline-end:none}
+[data-tpl="gov"] .kpi-card::before{content:'';display:block;height:2px;background:var(--PA);margin-bottom:8px;width:24px}
+[data-tpl="gov"] .kpi-n{font-size:22px;font-weight:900;color:var(--P)}
+[data-tpl="gov"] .kpi-l{font-size:8px;color:var(--TM);margin-top:3px}
+/* Gov: table */
+[data-tpl="gov"] .tbl-out{border:2px solid var(--P)}
+[data-tpl="gov"] .dt th{padding:9px 12px;text-align:${ar?'right':'left'};font-size:9.5px;font-weight:700;color:#fff;letter-spacing:.3px;background:var(--P)}
+[data-tpl="gov"] .dt td{padding:7px 12px;font-size:10px;color:var(--TX);border-bottom:1px solid var(--BD)}
+[data-tpl="gov"] .dt tbody tr:nth-child(even){background:var(--BG)}
+[data-tpl="gov"] .dt tfoot td{background:var(--P);color:var(--PA);font-weight:900;border-top:2px solid var(--PA)}
+/* Gov: signature */
+[data-tpl="gov"] .sig-zone{border-top:2px solid var(--PA);padding:14px 14mm}
+[data-tpl="gov"] .sig-hd{font-size:8px;font-weight:700;color:var(--PA);text-transform:uppercase;letter-spacing:1.5px;text-align:center;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+[data-tpl="gov"] .sig-hd::before,[data-tpl="gov"] .sig-hd::after{content:'';flex:1;height:1px;background:var(--PA)}
+[data-tpl="gov"] .sig-col{text-align:center;padding:6px 12px;border-inline-end:1px solid var(--BD)}
+[data-tpl="gov"] .sig-col:last-child{border-inline-end:none}
+[data-tpl="gov"] .sig-role{display:inline-block;font-size:8px;font-weight:700;color:#fff;background:var(--P);padding:3px 12px;margin-bottom:8px}
+[data-tpl="gov"] .sig-nm{font-size:12px;font-weight:900;color:var(--TX);margin-bottom:2px}
+[data-tpl="gov"] .sig-dp{font-size:8.5px;color:var(--TM);margin-bottom:14px}
+[data-tpl="gov"] .sig-img{height:38px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+[data-tpl="gov"] .sig-ln{border-top:1px solid #000;margin:4px 8% 0}
+[data-tpl="gov"] .stamp-box{width:64px;height:64px;border:2px solid var(--PA);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:6px auto 0;font-size:7.5px;color:var(--PA);font-weight:700}
+/* Gov: footer */
+[data-tpl="gov"] .doc-ftr{background:var(--P2);border-top:3px solid var(--PA);padding:10px 14mm;display:flex;align-items:center;justify-content:space-between;gap:12px}
+[data-tpl="gov"] .ftr-co{font-size:11px;font-weight:700;color:#fff;margin-bottom:3px}
+[data-tpl="gov"] .ftr-contacts{display:flex;gap:14px;flex-wrap:wrap}
+[data-tpl="gov"] .ftr-ci{font-size:8.5px;color:rgba(255,255,255,.4)}
+[data-tpl="gov"] .ftr-conf{font-size:7.5px;color:rgba(255,255,255,.22);margin-top:4px}
+[data-tpl="gov"] .ftr-pgn{font-size:9px;color:rgba(255,255,255,.5);font-weight:700}
+[data-tpl="gov"] .ftr-rno{font-size:7.5px;color:rgba(255,255,255,.22);letter-spacing:.4px;margin-top:2px}
+[data-tpl="gov"] .ftr-stripe{height:4px;background:repeating-linear-gradient(90deg,var(--PA) 0,var(--PA) 30px,var(--P2) 30px,var(--P2) 60px)}
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPLATE 2 — CORPORATE (شركات احترافي)
+   Teal/Steel Blue — ERP Enterprise Style
+══════════════════════════════════════════════════════════════ */
+[data-tpl="corp"]{
+  --P:#0d4b6e;--P2:#0a3d5c;--PA:#1a8fc1;--PB:#5bc0eb;
+  --TX:#0d1b26;--TM:#5a7080;--BD:#c8dce8;--BG:#f0f6f9;--BW:#fff;
+  --OK:#0e6655;--WR:#7e5109;--ER:#7b241c;--IN:#1a5276;
+}
+/* ── Corp: header ── */
+[data-tpl="corp"] .doc-hdr{border-bottom:none}
+[data-tpl="corp"] .hdr-band{height:4px;background:linear-gradient(90deg,#0d4b6e,#1a8fc1,#0d4b6e)}
+[data-tpl="corp"] .hdr-main{background:linear-gradient(135deg,#0d4b6e 0%,#0a3d5c 60%,#083348 100%);padding:16px 14mm;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px}
+[data-tpl="corp"] .hdr-logo-wrap{display:flex;align-items:center;gap:12px}
+[data-tpl="corp"] .hdr-logo-img{width:52px;height:52px;border-radius:10px;object-fit:contain;background:rgba(255,255,255,.08);border:1px solid rgba(91,192,235,.3);padding:4px}
+[data-tpl="corp"] .hdr-logo-ph{width:52px;height:52px;border-radius:10px;background:rgba(91,192,235,.15);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#5bc0eb}
+[data-tpl="corp"] .hdr-org{font-size:16px;font-weight:900;color:#fff;line-height:1.1}
+[data-tpl="corp"] .hdr-sub{font-size:8.5px;color:rgba(91,192,235,.6);margin-top:3px}
+[data-tpl="corp"] .hdr-center{text-align:center}
+[data-tpl="corp"] .hdr-rpt-type{font-size:20px;font-weight:900;color:#fff;line-height:1.1}
+[data-tpl="corp"] .hdr-title-wrap{margin-top:5px}
+[data-tpl="corp"] .hdr-rng{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.3px}
+[data-tpl="corp"] .hdr-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+[data-tpl="corp"] .hdr-qr{width:64px;height:64px;background:#fff;padding:3px;display:block;border-radius:6px}
+[data-tpl="corp"] .hdr-ref{font-size:7.5px;color:rgba(255,255,255,.3);letter-spacing:.4px;margin-top:3px;text-align:center}
+[data-tpl="corp"] .hdr-date{font-size:8px;color:rgba(91,192,235,.5);text-align:center}
+[data-tpl="corp"] .hdr-rule{height:3px;background:linear-gradient(90deg,#1a8fc1,#5bc0eb,#1a8fc1)}
+[data-tpl="corp"] .hdr-rule2{display:none}
+/* Corp: meta strip */
+[data-tpl="corp"] .meta-strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--BD);background:linear-gradient(135deg,#e8f4fb,#f0f6f9)}
+[data-tpl="corp"] .ms-cell{padding:9px 14px;border-inline-end:1px solid var(--BD)}
+[data-tpl="corp"] .ms-cell:last-child{border-inline-end:none}
+[data-tpl="corp"] .ms-lbl{font-size:7.5px;font-weight:700;color:var(--PA);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+[data-tpl="corp"] .ms-val{font-size:11.5px;font-weight:800;color:var(--TX)}
+/* Corp: KPI */
+[data-tpl="corp"] .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+[data-tpl="corp"] .kpi-card{padding:12px 14px;background:var(--BW);border:1px solid var(--BD);border-top:3px solid var(--PA);border-radius:6px;position:relative}
+[data-tpl="corp"] .kpi-n{font-size:24px;font-weight:900;color:var(--P)}
+[data-tpl="corp"] .kpi-l{font-size:8px;color:var(--TM);margin-top:3px}
+/* Corp: table */
+[data-tpl="corp"] .tbl-out{border:1px solid var(--BD);border-radius:6px;overflow:hidden}
+[data-tpl="corp"] .dt th{padding:10px 12px;text-align:${ar?'right':'left'};font-size:9.5px;font-weight:700;color:#fff;background:linear-gradient(90deg,var(--P),var(--PA))}
+[data-tpl="corp"] .dt td{padding:7.5px 12px;font-size:10px;color:var(--TX);border-bottom:1px solid var(--BD)}
+[data-tpl="corp"] .dt tbody tr:nth-child(even){background:var(--BG)}
+[data-tpl="corp"] .dt tfoot td{background:linear-gradient(90deg,var(--P),var(--PA));color:#fff;font-weight:900;border-top:2px solid var(--P)}
+/* Corp: signature */
+[data-tpl="corp"] .sig-zone{border-top:1px solid var(--BD);padding:14px 14mm;background:var(--BG)}
+[data-tpl="corp"] .sig-hd{font-size:8px;font-weight:700;color:var(--P);text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+[data-tpl="corp"] .sig-hd::before,[data-tpl="corp"] .sig-hd::after{content:'';flex:1;height:1px;background:var(--BD)}
+[data-tpl="corp"] .sig-col{text-align:center;padding:6px 12px;border-inline-end:1px solid var(--BD)}
+[data-tpl="corp"] .sig-col:last-child{border-inline-end:none}
+[data-tpl="corp"] .sig-role{display:inline-block;font-size:8px;font-weight:700;color:#fff;background:var(--PA);padding:3px 12px;border-radius:4px;margin-bottom:8px}
+[data-tpl="corp"] .sig-nm{font-size:12px;font-weight:700;color:var(--TX);margin-bottom:2px}
+[data-tpl="corp"] .sig-dp{font-size:8.5px;color:var(--TM);margin-bottom:14px}
+[data-tpl="corp"] .sig-img{height:38px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+[data-tpl="corp"] .sig-ln{border-top:1px solid var(--BD);margin:4px 8% 0}
+[data-tpl="corp"] .stamp-box{width:60px;height:60px;border:1.5px dashed var(--PA);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:6px auto 0;font-size:7.5px;color:var(--PA)}
+/* Corp: footer */
+[data-tpl="corp"] .doc-ftr{background:var(--P);border-top:none;padding:10px 14mm;display:flex;align-items:center;justify-content:space-between;gap:12px}
+[data-tpl="corp"] .ftr-co{font-size:11px;font-weight:700;color:#fff;margin-bottom:3px}
+[data-tpl="corp"] .ftr-contacts{display:flex;gap:14px;flex-wrap:wrap}
+[data-tpl="corp"] .ftr-ci{font-size:8.5px;color:rgba(255,255,255,.4)}
+[data-tpl="corp"] .ftr-conf{font-size:7.5px;color:rgba(255,255,255,.22);margin-top:4px}
+[data-tpl="corp"] .ftr-pgn{font-size:9px;color:rgba(91,192,235,.7);font-weight:700}
+[data-tpl="corp"] .ftr-rno{font-size:7.5px;color:rgba(255,255,255,.22);letter-spacing:.4px;margin-top:2px}
+[data-tpl="corp"] .ftr-stripe{height:4px;background:linear-gradient(90deg,#1a8fc1,#5bc0eb,#1a8fc1)}
+
+/* ══════════════════════════════════════════════════════════════
+   TEMPLATE 3 — EXECUTIVE (تنفيذي فاخر)
+   Charcoal + Gold — Premium Consulting Style
+══════════════════════════════════════════════════════════════ */
+[data-tpl="exec"]{
+  --P:#1a1a2e;--P2:#16213e;--PA:#c9a84c;--PB:#e8c76e;
+  --TX:#1a1a1a;--TM:#666;--BD:#dcd8cc;--BG:#fafaf7;--BW:#fff;
+  --OK:#1a5c38;--WR:#7c5e08;--ER:#8b1a1a;--IN:#1a3a5c;
+}
+/* ── Exec: header ── */
+[data-tpl="exec"] .doc-hdr{border-bottom:1px solid #dcd8cc;background:#fff;position:relative}
+[data-tpl="exec"] .doc-hdr::before{content:'';position:absolute;top:0;${ar?'right':'left'}:0;width:5px;height:100%;background:linear-gradient(180deg,var(--PA),var(--PB))}
+[data-tpl="exec"] .hdr-band{display:none}
+[data-tpl="exec"] .hdr-main{padding:18px 18mm;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px}
+[data-tpl="exec"] .hdr-logo-wrap{display:flex;align-items:center;gap:12px}
+[data-tpl="exec"] .hdr-logo-img{width:56px;height:56px;border-radius:8px;object-fit:contain;border:1px solid #dcd8cc;padding:4px;background:#fafaf7}
+[data-tpl="exec"] .hdr-logo-ph{width:56px;height:56px;border-radius:8px;background:var(--P);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:var(--PA)}
+[data-tpl="exec"] .hdr-org{font-size:18px;font-weight:900;color:var(--P);line-height:1.1}
+[data-tpl="exec"] .hdr-sub{font-size:8.5px;color:var(--TM);margin-top:3px}
+[data-tpl="exec"] .hdr-center{text-align:center;padding:0 20px}
+[data-tpl="exec"] .hdr-rpt-type{font-size:15px;font-weight:900;color:var(--P);letter-spacing:.3px;line-height:1.2}
+[data-tpl="exec"] .hdr-title-wrap{margin-top:5px}
+[data-tpl="exec"] .hdr-rng{font-size:9px;color:var(--TM);letter-spacing:.3px}
+[data-tpl="exec"] .hdr-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:90px}
+[data-tpl="exec"] .hdr-qr{width:64px;height:64px;background:var(--BG);padding:3px;display:block;border:1px solid var(--BD)}
+[data-tpl="exec"] .hdr-ref{font-size:7.5px;color:var(--TM);letter-spacing:.4px;margin-top:3px;text-align:center}
+[data-tpl="exec"] .hdr-date{font-size:8px;color:var(--TM);text-align:center}
+[data-tpl="exec"] .hdr-rule{height:1px;background:linear-gradient(90deg,var(--PA),#dcd8cc,var(--PA));margin:0}
+[data-tpl="exec"] .hdr-rule2{display:none}
+/* Exec: meta strip */
+[data-tpl="exec"] .meta-strip{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--BD)}
+[data-tpl="exec"] .ms-cell{padding:10px 16px;border-inline-end:1px solid var(--BD);background:var(--BW)}
+[data-tpl="exec"] .ms-cell:last-child{border-inline-end:none}
+[data-tpl="exec"] .ms-cell:first-child{background:var(--P)}
+[data-tpl="exec"] .ms-cell:first-child .ms-lbl{color:var(--PA)}
+[data-tpl="exec"] .ms-cell:first-child .ms-val{color:#fff}
+[data-tpl="exec"] .ms-lbl{font-size:7.5px;font-weight:700;color:var(--PA);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+[data-tpl="exec"] .ms-val{font-size:11.5px;font-weight:800;color:var(--TX)}
+/* Exec: KPI */
+[data-tpl="exec"] .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+[data-tpl="exec"] .kpi-card{padding:14px 16px;background:var(--BW);border:1px solid var(--BD);border-bottom:3px solid var(--PA);position:relative}
+[data-tpl="exec"] .kpi-n{font-size:26px;font-weight:900;color:var(--P)}
+[data-tpl="exec"] .kpi-l{font-size:8px;color:var(--TM);margin-top:4px;letter-spacing:.3px}
+/* Exec: table */
+[data-tpl="exec"] .tbl-out{border-top:2px solid var(--P);border-bottom:1px solid var(--BD)}
+[data-tpl="exec"] .dt th{padding:11px 14px;text-align:${ar?'right':'left'};font-size:9.5px;font-weight:700;color:#fff;background:var(--P);letter-spacing:.3px}
+[data-tpl="exec"] .dt td{padding:8.5px 14px;font-size:10.5px;color:var(--TX);border-bottom:1px solid var(--BD)}
+[data-tpl="exec"] .dt tbody tr:nth-child(even){background:var(--BG)}
+[data-tpl="exec"] .dt tbody tr:last-child td{border-bottom:none}
+[data-tpl="exec"] .dt tfoot td{background:var(--P);color:var(--PA);font-weight:900;border-top:2px solid var(--PA)}
+/* Exec: signature */
+[data-tpl="exec"] .sig-zone{border-top:1px solid var(--PA);padding:16px 18mm;background:var(--BG)}
+[data-tpl="exec"] .sig-hd{font-size:8px;font-weight:700;color:var(--PA);text-transform:uppercase;letter-spacing:2px;text-align:center;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+[data-tpl="exec"] .sig-hd::before,[data-tpl="exec"] .sig-hd::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--PA))}
+[data-tpl="exec"] .sig-col{text-align:center;padding:6px 14px;border-inline-end:1px solid var(--BD)}
+[data-tpl="exec"] .sig-col:last-child{border-inline-end:none}
+[data-tpl="exec"] .sig-role{display:inline-block;font-size:8px;font-weight:700;color:var(--PA);border:1px solid var(--PA);padding:3px 12px;margin-bottom:8px;letter-spacing:.5px}
+[data-tpl="exec"] .sig-nm{font-size:13px;font-weight:900;color:var(--P);margin-bottom:2px}
+[data-tpl="exec"] .sig-dp{font-size:8.5px;color:var(--TM);margin-bottom:14px}
+[data-tpl="exec"] .sig-img{height:38px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+[data-tpl="exec"] .sig-ln{border-top:1px solid var(--PA);margin:4px 8% 0}
+[data-tpl="exec"] .stamp-box{width:60px;height:60px;border:1px solid var(--PA);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:6px auto 0;font-size:7.5px;color:var(--PA)}
+/* Exec: footer */
+[data-tpl="exec"] .doc-ftr{background:var(--P);border-top:2px solid var(--PA);padding:10px 18mm;display:flex;align-items:center;justify-content:space-between;gap:12px}
+[data-tpl="exec"] .ftr-co{font-size:11px;font-weight:700;color:#fff;margin-bottom:3px}
+[data-tpl="exec"] .ftr-contacts{display:flex;gap:14px;flex-wrap:wrap}
+[data-tpl="exec"] .ftr-ci{font-size:8.5px;color:rgba(255,255,255,.4)}
+[data-tpl="exec"] .ftr-conf{font-size:7.5px;color:rgba(255,255,255,.22);margin-top:4px}
+[data-tpl="exec"] .ftr-pgn{font-size:9px;color:var(--PA);font-weight:700}
+[data-tpl="exec"] .ftr-rno{font-size:7.5px;color:rgba(255,255,255,.22);letter-spacing:.4px;margin-top:2px}
+[data-tpl="exec"] .ftr-stripe{height:3px;background:linear-gradient(90deg,var(--PA),var(--PB),var(--PA))}
+
+/* ══════════════════════════════════════════════════════════════
+   STATUS BADGES (all templates)
+══════════════════════════════════════════════════════════════ */
+.bs{display:inline-flex;align-items:center;padding:2px 8px;font-size:9px;font-weight:700;white-space:nowrap}
+.bs-present,.bs-approved{background:#d4efdf;color:var(--OK)}
+.bs-late,.bs-pending{background:#fef9e7;color:var(--WR)}
+.bs-absent,.bs-rejected{background:#fce4e1;color:var(--ER)}
+.bs-leave{background:#d6eaf8;color:var(--IN)}
+
+/* ══════════════════════════════════════════════════════════════
+   SHARED: SPACER + DOC SHELL
+══════════════════════════════════════════════════════════════ */
+.pg-spacer{height:0}
+.doc{width:210mm;margin:24px auto 48px;background:#fff;border-collapse:collapse;box-shadow:0 6px 48px rgba(0,0,0,.14)}
+.doc>thead,.doc>tfoot,.doc>tbody{display:table-row-group}
+.doc>thead>tr>td,.doc>tfoot>tr>td,.doc>tbody>tr>td{padding:0;vertical-align:top}
+.doc-body{padding:14px 14mm 4px}
+
+/* ══════════════════════════════════════════════════════════════
+   TOOLBAR
+══════════════════════════════════════════════════════════════ */
+.toolbar{position:sticky;top:0;z-index:999;background:#fff;border-bottom:1px solid #dde1e7;padding:9px 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:0 2px 12px rgba(0,0,0,.08);flex-wrap:wrap}
+.tb-g{display:flex;align-items:center;gap:6px}
+.tb-lbl{font-size:8.5px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;padding:0 4px}
+.tb-btn{padding:5px 12px;border-radius:5px;border:1.5px solid #dde1e7;background:#fff;font-size:10.5px;font-weight:600;color:#555;cursor:pointer;font-family:inherit;transition:.1s;white-space:nowrap}
+.tb-btn.on,.tb-btn:hover{border-color:#0d4b6e;background:#e8f4fb;color:#0d4b6e}
+.tb-btn.primary{background:#0d4b6e;color:#fff;border-color:#0d4b6e}
+.tb-sep{width:1px;height:22px;background:#dde1e7;margin:0 4px}
+.tb-ref{font-size:8.5px;color:#aaa;background:#f8f9fa;border:1px solid #dde1e7;padding:4px 10px;border-radius:5px;letter-spacing:.3px}
+
+/* ══════════════════════════════════════════════════════════════
+   WATERMARK
+══════════════════════════════════════════════════════════════ */
+.wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)rotate(-35deg);font-size:72px;font-weight:900;color:rgba(0,0,0,.015);white-space:nowrap;pointer-events:none;z-index:0;user-select:none;letter-spacing:8px}
+
+/* ══════════════════════════════════════════════════════════════
+   PRINT
+══════════════════════════════════════════════════════════════ */
+@media print{
+  body{background:#fff!important}
+  .toolbar,.wm,.no-print{display:none!important}
+  .doc{box-shadow:none!important;margin:0!important;width:100%!important}
+  .doc>thead{display:table-header-group!important}
+  .doc>tfoot{display:table-footer-group!important}
+  .doc>tbody{display:table-row-group!important}
+  .dt thead{display:table-header-group}
+  .dt tbody tr,.sig-zone{break-inside:avoid;page-break-inside:avoid}
+  tr{page-break-inside:avoid;break-inside:avoid}
+  .doc-hdr,.doc-ftr,.dt th,.dt tfoot td,.meta-strip,.ms-cell:first-child,
+  .kpi-card,.sig-role,.bs-present,.bs-absent,.bs-late,.bs-leave,.bs-approved,.bs-pending,.bs-rejected,
+  .hdr-band,.hdr-rule,.hdr-rule2,.ftr-stripe,.hdr-title-wrap
+  {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  .pg-n::after{content:counter(page)}
+  @page{size:A4 portrait;margin:0}
+  @page{@bottom-center{content:counter(page)" / "counter(pages);font-family:'Cairo',sans-serif;font-size:8pt;color:#999}}
+}
 </style>
+<script>
+(function(){
+  window.setTpl=function(n){
+    document.documentElement.setAttribute('data-tpl',n);
+    document.querySelectorAll('.tb-btn[data-tpl]').forEach(function(b){b.classList.toggle('on',b.dataset.tpl===n)});
+    window.calcSpacer&&window.calcSpacer();
+  };
+  window.setOrient=function(o){
+    document.documentElement.setAttribute('data-orient',o);
+    document.querySelectorAll('.tb-btn[data-orient]').forEach(function(b){b.classList.toggle('on',b.dataset.orient===o)});
+    var s=document.getElementById('_pgsize');
+    if(!s){s=document.createElement('style');s.id='_pgsize';document.head.appendChild(s);}
+    s.textContent='@media print{@page{size:A4 '+o+';margin:0}}';
+    window.calcSpacer&&window.calcSpacer();
+  };
+  function mmPx(mm){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;height:'+mm+'mm;top:0;left:0;visibility:hidden;pointer-events:none';
+    document.body.appendChild(d);var h=d.getBoundingClientRect().height;document.body.removeChild(d);return h;
+  }
+  window.calcSpacer=function(){
+    var sp=document.querySelector('.pg-spacer');
+    var sg=document.querySelector('.sig-zone');
+    if(!sp||!sg)return;
+    var orient=(document.documentElement.getAttribute('data-orient')||'portrait');
+    var pageH=(orient==='landscape'?210:297)*mmPx(1);
+    var hdrH=(document.querySelector('.doc-hdr')||{offsetHeight:0}).offsetHeight;
+    var ftrH=(document.querySelector('.doc-ftr')||{offsetHeight:0}).offsetHeight+
+             (document.querySelector('.ftr-stripe')||{offsetHeight:0}).offsetHeight;
+    var usable=pageH-hdrH-ftrH;
+    if(usable<=0)return;
+    var sgH=sg.offsetHeight;
+    sp.style.height='0';
+    var shell=document.querySelector('.doc');
+    var total=shell?shell.scrollHeight:document.body.scrollHeight;
+    var last=total%usable;
+    if(last===0)last=usable;
+    var need=usable-last-sgH;
+    if(need<0)need+=usable;
+    if(need<0)need=0;
+    sp.style.height=need+'px';
+  };
+  function init(){
+    window.setOrient('portrait');
+    if(document.readyState==='complete')window.calcSpacer();
+    else window.addEventListener('load',window.calcSpacer);
+    window.addEventListener('beforeprint',window.calcSpacer);
+  }
+  init();
+})();
+</script>
 </head>
 <body>
 
+<!-- ═══ TOOLBAR ═══ -->
 <div class="toolbar no-print">
-  <div class="tbrand"><div class="tbrand-icon">📊</div>${ar?'معاينة قبل الطباعة':'Print Preview'}</div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <span class="rpt-no-badge">${rptNo}</span>
-    <button class="tbtn-print" onclick="window.print()">🖨️ ${ar?'طباعة':'Print'}</button>
-    <button class="tbtn-close" onclick="window.close()">${ar?'إغلاق':'Close'}</button>
+  <div class="tb-g">
+    <span class="tb-lbl">${ar?'النموذج':'Template'}</span>
+    <button class="tb-btn" data-tpl="gov"  onclick="setTpl('gov')">${ar?'حكومي':'Government'}</button>
+    <button class="tb-btn on" data-tpl="corp" onclick="setTpl('corp')">${ar?'شركات':'Corporate'}</button>
+    <button class="tb-btn" data-tpl="exec" onclick="setTpl('exec')">${ar?'تنفيذي':'Executive'}</button>
+  </div>
+  <div class="tb-g">
+    <span class="tb-lbl">${ar?'الحجم':'Size'}</span>
+    <button class="tb-btn on" data-orient="portrait"  onclick="setOrient('portrait')">${ar?'عمودي':'Portrait'}</button>
+    <button class="tb-btn"    data-orient="landscape" onclick="setOrient('landscape')">${ar?'أفقي':'Landscape'}</button>
+  </div>
+  <div class="tb-g">
+    <span class="tb-ref">${rptNo}</span>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="window.close()">${ar?'إغلاق':'Close'}</button>
+    <button class="tb-btn primary" onclick="window.print()">🖨 ${ar?'طباعة':'Print'}</button>
   </div>
 </div>
 
-<div class="wm">${company.name||'ATTENDIFY'}</div>
+<div class="wm">${(company.name||'ATTENDIFY').toUpperCase()}</div>
 
-<div class="page">
-<div class="top-band"></div>
+<!-- ═══ DOCUMENT SHELL ═══ -->
+<table class="doc">
 
-<!-- HEADER -->
-<div class="hdr">
-  <div class="co-block">
-    ${logoHTML}
-    <div>
-      <div class="co-name">${_esc(company.name||'اسم الشركة')}</div>
-      ${company.nameEn?`<div class="co-name-en">${_esc(company.nameEn)}</div>`:''}
-      <div class="co-contact">
-        ${company.address?`<span>📍 ${_esc(company.address)}</span>`:''}
-        ${company.phone?`<span>📞 ${_esc(company.phone)}</span>`:''}
-        ${company.email?`<span>✉️ ${_esc(company.email)}</span>`:''}
+<!-- ─── HEADER (يتكرر أعلى كل صفحة) ─── -->
+<thead><tr><td>
+<div class="doc-hdr">
+  <div class="hdr-band"></div>
+  <div class="hdr-main">
+
+    <!-- Logo + Company -->
+    <div class="hdr-logo-wrap">
+      ${company.logo
+        ? `<img src="${company.logo}" class="hdr-logo-img" alt="">`
+        : `<div class="hdr-logo-ph">${(company.name||'A').charAt(0)}</div>`}
+      <div>
+        <div class="hdr-org">${_esc(company.name||'')}</div>
+        ${company.nameEn ? `<div class="hdr-sub">${_esc(company.nameEn)}</div>` : ''}
+        <div class="hdr-sub" style="margin-top:2px">
+          ${[company.phone&&`📞 ${_esc(company.phone)}`,company.email&&`✉ ${_esc(company.email)}`].filter(Boolean).join(' · ')}
+        </div>
       </div>
     </div>
-  </div>
-  <div class="hdr-meta">
-    <div class="hdr-rpt-title">${t('reports.'+type)}</div>
-    <div class="hdr-rpt-no">${rptNo}</div>
-    <div class="hdr-date">📅 ${ar?'تاريخ الطباعة:':'Print Date:'} ${printDateFull}<br>🕐 ${ar?'الوقت:':'Time:'} ${printTime}</div>
-  </div>
-</div>
 
-<!-- INFO BAND -->
-<div class="info-band">
-  <div class="ib-item">
-    <div class="ib-icon">📋</div>
-    <div><div class="ib-label">${ar?'نوع التقرير':'Report Type'}</div><div class="ib-value">${t('reports.'+type)}</div></div>
-  </div>
-  <div class="ib-item">
-    <div class="ib-icon">📅</div>
-    <div><div class="ib-label">${ar?'الفترة الزمنية':'Period'}</div><div class="ib-value">${from} — ${to}</div></div>
-  </div>
-  <div class="ib-item">
-    <div class="ib-icon">📊</div>
-    <div><div class="ib-label">${ar?'إجمالي السجلات':'Total Records'}</div><div class="ib-value">${rows.length}</div></div>
-  </div>
-  <div class="ib-item">
-    <div class="ib-icon">👤</div>
-    <div><div class="ib-label">${ar?'أعدّه':'Prepared By'}</div><div class="ib-value">${_esc(adminName)}</div></div>
-  </div>
-</div>
-
-<!-- CONTENT -->
-<div class="content">
-
-${type!=='summary'?`
-<div class="kpi-grid">
-  <div class="kpi-box" style="--kc:#6366f1"><div class="kpi-val">${activeCount}</div><div class="kpi-lbl">${ar?'الموظفون النشطون':'Active Employees'}</div></div>
-  <div class="kpi-box" style="--kc:#10b981"><div class="kpi-val">${rows.length}</div><div class="kpi-lbl">${ar?'عدد السجلات':'Records'}</div></div>
-  <div class="kpi-box" style="--kc:#8b5cf6"><div class="kpi-val">${sStats.attendanceRate}%</div><div class="kpi-lbl">${ar?'معدل الحضور اليوم':'Attendance Rate Today'}</div></div>
-  <div class="kpi-box" style="--kc:#f59e0b"><div class="kpi-val">${new Date().toLocaleDateString(ar?'ar-EG':'en-US',{month:'short',year:'numeric'})}</div><div class="kpi-lbl">${ar?'الشهر الحالي':'Current Month'}</div></div>
-</div>`:''}
-
-<div class="tbl-wrap">
-  <table>
-    <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-    <tbody>
-      ${rows.map(row=>`<tr>${row.map(cell=>{
-        const sv=String(cell);
-        const cls=statusMap2[sv];
-        return `<td>${cls?`<span class="bs ${cls}">${sv}</span>`:sv}</td>`;
-      }).join('')}</tr>`).join('')}
-    </tbody>
-    ${footerRow?`<tfoot><tr class="tfoot-row">${footerRow.map(c=>`<td>${c}</td>`).join('')}</tr></tfoot>`:''}
-  </table>
-</div>
-
-<!-- SIGNATURES -->
-${(() => {
-  const savedSigs = DB.company.signatures || [];
-  // Build sig boxes: saved sigs first, then fallback to admin if none
-  const boxes = savedSigs.length ? savedSigs : [
-    { name: adminName, role: ar?'أعدّه':'Prepared By', title: adminEmail, signature: null }
-  ];
-  return `
-<div class="sig-section">
-  <div class="sig-hd">${ar?'ـ توقيعات الاعتماد ـ':'— AUTHORIZATION SIGNATURES —'}</div>
-  <div class="sig-grid" style="grid-template-columns:repeat(${Math.min(boxes.length,4)},1fr)">
-    ${boxes.map(s=>`
-    <div class="sig-box">
-      <div class="sig-role">${_esc(s.role||'')}</div>
-      <div class="sig-name">${_esc(s.name||'─────────────')}</div>
-      ${s.title?`<div class="sig-sub">${_esc(s.title)}</div>`:''}
-      <div class="sig-space">
-        ${s.signature?`<img src="${s.signature}" style="max-height:48px;max-width:130px;object-fit:contain">`:''}
+    <!-- Report Title -->
+    <div class="hdr-center">
+      <div class="hdr-rpt-type">${t('reports.'+type)}</div>
+      <div class="hdr-title-wrap">
+        <div class="hdr-rng">${from} — ${to}</div>
       </div>
-      <div class="sig-line-wrap"></div>
+    </div>
+
+    <!-- QR + Meta -->
+    <div class="hdr-meta">
+      <img class="hdr-qr" src="${qrUrl}" alt="QR" onerror="this.style.background='#f0f0f0'">
+      <div class="hdr-ref">${rptNo}</div>
+      <div class="hdr-date">${printDateFull}</div>
+      <div class="hdr-date">${printTime}</div>
+    </div>
+
+  </div>
+  <div class="hdr-rule"></div>
+  <div class="hdr-rule2"></div>
+</div>
+</td></tr></thead>
+
+<!-- ─── FOOTER (يتكرر أسفل كل صفحة) ─── -->
+<tfoot><tr><td>
+<div class="ftr-stripe"></div>
+<div class="doc-ftr">
+  <div>
+    <div class="ftr-co">${_esc(company.name||'Attendify Pro')}</div>
+    <div class="ftr-contacts">
+      ${company.address ? `<span class="ftr-ci">📍 ${_esc(company.address)}</span>` : ''}
+      ${company.phone   ? `<span class="ftr-ci">📞 ${_esc(company.phone)}</span>`   : ''}
+      ${company.email   ? `<span class="ftr-ci">✉ ${_esc(company.email)}</span>`    : ''}
+      ${company.website ? `<span class="ftr-ci">🌐 ${_esc(company.website)}</span>` : ''}
+    </div>
+    <div class="ftr-conf">© ${new Date().getFullYear()} ${_esc(company.name||'')} — ${ar?'وثيقة سرية للاستخدام الداخلي فقط':'Confidential — Internal Use Only'}</div>
+  </div>
+  <div style="text-align:${ar?'left':'right'}">
+    <div class="ftr-pgn">${ar?'صفحة':'Page'} <span class="pg-n"></span></div>
+    <div class="ftr-rno">${rptNo}</div>
+    <div class="ftr-rno">${ar?'أعدّه':'By'}: ${_esc(adminName)}</div>
+  </div>
+</div>
+</td></tr></tfoot>
+
+<!-- ─── BODY ─── -->
+<tbody><tr><td style="vertical-align:top">
+
+<!-- Meta Strip -->
+<div class="meta-strip">
+  <div class="ms-cell"><div class="ms-lbl">${ar?'نوع التقرير':'Report Type'}</div><div class="ms-val">${t('reports.'+type)}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${ar?'الفترة':'Period'}</div><div class="ms-val" style="font-size:10px">${from} — ${to}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${ar?'عدد السجلات':'Records'}</div><div class="ms-val">${rows.length}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${ar?'أعدّه':'Prepared By'}</div><div class="ms-val" style="font-size:10px">${_esc(adminName)}</div></div>
+</div>
+
+<div class="doc-body">
+
+  <!-- KPI Cards -->
+  ${type!=='summary'?`
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="kpi-n">${activeCount}</div><div class="kpi-l">${ar?'الموظفون النشطون':'Active Employees'}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${rows.length}</div><div class="kpi-l">${ar?'إجمالي السجلات':'Total Records'}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${sStats.attendanceRate}%</div><div class="kpi-l">${ar?'معدل الحضور':'Attendance Rate'}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${sStats.present}</div><div class="kpi-l">${ar?'حاضرون اليوم':'Present Today'}</div></div>
+  </div>`:''}
+
+  <!-- Data Table -->
+  <div class="tbl-out">
+    <table class="dt" style="width:100%;border-collapse:collapse">
+      <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${r.map(cell=>{const sv=String(cell);const cl=statusMap2[sv];return`<td>${cl?`<span class="bs ${cl}">${sv}</span>`:sv}</td>`}).join('')}</tr>`).join('')}</tbody>
+      ${footerRow?`<tfoot><tr>${footerRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>`:''}
+    </table>
+  </div>
+
+</div><!-- /doc-body -->
+
+<!-- Spacer: يدفع منطقة التوقيع لأسفل الصفحة الأخيرة -->
+<div class="pg-spacer"></div>
+
+<!-- Signature Zone (آخر صفحة فقط) -->
+<div class="sig-zone">
+  <div class="sig-hd">${ar?'توقيعات الاعتماد والمصادقة الرسمية':'OFFICIAL AUTHORIZATION & SIGNATURES'}</div>
+  <div style="display:grid;grid-template-columns:repeat(${Math.min(sigBoxes.length,4)},1fr)">
+    ${sigBoxes.map(s=>`
+    <div class="sig-col">
+      <div class="sig-role">${_esc(s.role||'')}</div>
+      <div class="sig-nm">${_esc(s.name||'───────────')}</div>
+      ${s.title?`<div class="sig-dp">${_esc(s.title)}</div>`:''}
+      <div class="sig-img">${s.signature?`<img src="${s.signature}" style="max-height:36px;max-width:110px;object-fit:contain" alt="">`:''}</div>
+      <hr class="sig-ln">
+      <div class="stamp-box">${ar?'الختم':'Stamp'}</div>
     </div>`).join('')}
   </div>
-</div>`;
-})()}
-
-</div><!-- /content -->
-
-<!-- FOOTER -->
-<div class="footer">
-  <div class="footer-l">
-    <div style="font-weight:700;color:#475569;margin-bottom:2px">${_esc(company.name||'Attendify Pro')}</div>
-    ${company.address?`<div>📍 ${_esc(company.address)}</div>`:''}
-    <div>📄 ${ar?'رقم التقرير:':'Report No:'} <strong style="color:#4f46e5">${rptNo}</strong></div>
-    <div style="margin-top:3px;font-size:9px;color:#cbd5e1">${ar?'هذا المستند سري ومخصص للاستخدام الداخلي فقط':'This document is confidential — for internal use only'}</div>
-  </div>
-  <div class="footer-r">
-    <div>🕐 ${printDateFull} — ${printTime}</div>
-    <div>👤 ${ar?'أعدّه:':'By:'} <strong>${_esc(adminName)}</strong></div>
-    <div><span class="footer-badge">📊 Attendify Pro</span></div>
-  </div>
 </div>
 
-<div class="bot-band"></div>
-</div><!-- /page -->
+</td></tr></tbody>
+</table>
 </body>
 </html>`;
 

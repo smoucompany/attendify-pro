@@ -33,106 +33,63 @@ const App = {
 
   // ─── INIT ────────────────────────────────────────────────
   async init() {
-    // ── استعادة البيانات من localStorage أولاً ──────────────
     DB.loadFromLocal();
     DB._wrapArrays();
 
-    // Load saved preferences
     this.state.theme = localStorage.getItem('app-theme') || 'light';
     this.state.lang  = localStorage.getItem('app-lang')  || 'ar';
-
-    // Load admin credentials — prefer attendify-db (always up-to-date), fall back to legacy key
-    try {
-      const legacy = localStorage.getItem('admin-credentials');
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        // Merge: attendify-db creds already loaded via DB.loadFromLocal(), only use legacy if DB has none
-        if (!DB.adminCredentials.email && parsed.email) {
-          Object.assign(DB.adminCredentials, parsed);
-        }
-        // Sync legacy key to attendify-db then delete it to avoid future conflicts
-        if (DB.adminCredentials.email) {
-          localStorage.removeItem('admin-credentials');
-          DB._saveToLocal(); // ensure attendify-db is up to date
-        }
-      }
-    } catch(e) {}
-
-    // Apply theme & language
     this._applyTheme();
-    initLanguage(); // from i18n.js
+    initLanguage();
 
-    // Apply saved favicon
     if (DB.company.favicon) {
       let favLink = document.querySelector("link[rel~='icon']");
       if (!favLink) { favLink = document.createElement('link'); favLink.rel = 'icon'; document.head.appendChild(favLink); }
       favLink.href = DB.company.favicon;
     }
-
-    // Restore saved color and font size
     const savedColor = localStorage.getItem('attendify-color');
     if (savedColor) document.documentElement.style.setProperty('--primary', savedColor);
     const savedFont = localStorage.getItem('attendify-font-size');
     if (savedFont) document.documentElement.style.fontSize = savedFont;
-    // Restore API key
-    const savedKey = localStorage.getItem('attendify-api-key');
-    if (savedKey) { /* available for settings page */ }
 
-    // Initialize Supabase (non-blocking — loads data in background)
-    if (typeof SupabaseDB !== 'undefined') {
-      SupabaseDB.init().then(ok => {
-        if (ok) SupabaseDB.loadAll().then(() => {
-          // Refresh current page if already showing app
-          if (document.getElementById('app')?.style.display !== 'none') {
-            const pg = this.state.currentPage;
-            this.state.currentPage = '';
-            this._navigate(pg);
-          }
-        });
-      });
-    }
-
-    // Global keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('global-search')?.focus();
-      }
-      if (e.key === 'Escape') {
-        this.closeModal();
-        this.closeNotifPanel();
-        this.closeUserMenu();
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); document.getElementById('global-search')?.focus(); }
+      if (e.key === 'Escape') { this.closeModal(); this.closeNotifPanel(); this.closeUserMenu(); }
     });
-
-    // Hash-based routing — يجب تسجيله قبل أي return
     window.addEventListener('hashchange', () => this._route());
+    document.addEventListener('click', (e) => { if (!e.target.closest('.header-user')) this.closeUserMenu(); });
+    this._startClock();
 
-    // Click outside user dropdown
-    document.addEventListener('click', (e) => {
-      if (!e.target.closest('.header-user')) this.closeUserMenu();
-    });
-
-    // Check saved session
-    const savedUser = sessionStorage.getItem('app-user');
-    if (savedUser) {
-      try {
-        this.state.user = JSON.parse(savedUser);
+    // ── Supabase Auth (الاتصال الكامل) ───────────────────────
+    const ok = await SupabaseDB.init();
+    if (ok) {
+      const session = await SupabaseDB.getSession();
+      if (session) {
+        // مستخدم مسجّل مسبقاً — استعادة الجلسة
+        const meta = session.user.user_metadata || {};
+        this.state.user = {
+          id:          session.user.id,
+          name:        meta.name || session.user.email.split('@')[0],
+          avatar:      (meta.name || session.user.email).charAt(0).toUpperCase(),
+          position:    'مدير النظام',
+          email:       session.user.email,
+          avatarColor: 'gradient-primary',
+        };
+        await SupabaseDB.loadAll();
         this._showApp();
         return;
-      } catch(e) { sessionStorage.removeItem('app-user'); }
+      }
+      // لا توجد جلسة — هل هذا أول إعداد؟
+      const firstTime = await SupabaseDB.isFirstSetup();
+      if (firstTime) { this._showSetupForm(); } else { document.getElementById('login-page').style.display = 'flex'; }
+      return;
     }
 
-    // Show first-time setup or normal login
-    if (!DB.adminCredentials.email) {
-      this._showSetupForm();
-    } else {
-      document.getElementById('login-page').style.display = 'flex';
+    // ── Fallback: تسجيل دخول محلي (Supabase غير متاح) ───────
+    const savedUser = sessionStorage.getItem('app-user');
+    if (savedUser) {
+      try { this.state.user = JSON.parse(savedUser); this._showApp(); return; } catch(e) { sessionStorage.removeItem('app-user'); }
     }
-
-
-    // Start live clock
-    this._startClock();
+    if (!DB.adminCredentials.email) { this._showSetupForm(); } else { document.getElementById('login-page').style.display = 'flex'; }
   },
 
   // ─── AUTH ─────────────────────────────────────────────────
@@ -141,57 +98,63 @@ const App = {
     const email    = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
     const btn      = document.getElementById('login-btn');
-
-    if (!email || !password) {
-      this.toast('يرجى ملء جميع الحقول', 'error');
-      return;
-    }
-
-    const stored = DB.adminCredentials;
-    if (email !== stored.email) {
-      this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
-      return;
-    }
-
-    // Support both hashed (sha256:) and legacy plaintext passwords
-    let match = false;
-    if (stored.password?.startsWith('sha256:')) {
-      const hash = await _sha256(password);
-      match = hash === stored.password.slice(7);
-    } else {
-      match = password === stored.password;
-      // Migrate plaintext → hashed on successful login
-      if (match) {
-        stored.password = 'sha256:' + (await _sha256(password));
-        DB._saveToLocal();
-      }
-    }
-
-    if (!match) {
-      this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
-      return;
-    }
+    if (!email || !password) { this.toast('يرجى ملء جميع الحقول', 'error'); return; }
 
     btn.innerHTML = `<span class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin-left:8px"></span> <span>جارٍ التحميل...</span>`;
     btn.disabled = true;
 
-    setTimeout(() => {
-      const savedName = DB.adminCredentials.name || '';
-      const user = DB.employees.find(em => em.email === email) || {
-        id: 'admin',
-        name: savedName || email.split('@')[0],
-        avatar: (savedName || email).charAt(0).toUpperCase(),
-        position: 'مدير النظام',
+    const resetBtn = () => {
+      btn.disabled = false;
+      btn.innerHTML = `<span>دخول لوحة الإدارة</span><i class="fas fa-arrow-left btn-arrow"></i>`;
+    };
+
+    // ── Supabase Auth ──────────────────────────────────────────
+    if (SupabaseDB.isConnected) {
+      const { data, error } = await SupabaseDB.signIn(email, password);
+      if (error) {
+        this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
+        resetBtn(); return;
+      }
+      const meta = data.user.user_metadata || {};
+      const user = {
+        id:          data.user.id,
+        name:        meta.name || email.split('@')[0],
+        avatar:      (meta.name || email).charAt(0).toUpperCase(),
+        position:    'مدير النظام',
         email,
         avatarColor: 'gradient-primary',
       };
+      this.state.user = user;
+      await SupabaseDB.loadAll();
+      document.getElementById('login-page').style.display = 'none';
+      this._showApp();
+      this.toast(`أهلاً ${user.name}`, 'success');
+      DB.logAudit(user.id, 'تسجيل دخول', 'النظام', 'تسجيل دخول ناجح عبر Supabase Auth');
+      return;
+    }
+
+    // ── Fallback: تسجيل دخول محلي ────────────────────────────
+    const stored = DB.adminCredentials;
+    if (email !== stored.email) { this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error'); resetBtn(); return; }
+    let match = false;
+    if (stored.password?.startsWith('sha256:')) {
+      match = (await _sha256(password)) === stored.password.slice(7);
+    } else {
+      match = password === stored.password;
+      if (match) { stored.password = 'sha256:' + (await _sha256(password)); DB._saveToLocal(); }
+    }
+    if (!match) { this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error'); resetBtn(); return; }
+
+    setTimeout(() => {
+      const savedName = DB.adminCredentials.name || '';
+      const user = DB.employees.find(em => em.email === email) || { id:'admin', name:savedName||email.split('@')[0], avatar:(savedName||email).charAt(0).toUpperCase(), position:'مدير النظام', email, avatarColor:'gradient-primary' };
       this.state.user = user;
       sessionStorage.setItem('app-user', JSON.stringify(user));
       document.getElementById('login-page').style.display = 'none';
       this._showApp();
       this.toast(`أهلاً ${user.name}`, 'success');
-      DB.logAudit(user.id, 'تسجيل دخول', 'النظام', 'تسجيل دخول ناجح');
-    }, 800);
+      DB.logAudit(user.id, 'تسجيل دخول', 'النظام', 'تسجيل دخول محلي');
+    }, 500);
   },
 
   forgotPassword(e) {
@@ -252,6 +215,17 @@ const App = {
     const confirm = document.getElementById('rp-confirm')?.value || '';
     if (newPass.length < 8) { alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل'); return; }
     if (newPass !== confirm) { alert('كلمتا المرور غير متطابقتين'); return; }
+
+    // ── Supabase: تغيير كلمة المرور للمستخدم الحالي ────────
+    if (SupabaseDB.isConnected && this.state.user) {
+      const { error } = await SupabaseDB.updatePassword(newPass);
+      if (error) { alert('خطأ: ' + error.message); return; }
+      document.getElementById('reset-overlay')?.remove();
+      alert('✓ تم تغيير كلمة المرور بنجاح');
+      return;
+    }
+
+    // Fallback: محلي
     DB.adminCredentials.password = 'sha256:' + (await _sha256(newPass));
     DB._saveToLocal();
     document.getElementById('reset-overlay')?.remove();
@@ -314,32 +288,46 @@ const App = {
 
   async completeSetup(e) {
     e.preventDefault();
-    const email   = document.getElementById('setup-email').value.trim().toLowerCase();
-    const pass    = document.getElementById('setup-pass').value;
-    const confirm = document.getElementById('setup-confirm').value;
-    const btn     = document.getElementById('setup-btn');
-
+    const email    = document.getElementById('setup-email').value.trim().toLowerCase();
+    const pass     = document.getElementById('setup-pass').value;
+    const confirm  = document.getElementById('setup-confirm').value;
     const fullName = (document.getElementById('setup-name')?.value || '').trim();
+    const btn      = document.getElementById('setup-btn');
+
     if (!fullName) { this.toast('يرجى إدخال الاسم الكامل', 'error'); return; }
     if (pass !== confirm) { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
     if (pass.length < 8)  { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
 
-    const hashed = 'sha256:' + (await _sha256(pass));
-    Object.assign(DB.adminCredentials, { email, password: hashed, name: fullName });
-    DB._saveToLocal();
-
     btn.disabled = true;
     btn.innerHTML = '<span>جارٍ الإعداد...</span>';
 
+    // ── Supabase Auth ──────────────────────────────────────────
+    if (SupabaseDB.isConnected) {
+      const { error: signUpErr } = await SupabaseDB.signUp(email, pass, { name: fullName });
+      if (signUpErr) {
+        this.toast(signUpErr.message, 'error');
+        btn.disabled = false; btn.innerHTML = '<span>إنشاء الحساب والبدء</span><i class="fas fa-arrow-left btn-arrow"></i>'; return;
+      }
+      const { data: sd, error: signInErr } = await SupabaseDB.signIn(email, pass);
+      if (signInErr) {
+        this.toast('تم إنشاء الحساب — يرجى تسجيل الدخول', 'success');
+        document.getElementById('login-page').style.display = 'flex'; return;
+      }
+      const meta = sd.user.user_metadata || {};
+      const user = { id: sd.user.id, name: meta.name||fullName, avatar: fullName.charAt(0), position:'مدير النظام', email, avatarColor:'gradient-primary' };
+      this.state.user = user;
+      await SupabaseDB.loadAll();
+      document.getElementById('login-page').style.display = 'none';
+      this._showApp();
+      this.toast('تم إنشاء الحساب بنجاح! أهلاً بك', 'success');
+      return;
+    }
+
+    // ── Fallback: محلي ────────────────────────────────────────
+    Object.assign(DB.adminCredentials, { email, password: 'sha256:' + (await _sha256(pass)), name: fullName });
+    DB._saveToLocal();
     setTimeout(() => {
-      const user = {
-        id: 'admin',
-        name: fullName,
-        avatar: fullName.charAt(0),
-        position: 'مدير النظام',
-        email,
-        avatarColor: 'gradient-primary',
-      };
+      const user = { id:'admin', name:fullName, avatar:fullName.charAt(0), position:'مدير النظام', email, avatarColor:'gradient-primary' };
       this.state.user = user;
       sessionStorage.setItem('app-user', JSON.stringify(user));
       document.getElementById('login-page').style.display = 'none';
@@ -349,26 +337,20 @@ const App = {
   },
 
   logout() {
-    this.confirm('هل تريد تسجيل الخروج؟', () => {
-    sessionStorage.removeItem('app-user');
-    this.state.user = null;
-    Object.values(this.state.chartInstances).forEach(c => c?.destroy?.());
-    this.state.chartInstances = {};
-    document.getElementById('app').style.display = 'none';
-    this.toast('تم تسجيل الخروج بنجاح', 'info');
-    // Restore login form in case it was replaced by setup
-    const formBody = document.querySelector('.login-form-body');
-    if (formBody && !document.getElementById('login-form')) {
-      location.reload();
-      return;
-    }
-    const btn = document.getElementById('login-btn');
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<span>دخول لوحة الإدارة</span><i class="fas fa-arrow-left btn-arrow"></i>`;
-    }
-    document.getElementById('login-page').style.display = 'flex';
-    applyTranslations();
+    this.confirm('هل تريد تسجيل الخروج؟', async () => {
+      if (SupabaseDB.isConnected) await SupabaseDB.signOut();
+      sessionStorage.removeItem('app-user');
+      this.state.user = null;
+      Object.values(this.state.chartInstances).forEach(c => c?.destroy?.());
+      this.state.chartInstances = {};
+      document.getElementById('app').style.display = 'none';
+      this.toast('تم تسجيل الخروج بنجاح', 'info');
+      const formBody = document.querySelector('.login-form-body');
+      if (formBody && !document.getElementById('login-form')) { location.reload(); return; }
+      const btn = document.getElementById('login-btn');
+      if (btn) { btn.disabled = false; btn.innerHTML = `<span>دخول لوحة الإدارة</span><i class="fas fa-arrow-left btn-arrow"></i>`; }
+      document.getElementById('login-page').style.display = 'flex';
+      applyTranslations();
     });
   },
 
