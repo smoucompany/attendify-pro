@@ -25,10 +25,21 @@ const App = {
     this.state.theme = localStorage.getItem('app-theme') || 'light';
     this.state.lang  = localStorage.getItem('app-lang')  || 'ar';
 
-    // Load admin credentials from localStorage
+    // Load admin credentials — prefer attendify-db (always up-to-date), fall back to legacy key
     try {
-      const savedCreds = localStorage.getItem('admin-credentials');
-      if (savedCreds) DB.adminCredentials = JSON.parse(savedCreds);
+      const legacy = localStorage.getItem('admin-credentials');
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        // Merge: attendify-db creds already loaded via DB.loadFromLocal(), only use legacy if DB has none
+        if (!DB.adminCredentials.email && parsed.email) {
+          Object.assign(DB.adminCredentials, parsed);
+        }
+        // Sync legacy key to attendify-db then delete it to avoid future conflicts
+        if (DB.adminCredentials.email) {
+          localStorage.removeItem('admin-credentials');
+          DB._saveToLocal(); // ensure attendify-db is up to date
+        }
+      }
     } catch(e) {}
 
     // Apply theme & language
@@ -140,6 +151,43 @@ const App = {
     }, 800);
   },
 
+  forgotPassword(e) {
+    e.preventDefault();
+    const savedEmail = DB.adminCredentials?.email || '';
+    App.openModal('استرجاع الحساب', `
+      <div style="text-align:center;padding:8px 0 20px">
+        <div class="stat-icon gradient-warning" style="width:56px;height:56px;font-size:24px;margin:0 auto 16px"><i class="fas fa-key"></i></div>
+        <p style="color:var(--text-secondary);margin-bottom:8px">أدخل كلمة مرور جديدة لحساب الإدارة</p>
+        ${savedEmail ? `<p style="font-size:12px;color:var(--text-muted)">البريد الإلكتروني: <strong>${savedEmail}</strong></p>` : ''}
+      </div>
+      <div class="app-form-group" style="margin-bottom:12px">
+        <label>كلمة المرور الجديدة</label>
+        <input class="app-form-input" id="reset-new-pass" type="password" placeholder="8 أحرف على الأقل" minlength="8">
+      </div>
+      <div class="app-form-group" style="margin-bottom:20px">
+        <label>تأكيد كلمة المرور</label>
+        <input class="app-form-input" id="reset-confirm-pass" type="password" placeholder="••••••••">
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" style="flex:1" onclick="App._doResetPassword()">
+          <i class="fas fa-save"></i> تعيين كلمة المرور
+        </button>
+        <button class="btn btn-ghost" onclick="App.closeModal()">إلغاء</button>
+      </div>
+    `);
+  },
+
+  _doResetPassword() {
+    const newPass = document.getElementById('reset-new-pass')?.value;
+    const confirm = document.getElementById('reset-confirm-pass')?.value;
+    if (!newPass || newPass.length < 8) { App.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
+    if (newPass !== confirm)            { App.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
+    DB.adminCredentials.password = newPass;
+    DB._saveToLocal();
+    App.closeModal();
+    App.toast('تم تغيير كلمة المرور — يمكنك تسجيل الدخول الآن ✓', 'success');
+  },
+
   // ─── FIRST-TIME SETUP ────────────────────────────────────
   _showSetupForm() {
     document.getElementById('login-page').style.display = 'flex';
@@ -205,8 +253,8 @@ const App = {
     if (pass !== confirm) { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
     if (pass.length < 8)  { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
 
-    DB.adminCredentials = { email, password: pass, name: fullName };
-    localStorage.setItem('admin-credentials', JSON.stringify(DB.adminCredentials));
+    Object.assign(DB.adminCredentials, { email, password: pass, name: fullName });
+    DB._saveToLocal(); // single source of truth: attendify-db
 
     btn.disabled = true;
     btn.innerHTML = '<span>جارٍ الإعداد...</span>';
