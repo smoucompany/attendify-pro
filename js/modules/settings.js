@@ -130,20 +130,42 @@ const SettingsModule = {
       <!-- Logo & Identity -->
       ${this._group('الهوية والشعار','معلومات الشركة الأساسية والشعار',`
         <div class="settings-item" style="align-items:flex-start;gap:20px;flex-wrap:wrap">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-            <div id="logo-preview" style="width:90px;height:90px;border-radius:20px;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;overflow:hidden;cursor:pointer" onclick="document.getElementById('logo-file-input').click()" title="اضغط لتغيير الشعار">
-              ${co.logo && co.logo.startsWith('data:')
-                ? `<img src="${co.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`
-                : `<i class="fas fa-building" style="font-size:32px;opacity:.8"></i>`}
+          <div style="display:flex;gap:20px;flex-wrap:wrap">
+            <!-- Logo -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">شعار الشركة</div>
+              <div id="logo-preview" style="width:90px;height:90px;border-radius:20px;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;overflow:hidden;cursor:pointer" onclick="document.getElementById('logo-file-input').click()" title="اضغط لتغيير الشعار">
+                ${co.logo && co.logo.startsWith('data:')
+                  ? `<img src="${co.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`
+                  : `<i class="fas fa-building" style="font-size:32px;opacity:.8"></i>`}
+              </div>
+              <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="SettingsModule.uploadLogo(this)">
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()">
+                  <i class="fas fa-upload"></i> رفع
+                </button>
+                ${co.logo ? `<button class="btn btn-danger btn-sm" onclick="SettingsModule.removeLogo()"><i class="fas fa-trash"></i></button>` : ''}
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, JPG, SVG<br>حجم أقصى 2MB</div>
             </div>
-            <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="SettingsModule.uploadLogo(this)">
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()">
-                <i class="fas fa-upload"></i> رفع شعار
-              </button>
-              ${co.logo ? `<button class="btn btn-danger btn-sm" onclick="SettingsModule.removeLogo()"><i class="fas fa-trash"></i></button>` : ''}
+
+            <!-- Favicon -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">أيقونة الموقع (Favicon)</div>
+              <div id="fav-preview" style="width:64px;height:64px;border-radius:14px;background:var(--bg-input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer" onclick="document.getElementById('fav-file-input').click()" title="اضغط لتغيير الأيقونة">
+                ${co.favicon
+                  ? `<img src="${co.favicon}" style="width:48px;height:48px;object-fit:contain">`
+                  : `<i class="fas fa-globe" style="font-size:22px;color:var(--text-muted);opacity:.5"></i>`}
+              </div>
+              <input type="file" id="fav-file-input" accept="image/png,image/x-icon,image/svg+xml,image/jpeg" style="display:none" onchange="SettingsModule.uploadFavicon(this)">
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fav-file-input').click()">
+                  <i class="fas fa-upload"></i> رفع
+                </button>
+                ${co.favicon ? `<button class="btn btn-danger btn-sm" onclick="SettingsModule.removeFavicon()"><i class="fas fa-trash"></i></button>` : ''}
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, ICO, SVG<br>32×32 أو 64×64 مثالي</div>
             </div>
-            <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, JPG, SVG<br>حجم أقصى 2MB</div>
           </div>
           <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:12px">
             <div class="app-form-row">
@@ -282,6 +304,46 @@ const SettingsModule = {
     this._updateSidebarLogo();
     App.toast('تم حذف الشعار', 'info');
     this._renderSection();
+  },
+
+  uploadFavicon(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 1 * 1024 * 1024) { App.toast('حجم الأيقونة يجب أن يكون أقل من 1MB', 'warning'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      DB.company.favicon = e.target.result;
+      DB.saveCompany();
+      this._applyFavicon(e.target.result);
+      const preview = document.getElementById('fav-preview');
+      if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:48px;height:48px;object-fit:contain">`;
+      App.toast('تم رفع أيقونة الموقع بنجاح ✓', 'success');
+      this._renderSection();
+    };
+    reader.readAsDataURL(file);
+  },
+
+  removeFavicon() {
+    DB.company.favicon = '';
+    DB.saveCompany();
+    this._applyFavicon(null);
+    App.toast('تم حذف أيقونة الموقع', 'info');
+    this._renderSection();
+  },
+
+  _applyFavicon(src) {
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    if (src) {
+      link.href = src;
+      link.type = src.startsWith('data:image/svg') ? 'image/svg+xml' : 'image/png';
+    } else {
+      link.href = '';
+    }
   },
 
   deleteBranch(id) {

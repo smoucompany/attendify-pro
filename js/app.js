@@ -62,6 +62,13 @@ const App = {
     this._applyTheme();
     initLanguage(); // from i18n.js
 
+    // Apply saved favicon
+    if (DB.company.favicon) {
+      let favLink = document.querySelector("link[rel~='icon']");
+      if (!favLink) { favLink = document.createElement('link'); favLink.rel = 'icon'; document.head.appendChild(favLink); }
+      favLink.href = DB.company.favicon;
+    }
+
     // Restore saved color and font size
     const savedColor = localStorage.getItem('attendify-color');
     if (savedColor) document.documentElement.style.setProperty('--primary', savedColor);
