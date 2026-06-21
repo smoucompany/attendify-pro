@@ -55,9 +55,12 @@ const AttendanceModule = {
             </button>
           </div>
           <!-- Method Buttons -->
-          <div style="display:flex;gap:8px;margin-top:12px">
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
             <button class="btn-checkin" style="flex:none;padding:8px 12px;font-size:12px" onclick="AttendanceModule.openFaceRec()">
               <i class="fas fa-face-smile"></i> ${t('attendance.faceRecog')}
+            </button>
+            <button class="btn-checkin" style="flex:none;padding:8px 12px;font-size:12px" onclick="AttendanceModule.openFingerprintRec()">
+              <i class="fas fa-fingerprint"></i> ${currentLang==='ar'?'بصمة الإصبع':'Fingerprint'}
             </button>
             <button class="btn-checkin" style="flex:none;padding:8px 12px;font-size:12px" onclick="AttendanceModule.openQRScan()">
               <i class="fas fa-qrcode"></i> ${t('attendance.qrScan')}
@@ -231,7 +234,7 @@ const AttendanceModule = {
     return diff;
   },
 
-  doCheckIn() {
+  doCheckIn(method = 'manual') {
     if (this._checkedIn) { App.toast(currentLang==='ar'?'أنت سجلت حضورك بالفعل':'Already checked in', 'warning'); return; }
     const now     = new Date();
     const nowTime = now.toTimeString().slice(0,5);
@@ -239,7 +242,6 @@ const AttendanceModule = {
     this._checkedIn   = true;
     this._checkInTime = now.toLocaleTimeString(currentLang==='ar'?'ar-SA':'en-US');
 
-    // سجّل في DB.attendance
     const adminId = App.state?.user?.id || 'admin';
     const existing = DB.attendance.find(a => a.empId === adminId && a.date === today);
     if (existing) {
@@ -258,7 +260,7 @@ const AttendanceModule = {
         id: DB.nextId('att'), empId: adminId, date: today,
         checkIn: nowTime, checkOut: null,
         status: isLate ? 'late' : 'present',
-        method: 'manual', workedMins: 0, overtime: null,
+        method, workedMins: 0, overtime: null,
         location: currentLang==='ar'?'تطبيق الويب':'Web App', notes: '',
       });
     }
@@ -286,22 +288,104 @@ const AttendanceModule = {
   },
 
   openFaceRec() {
-    App.openModal(t('attendance.faceRecog'), `
-      <div class="face-rec-container">
-        <div class="face-box">
-          <div class="face-corners"></div>
-          <i class="fas fa-face-smile face-icon"></i>
+    // يستخدم face-api.js الحقيقي من biometrics.js
+    Biometrics.openFaceVerify({
+      onSuccess: (matchedName) => {
+        const emp = DB.employees.find(e => e.name === matchedName);
+        if (emp) {
+          this._recordCheckin(emp.id, 'face');
+        } else {
+          // تعرّف على وجه غير موجود في DB — سجّل كـ admin
+          this.doCheckIn();
+        }
+      },
+      onFail: () => App.toast(currentLang==='ar'?'لم يتم التعرف على الوجه — حاول مرة أخرى':'Face not recognized — try again', 'error'),
+    });
+  },
+
+  openFingerprintRec() {
+    if (!Biometrics.canWebAuthn()) {
+      App.openModal(currentLang==='ar'?'بصمة الإصبع':'Fingerprint', `
+        <div style="text-align:center;padding:24px 0">
+          <div style="font-size:52px;margin-bottom:14px">⚠️</div>
+          <p style="font-size:14px;font-weight:600;color:var(--text-secondary)">
+            ${currentLang==='ar'?'جهازك لا يدعم البصمة البيومترية<br><span style="font-size:12px;font-weight:400;color:var(--text-muted)">يتطلب Windows Hello أو Touch ID أو Face ID</span>':'Your device does not support biometric authentication<br><span style="font-size:12px;font-weight:400;color:var(--text-muted)">Requires Windows Hello, Touch ID, or Face ID</span>'}
+          </p>
+          <button class="btn btn-secondary" style="margin-top:16px" onclick="App.closeModal()">${t('common.close')}</button>
         </div>
-        <p style="color:var(--text-muted);font-size:13px;text-align:center">${currentLang==='ar'?'انظر إلى الكاميرا للتعرف على وجهك':'Look at the camera for face recognition'}</p>
-        <div class="info-box info-box-primary">
-          <i class="fas fa-info-circle"></i>
-          <span>${currentLang==='ar'?'يتم تشغيل تقنية التعرف على الوجه — وضع العرض التجريبي':'Face recognition engine running — Demo mode'}</span>
+      `, { size: 'sm' });
+      return;
+    }
+
+    // اختيار موظف ثم تحقق بيومتري
+    App.openModal(currentLang==='ar'?'تسجيل الحضور بالبصمة':'Fingerprint Check-In', `
+      <div style="padding:8px">
+        <div class="app-form-group">
+          <label>${currentLang==='ar'?'اختر الموظف':'Select Employee'}</label>
+          <select class="app-form-input app-form-select" id="fp-emp-select">
+            <option value="">${currentLang==='ar'?'— اختر —':'— Select —'}</option>
+            ${DB.employees.filter(e=>e.status==='active').map(e=>`
+              <option value="${e.id}" ${Biometrics.hasFingerprint(e.id)?'':'style="color:var(--text-muted)"'}>
+                ${e.name}${Biometrics.hasFingerprint(e.id)?'':currentLang==='ar'?' (غير مسجّل)':' (not registered)'}
+              </option>
+            `).join('')}
+          </select>
         </div>
-        <button class="btn btn-primary w-full" onclick="App.closeModal(); AttendanceModule.doCheckIn()">
-          <i class="fas fa-face-smile"></i> ${currentLang==='ar'?'تأكيد الحضور':'Confirm Attendance'}
+        <div id="fp-info" style="margin-bottom:12px;font-size:12px;color:var(--text-muted)">
+          ${currentLang==='ar'?'الموظفون بدون بصمة يجب تسجيلهم أولاً من ملفاتهم الشخصية':'Employees without fingerprint must register first from their profile'}
+        </div>
+        <button class="btn btn-primary w-full" onclick="AttendanceModule._doFingerprintCheckin()">
+          <i class="fas fa-fingerprint"></i> ${currentLang==='ar'?'تحقق بالبصمة':'Verify Fingerprint'}
         </button>
       </div>
     `, { size: 'sm' });
+  },
+
+  async _doFingerprintCheckin() {
+    const empId = document.getElementById('fp-emp-select')?.value;
+    if (!empId) { App.toast(currentLang==='ar'?'اختر موظفاً أولاً':'Select an employee first', 'warning'); return; }
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+    App.closeModal();
+    Biometrics.openFingerprintVerify(emp, () => {
+      this._recordCheckin(emp.id, 'fingerprint');
+    });
+  },
+
+  // تسجيل حضور لأي موظف بأي طريقة
+  _recordCheckin(empId, method = 'manual') {
+    const now     = new Date();
+    const nowTime = now.toTimeString().slice(0,5);
+    const today   = now.toISOString().split('T')[0];
+    const emp     = DB.getEmployee(empId);
+    if (!emp) return;
+
+    const existing = DB.attendance.find(a => a.empId === empId && a.date === today);
+    if (existing && !existing.checkOut) {
+      existing.checkOut   = nowTime;
+      existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
+      DB.save();
+      App.toast(`✅ ${currentLang==='ar'?'تم تسجيل انصراف':'Checkout recorded for'} ${emp.name} ${currentLang==='ar'?'الساعة':'at'} ${nowTime}`, 'success');
+    } else if (!existing) {
+      const empShift    = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      const shiftStart  = empShift?.start || DB.company.workStart || '08:00';
+      const [sh, sm]    = shiftStart.split(':').map(Number);
+      const [ch, cm]    = nowTime.split(':').map(Number);
+      const isLate      = (ch*60+cm) > (sh*60+sm + (DB.company.lateThreshold||15));
+      DB.attendance.push({
+        id: DB.nextId('att'), empId, date: today,
+        checkIn: nowTime, checkOut: null,
+        status: isLate ? 'late' : 'present',
+        method, workedMins: 0, overtime: null,
+        location: currentLang==='ar'?'تطبيق الويب':'Web App', notes: '',
+      });
+      DB.save();
+      const lateNote = isLate ? (currentLang==='ar'?' (متأخر)':' (late)') : '';
+      App.toast(`✅ ${currentLang==='ar'?'تم تسجيل حضور':'Checked in:'} ${emp.name} ${nowTime}${lateNote}`, isLate?'warning':'success');
+    } else {
+      App.toast(`${emp.name} ${currentLang==='ar'?'سجّل حضوره بالفعل اليوم':'already checked in today'}`, 'info');
+    }
+    this._renderTable?.();
   },
 
   openQRScan() {

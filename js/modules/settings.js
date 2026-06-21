@@ -729,11 +729,11 @@ const SettingsModule = {
     return `
       ${this._group('طرق تسجيل الحضور','تفعيل أو تعطيل طرق التسجيل المتاحة',`
         ${[
-          {icon:'fas fa-face-smile',   color:'#6366f1', l:'التعرف على الوجه',   d:'Face Recognition AI — دقة 99.5%',    on:true},
-          {icon:'fas fa-qrcode',       color:'#10b981', l:'مسح QR Code',         d:'رمز QR شخصي لكل موظف',             on:true},
-          {icon:'fas fa-map-pin',      color:'#f59e0b', l:'GPS والسياج الجغرافي',d:'التحقق من الموقع الجغرافي',         on:true},
-          {icon:'fas fa-fingerprint',  color:'#ef4444', l:'بصمة الإصبع',         d:'جهاز البصمة المتصل',                on:false},
-          {icon:'fas fa-keyboard',     color:'#06b6d4', l:'الإدخال اليدوي',       d:'إدخال الوقت يدوياً من الإدارة',     on:true},
+          {icon:'fas fa-face-smile',   color:'#6366f1', l:'التعرف على الوجه',       d:`face-api.js — يتطلب تسجيل وجه الموظف من ملفه الشخصي`,                                               on:true},
+          {icon:'fas fa-fingerprint',  color:'#10b981', l:'بصمة الإصبع / الجهاز',  d:`WebAuthn — يعمل مع Windows Hello و Touch ID و Face ID و Android Fingerprint`,                           on: typeof PublicKeyCredential !== 'undefined'},
+          {icon:'fas fa-qrcode',       color:'#f59e0b', l:'مسح QR Code',             d:'رمز QR شخصي لكل موظف',                                                                                     on:true},
+          {icon:'fas fa-map-pin',      color:'#3b82f6', l:'GPS والسياج الجغرافي',    d:`Geolocation API — يحدد المسافة من موقع الشركة (${DB.company.gpsLat?'✅ تم تحديد الموقع':'⚠️ حدد موقع الشركة في الإعدادات'})`, on:true},
+          {icon:'fas fa-keyboard',     color:'#06b6d4', l:'الإدخال اليدوي',           d:'إدخال الوقت يدوياً من الإدارة',                                                                           on:true},
         ].map(m=>`
           <div class="settings-item">
             <div class="settings-item-info">
