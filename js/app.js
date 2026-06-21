@@ -154,38 +154,61 @@ const App = {
   forgotPassword(e) {
     e.preventDefault();
     const savedEmail = DB.adminCredentials?.email || '';
-    App.openModal('استرجاع الحساب', `
-      <div style="text-align:center;padding:8px 0 20px">
-        <div class="stat-icon gradient-warning" style="width:56px;height:56px;font-size:24px;margin:0 auto 16px"><i class="fas fa-key"></i></div>
-        <p style="color:var(--text-secondary);margin-bottom:8px">أدخل كلمة مرور جديدة لحساب الإدارة</p>
-        ${savedEmail ? `<p style="font-size:12px;color:var(--text-muted)">البريد الإلكتروني: <strong>${savedEmail}</strong></p>` : ''}
+    const formBody = document.querySelector('.login-form-body');
+    if (!formBody) return;
+    formBody.innerHTML = `
+      <div class="login-welcome">
+        <h2>استرجاع الحساب</h2>
+        <p>${savedEmail ? `البريد: <strong>${savedEmail}</strong>` : 'أدخل كلمة مرور جديدة'}</p>
       </div>
-      <div class="app-form-group" style="margin-bottom:12px">
-        <label>كلمة المرور الجديدة</label>
-        <input class="app-form-input" id="reset-new-pass" type="password" placeholder="8 أحرف على الأقل" minlength="8">
-      </div>
-      <div class="app-form-group" style="margin-bottom:20px">
-        <label>تأكيد كلمة المرور</label>
-        <input class="app-form-input" id="reset-confirm-pass" type="password" placeholder="••••••••">
-      </div>
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-primary" style="flex:1" onclick="App._doResetPassword()">
-          <i class="fas fa-save"></i> تعيين كلمة المرور
+      <form onsubmit="App._doResetPassword(event)">
+        <div class="form-group">
+          <label>كلمة المرور الجديدة</label>
+          <div class="input-wrapper">
+            <i class="fas fa-lock input-icon-left"></i>
+            <input type="password" id="reset-new-pass" placeholder="8 أحرف على الأقل" class="form-input" required minlength="8">
+            <button type="button" class="input-icon-right btn-icon" onclick="App.togglePasswordVisibility(this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>تأكيد كلمة المرور</label>
+          <div class="input-wrapper">
+            <i class="fas fa-lock input-icon-left"></i>
+            <input type="password" id="reset-confirm-pass" placeholder="••••••••" class="form-input" required minlength="8">
+            <button type="button" class="input-icon-right btn-icon" onclick="App.togglePasswordVisibility(this)"><i class="fas fa-eye"></i></button>
+          </div>
+        </div>
+        <button type="submit" class="btn-login-submit">
+          <span>تعيين كلمة المرور الجديدة</span>
+          <i class="fas fa-arrow-left btn-arrow"></i>
         </button>
-        <button class="btn btn-ghost" onclick="App.closeModal()">إلغاء</button>
-      </div>
-    `);
+        <button type="button" onclick="App._showLoginForm()" style="width:100%;margin-top:10px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px">
+          ← العودة لتسجيل الدخول
+        </button>
+      </form>
+    `;
   },
 
-  _doResetPassword() {
+  _doResetPassword(e) {
+    e.preventDefault();
     const newPass = document.getElementById('reset-new-pass')?.value;
     const confirm = document.getElementById('reset-confirm-pass')?.value;
-    if (!newPass || newPass.length < 8) { App.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
-    if (newPass !== confirm)            { App.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
+    if (!newPass || newPass.length < 8) { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
+    if (newPass !== confirm)            { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
     DB.adminCredentials.password = newPass;
     DB._saveToLocal();
-    App.closeModal();
-    App.toast('تم تغيير كلمة المرور — يمكنك تسجيل الدخول الآن ✓', 'success');
+    this.toast('تم تغيير كلمة المرور ✓', 'success');
+    setTimeout(() => this._showLoginForm(), 800);
+  },
+
+  _showLoginForm() {
+    const formBody = document.querySelector('.login-form-body');
+    if (!formBody) return;
+    // Restore original login tabs HTML
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('login-page').style.display = 'flex';
+    // Easiest: reload the page to reset the login form
+    location.reload();
   },
 
   // ─── FIRST-TIME SETUP ────────────────────────────────────
