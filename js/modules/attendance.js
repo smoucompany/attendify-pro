@@ -327,7 +327,8 @@ const AttendanceModule = {
     const nowTime = now.toTimeString().slice(0,5);
     const today   = now.toISOString().split('T')[0];
     this._checkedIn   = true;
-    this._checkInTime = now.toLocaleTimeString(currentLang==='ar'?'ar-SA':'en-US');
+    const _p = n => String(n).padStart(2,'0');
+    this._checkInTime = `${_p(now.getHours())}:${_p(now.getMinutes())}:${_p(now.getSeconds())}`;
 
     const adminId = App.state?.user?.id || 'admin';
     const existing = DB.attendance.find(a => a.empId === adminId && a.date === today);

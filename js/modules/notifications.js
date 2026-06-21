@@ -105,11 +105,12 @@ const NotificationsModule = {
   },
 
   deleteAll() {
-    if (!confirm(currentLang==='ar'?'هل تريد حذف جميع الإشعارات؟':'Delete all notifications?')) return;
-    DB.notifications.splice(0);
-    App._updateBadges();
-    App.toast(currentLang==='ar'?'تم حذف كل الإشعارات':'All notifications deleted', 'success');
-    this.render(document.getElementById('page-content'));
+    App.confirm(currentLang==='ar'?'هل تريد حذف جميع الإشعارات؟':'Delete all notifications?', () => {
+      DB.notifications.splice(0);
+      App._updateBadges();
+      App.toast(currentLang==='ar'?'تم حذف كل الإشعارات':'All notifications deleted', 'success');
+      this.render(document.getElementById('page-content'));
+    });
   },
 
   saveChannelState(channel, enabled) {

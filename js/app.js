@@ -342,7 +342,7 @@ const App = {
   },
 
   logout() {
-    if (!confirm('هل تريد تسجيل الخروج؟')) return;
+    this.confirm('هل تريد تسجيل الخروج؟', () => {
     sessionStorage.removeItem('app-user');
     this.state.user = null;
     Object.values(this.state.chartInstances).forEach(c => c?.destroy?.());
@@ -362,6 +362,7 @@ const App = {
     }
     document.getElementById('login-page').style.display = 'flex';
     applyTranslations();
+    });
   },
 
   // ─── SHOW APP ─────────────────────────────────────────────

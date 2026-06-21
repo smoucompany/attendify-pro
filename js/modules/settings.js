@@ -285,12 +285,12 @@ const SettingsModule = {
   },
 
   deleteBranch(id) {
-    if (!App.confirm) { if (!confirm('هل تريد حذف هذا الفرع؟')) return; }
-    else if (!confirm('هل تريد حذف هذا الفرع؟')) return;
-    DB.company.branches = DB.company.branches.filter(b => b.id !== id);
-    DB.saveCompany();
-    App.toast('تم حذف الفرع', 'success');
-    this._renderSection();
+    App.confirm('هل تريد حذف هذا الفرع؟', () => {
+      DB.company.branches = DB.company.branches.filter(b => b.id !== id);
+      DB.saveCompany();
+      App.toast('تم حذف الفرع', 'success');
+      this._renderSection();
+    });
   },
 
   _updateSidebarLogo() {
@@ -720,11 +720,12 @@ const SettingsModule = {
   },
 
   deleteLeaveType(key) {
-    if (!confirm('هل تريد حذف هذا النوع؟')) return;
-    DB.company.leaveTypes = this._getLeaveTypes().filter(t => t.key !== key);
-    DB.saveCompany();
-    App.toast('تم حذف نوع الإجازة', 'success');
-    this._renderSection();
+    App.confirm('هل تريد حذف هذا النوع؟', () => {
+      DB.company.leaveTypes = this._getLeaveTypes().filter(t => t.key !== key);
+      DB.saveCompany();
+      App.toast('تم حذف نوع الإجازة', 'success');
+      this._renderSection();
+    });
   },
 
   resetAllPasswords() {

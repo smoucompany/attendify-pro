@@ -86,7 +86,8 @@ const EmployeesModule = {
     if (!list) return;
 
     let emps = DB.employees.filter(e => {
-      const matchSearch = !this._search || e.name.includes(this._search) || e.nameEn.toLowerCase().includes(this._search.toLowerCase()) || e.no.includes(this._search) || e.email.includes(this._search);
+      const q = this._search;
+      const matchSearch = !q || (e.name||'').includes(q) || (e.nameEn||'').toLowerCase().includes(q.toLowerCase()) || (e.no||'').includes(q) || (e.email||'').includes(q) || (e.position||'').includes(q);
       const matchDept   = this._deptFilter === 'all' || e.dept === this._deptFilter;
       const matchStatus = this._statusFilter === 'all' || e.status === this._statusFilter;
       return matchSearch && matchDept && matchStatus;

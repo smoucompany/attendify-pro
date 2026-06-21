@@ -537,10 +537,11 @@ const GpsModule = {
     const msg = currentLang === 'ar'
       ? `هل تريد حذف موقع "${loc.name}"؟`
       : `Delete location "${loc.name}"?`;
-    if (!confirm(msg)) return;
-    const i = DB.locations.findIndex(l => l.id === id);
-    if (i !== -1) DB.locations.splice(i, 1);
-    App.toast(currentLang === 'ar' ? 'تم حذف الموقع' : 'Location deleted', 'success');
-    this.render(document.getElementById('page-content'));
+    App.confirm(msg, () => {
+      const i = DB.locations.findIndex(l => l.id === id);
+      if (i !== -1) DB.locations.splice(i, 1);
+      App.toast(currentLang === 'ar' ? 'تم حذف الموقع' : 'Location deleted', 'success');
+      this.render(document.getElementById('page-content'));
+    });
   },
 };
