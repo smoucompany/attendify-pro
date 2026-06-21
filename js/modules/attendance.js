@@ -34,7 +34,7 @@ const AttendanceModule = {
         <div class="checkin-widget">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <div>
-              <div class="checkin-clock" id="checkin-clock">08:00:00</div>
+              <div class="checkin-clock" id="checkin-clock">${(() => { const n=new Date(); return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0'); })()}</div>
               <div class="checkin-date">${new Date().toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
             </div>
             <div style="background:rgba(255,255,255,0.15);padding:8px 14px;border-radius:10px;font-size:12px;color:rgba(255,255,255,0.8)">
@@ -121,10 +121,19 @@ const AttendanceModule = {
       <div id="attendance-table"></div>
     `;
 
-    // Start clock
+    // Start clock — clear any previous interval first
+    clearInterval(this._clockInterval);
     const clockEl = document.getElementById('checkin-clock');
     if (clockEl) {
-      const tick = () => { if (document.getElementById('checkin-clock')) clockEl.textContent = new Date().toLocaleTimeString('ar-SA'); };
+      const tick = () => {
+        const el = document.getElementById('checkin-clock');
+        if (!el) { clearInterval(this._clockInterval); return; }
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2,'0');
+        const mm = String(now.getMinutes()).padStart(2,'0');
+        const ss = String(now.getSeconds()).padStart(2,'0');
+        el.textContent = `${hh}:${mm}:${ss}`;
+      };
       tick();
       this._clockInterval = setInterval(tick, 1000);
     }
