@@ -163,23 +163,88 @@ const GpsModule = {
 
     const bounds = [];
 
+    // Inject marker animation CSS once
+    if (!document.getElementById('leaflet-marker-style')) {
+      const style = document.createElement('style');
+      style.id = 'leaflet-marker-style';
+      style.textContent = `
+        @keyframes markerBounce {
+          0%,100% { transform: translateY(0); }
+          40%      { transform: translateY(-10px); }
+          60%      { transform: translateY(-5px); }
+        }
+        @keyframes markerPulse {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          70%  { transform: scale(2.8); opacity: 0; }
+          100% { transform: scale(2.8); opacity: 0; }
+        }
+        .gps-marker-wrap { position:relative; width:44px; height:56px; }
+        .gps-marker-pin {
+          width:36px; height:36px;
+          border-radius:50% 50% 50% 0;
+          border:3px solid white;
+          position:absolute; top:0; left:4px;
+          box-shadow:0 4px 14px rgba(0,0,0,0.3);
+          animation: markerBounce 2.4s ease-in-out infinite;
+        }
+        .gps-marker-dot {
+          width:8px; height:8px;
+          border-radius:50%;
+          position:absolute; bottom:0; left:50%;
+          transform:translateX(-50%);
+          opacity:0.35;
+        }
+        .gps-marker-pulse {
+          width:16px; height:16px;
+          border-radius:50%;
+          position:absolute; top:10px; left:14px;
+          animation: markerPulse 2s ease-out infinite;
+        }
+        .gps-marker-label {
+          position:absolute;
+          top:-26px; left:50%;
+          transform:translateX(-50%);
+          white-space:nowrap;
+          font-size:11.5px;
+          font-weight:700;
+          padding:3px 9px;
+          border-radius:20px;
+          color:white;
+          box-shadow:0 2px 8px rgba(0,0,0,0.25);
+          letter-spacing:0.2px;
+          pointer-events:none;
+        }
+        .gps-marker-label::after {
+          content:'';
+          position:absolute;
+          bottom:-5px; left:50%;
+          transform:translateX(-50%);
+          border:5px solid transparent;
+          border-top-width:6px;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     locs.forEach((loc, i) => {
       const color = colors[i % colors.length];
 
-      // Custom colored marker icon
+      // Animated marker icon with name label
       const icon = L.divIcon({
         className: '',
-        html: `<div style="
-          width:32px;height:32px;
-          background:${color};
-          border:3px solid white;
-          border-radius:50% 50% 50% 0;
-          transform:rotate(-45deg);
-          box-shadow:0 2px 8px rgba(0,0,0,0.35);
-        "></div>`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -34],
+        html: `
+          <div class="gps-marker-wrap">
+            <div class="gps-marker-label" style="background:${color};border:1.5px solid ${color}dd">
+              <style>.gps-marker-label::after{border-top-color:${color}}</style>
+              ${loc.name}
+            </div>
+            <div class="gps-marker-pulse" style="background:${color}"></div>
+            <div class="gps-marker-pin" style="background:${color};animation-delay:${i*0.3}s;transform:rotate(-45deg)"></div>
+            <div class="gps-marker-dot" style="background:${color}"></div>
+          </div>`,
+        iconSize: [44, 56],
+        iconAnchor: [22, 56],
+        popupAnchor: [0, -60],
       });
 
       const marker = L.marker([loc.lat, loc.lng], { icon }).addTo(map);
