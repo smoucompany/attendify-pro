@@ -388,23 +388,130 @@ const AttendanceModule = {
     this._renderTable?.();
   },
 
+  _qrStream: null,
+  _qrAnimFrame: null,
+
   openQRScan() {
     App.openModal(t('attendance.qrScan'), `
-      <div class="qr-container">
-        <div class="qr-box">
-          <i class="fas fa-qrcode"></i>
-          <div class="qr-scan-line"></div>
+      <div style="padding:4px">
+        <div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3">
+          <video id="qr-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:none"></video>
+          <canvas id="qr-canvas" style="display:none"></canvas>
+          <div id="qr-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:rgba(255,255,255,.8)">
+            <i class="fas fa-spinner fa-spin" style="font-size:28px"></i>
+            <span style="font-size:13px">${currentLang==='ar'?'جارٍ تشغيل الكاميرا...':'Starting camera...'}</span>
+          </div>
+          <div id="qr-overlay" style="display:none;position:absolute;inset:0;pointer-events:none">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:64%;aspect-ratio:1;border:2px solid rgba(99,102,241,.8);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)">
+              <div class="qr-scan-line" style="position:absolute;left:0;right:0;top:0"></div>
+            </div>
+          </div>
         </div>
-        <p style="color:var(--text-muted);font-size:13px;text-align:center">${currentLang==='ar'?'وجّه الكاميرا نحو QR Code لتسجيل الحضور':'Point camera at QR Code to record attendance'}</p>
-        <div class="info-box info-box-success">
-          <i class="fas fa-qrcode"></i>
-          <span>${currentLang==='ar'?'جاهز للمسح — QR Code الخاص بشركتك نشط':'Ready to scan — Your company QR Code is active'}</span>
+        <div id="qr-status" style="text-align:center;padding:12px 0;font-size:13px;color:var(--text-muted)">
+          ${currentLang==='ar'?'وجّه الكاميرا نحو QR Code للموظف':'Point camera at employee QR Code'}
         </div>
-        <button class="btn btn-success w-full" onclick="App.closeModal(); AttendanceModule.doCheckIn()">
-          <i class="fas fa-qrcode"></i> ${currentLang==='ar'?'مسح وتأكيد':'Scan & Confirm'}
+
+        <!-- اختيار يدوي كبديل -->
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;text-align:center">${currentLang==='ar'?'أو اختر موظفاً يدوياً:':'Or select employee manually:'}</div>
+          <div style="display:flex;gap:8px">
+            <select id="qr-emp-manual" class="app-form-input app-form-select" style="flex:1;font-size:12px">
+              <option value="">${currentLang==='ar'?'— اختر موظفاً —':'— Select employee —'}</option>
+              ${DB.employees.filter(e=>e.status==='active').map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+            </select>
+            <button class="btn btn-primary" style="flex-shrink:0;font-size:12px" onclick="AttendanceModule._qrManualCheckin()">
+              <i class="fas fa-check"></i> ${currentLang==='ar'?'تسجيل':'Check In'}
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-secondary w-full" style="margin-top:10px" onclick="AttendanceModule._stopQR(); App.closeModal()">
+          ${currentLang==='ar'?'إلغاء':'Cancel'}
         </button>
       </div>
     `, { size: 'sm' });
+
+    this._startQR();
+  },
+
+  _startQR() {
+    // تحميل مكتبة jsQR للمسح الحقيقي
+    const startScan = () => {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          this._qrStream = stream;
+          const video   = document.getElementById('qr-video');
+          const loading = document.getElementById('qr-loading');
+          const overlay = document.getElementById('qr-overlay');
+          if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
+          video.srcObject = stream;
+          video.style.display = '';
+          if (loading) loading.style.display = 'none';
+          if (overlay) overlay.style.display = '';
+          video.onloadedmetadata = () => this._qrTick();
+        })
+        .catch(err => {
+          const el = document.getElementById('qr-loading');
+          if (el) el.innerHTML = `<i class="fas fa-triangle-exclamation" style="font-size:28px;color:#ef4444"></i><span style="font-size:13px;color:#ef4444;margin-top:8px">${err.name === 'NotAllowedError' ? (currentLang==='ar'?'تم رفض إذن الكاميرا':'Camera permission denied') : err.message}</span>`;
+        });
+    };
+
+    if (window.jsQR) { startScan(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    s.onload = startScan;
+    s.onerror = () => {
+      const el = document.getElementById('qr-status');
+      if (el) el.textContent = currentLang==='ar'?'تعذّر تحميل مكتبة QR — استخدم الاختيار اليدوي أدناه':'QR library failed to load — use manual selection below';
+    };
+    document.head.appendChild(s);
+  },
+
+  _qrTick() {
+    const video  = document.getElementById('qr-video');
+    const canvas = document.getElementById('qr-canvas');
+    if (!video || !canvas || !window.jsQR) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(img.data, img.width, img.height);
+    if (code?.data) {
+      this._qrResult(code.data);
+      return;
+    }
+    this._qrAnimFrame = requestAnimationFrame(() => this._qrTick());
+  },
+
+  _qrResult(data) {
+    this._stopQR();
+    // QR code يحتوي على empId أو رمز الشركة
+    const emp = DB.employees.find(e => e.id === data || e.no === data || e.qrCode === data);
+    if (emp) {
+      App.closeModal();
+      this._recordCheckin(emp.id, 'qr');
+    } else if (data === (DB.company.id || 'company-qr')) {
+      App.closeModal();
+      this.doCheckIn('qr');
+    } else {
+      const status = document.getElementById('qr-status');
+      if (status) status.innerHTML = `<span style="color:var(--warning)"><i class="fas fa-triangle-exclamation"></i> ${currentLang==='ar'?'QR غير معروف — جرّب مرة أخرى أو استخدم الاختيار اليدوي':'Unknown QR — try again or use manual selection'}</span>`;
+      this._qrAnimFrame = requestAnimationFrame(() => this._qrTick());
+    }
+  },
+
+  _stopQR() {
+    if (this._qrAnimFrame) { cancelAnimationFrame(this._qrAnimFrame); this._qrAnimFrame = null; }
+    if (this._qrStream) { this._qrStream.getTracks().forEach(t => t.stop()); this._qrStream = null; }
+  },
+
+  _qrManualCheckin() {
+    const empId = document.getElementById('qr-emp-manual')?.value;
+    if (!empId) { App.toast(currentLang==='ar'?'اختر موظفاً':'Select an employee', 'warning'); return; }
+    this._stopQR();
+    App.closeModal();
+    this._recordCheckin(empId, 'qr');
   },
 
   openGPSVerify() {

@@ -198,6 +198,17 @@ const LeavesModule = {
     if (!leave) return;
     leave.status = 'approved';
     leave.approvedBy = App.state.user?.id || 'admin';
+
+    // خصم أيام الإجازة من رصيد الموظف
+    if (leave.startDate && leave.endDate) {
+      const days = Math.max(1, Math.round((new Date(leave.endDate) - new Date(leave.startDate)) / 86400000) + 1);
+      if (!DB.leaveBalances[leave.empId]) DB.leaveBalances[leave.empId] = { annual: 21, taken: 0, remaining: 21 };
+      const bal = DB.leaveBalances[leave.empId];
+      bal.taken     = (bal.taken || 0) + days;
+      bal.remaining = Math.max(0, (bal.remaining ?? 21) - days);
+      DB.saveCompany();
+    }
+
     DB.save();
     App.toast(currentLang==='ar'?'تمت الموافقة على الإجازة':'Leave approved', 'success');
     App._updateBadges();
