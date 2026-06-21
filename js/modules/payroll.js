@@ -18,10 +18,11 @@ const PayrollModule = {
     // Auto-calculate deductions for current period before rendering
     this._autoCalc();
 
-    const totalBase = DB.payroll.reduce((s,p) => s + p.base, 0);
-    const totalNet  = DB.payroll.reduce((s,p) => s + p.total, 0);
-    const totalDeductions = DB.payroll.reduce((s,p) => s + p.absentDeduction + p.lateDeduction, 0);
-    const totalOvertime   = DB.payroll.reduce((s,p) => s + p.overtime, 0);
+    const totalBase       = DB.payroll.reduce((s,p) => s + (p.base||0), 0);
+    const totalNet        = DB.payroll.reduce((s,p) => s + (p.total||0), 0);
+    const totalDeductions = DB.payroll.reduce((s,p) => s + (p.absentDeduction||0) + (p.lateDeduction||0), 0);
+    const totalOvertime   = DB.payroll.reduce((s,p) => s + (p.overtime||0), 0);
+    const totalAbsent     = DB.payroll.reduce((s,p) => s + (p.absentDays||0), 0);
 
     container.innerHTML = `
       <div class="page-header">
@@ -136,8 +137,8 @@ const PayrollModule = {
                 ${hasTransport ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.transport||0),0))}</td>`: ''}
                 ${hasFood      ? `<td>${App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.food||0),0))}</td>`     : ''}
                 ${hasOvertime  ? `<td style="color:var(--info)">${App.formatCurrency(totalOvertime)}</td>`        : ''}
-                <td style="color:var(--danger)">
-                  ${(() => { const tot = DB.payroll.reduce((s,p)=>s+(p.absentDays||0),0); return tot>0?`<strong>${tot}</strong> ${ar?'يوم':'d'}`:'—'; })()}
+                <td style="color:${totalAbsent>0?'var(--danger)':'var(--text-muted)'}">
+                  ${totalAbsent>0 ? `<strong>${totalAbsent}</strong> ${ar?'يوم':'d'}` : '—'}
                 </td>
                 <td style="color:var(--danger)">-${App.formatCurrency(totalDeductions)}</td>
                 <td style="color:var(--primary);font-size:15px">${App.formatCurrency(totalNet)}</td>

@@ -1138,9 +1138,7 @@ ${(() => {
       <div class="sig-space">
         ${s.signature?`<img src="${s.signature}" style="max-height:48px;max-width:130px;object-fit:contain">`:''}
       </div>
-      <div class="sig-line-wrap">
-        <div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div>
-      </div>
+      <div class="sig-line-wrap"></div>
     </div>`).join('')}
   </div>
 </div>`;
