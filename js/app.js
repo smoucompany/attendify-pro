@@ -124,10 +124,11 @@ const App = {
     btn.disabled = true;
 
     setTimeout(() => {
+      const savedName = DB.adminCredentials.name || '';
       const user = DB.employees.find(em => em.email === email) || {
         id: 'admin',
-        name: email.split('@')[0],
-        avatar: email.charAt(0).toUpperCase(),
+        name: savedName || email.split('@')[0],
+        avatar: (savedName || email).charAt(0).toUpperCase(),
         position: 'مدير النظام',
         email,
         avatarColor: 'gradient-primary',
@@ -153,7 +154,14 @@ const App = {
       </div>
       <form id="setup-form" onsubmit="App.completeSetup(event)">
         <div class="form-group">
-          <label>البريد الإلكتروني للمدير</label>
+          <label>الاسم الكامل</label>
+          <div class="input-wrapper">
+            <i class="fas fa-user input-icon-left"></i>
+            <input type="text" id="setup-name" placeholder="محمد أحمد العمري" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>البريد الإلكتروني</label>
           <div class="input-wrapper">
             <i class="fas fa-envelope input-icon-left"></i>
             <input type="email" id="setup-email" placeholder="admin@company.com" class="form-input" required>
@@ -194,10 +202,12 @@ const App = {
     const confirm = document.getElementById('setup-confirm').value;
     const btn     = document.getElementById('setup-btn');
 
+    const fullName = (document.getElementById('setup-name')?.value || '').trim();
+    if (!fullName) { this.toast('يرجى إدخال الاسم الكامل', 'error'); return; }
     if (pass !== confirm) { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
     if (pass.length < 8)  { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
 
-    DB.adminCredentials = { email, password: pass };
+    DB.adminCredentials = { email, password: pass, name: fullName };
     localStorage.setItem('admin-credentials', JSON.stringify(DB.adminCredentials));
 
     btn.disabled = true;
@@ -206,8 +216,8 @@ const App = {
     setTimeout(() => {
       const user = {
         id: 'admin',
-        name: email.split('@')[0],
-        avatar: email.charAt(0).toUpperCase(),
+        name: fullName,
+        avatar: fullName.charAt(0),
         position: 'مدير النظام',
         email,
         avatarColor: 'gradient-primary',
