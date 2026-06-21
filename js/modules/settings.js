@@ -550,12 +550,12 @@ const SettingsModule = {
     if (l) DB.company.lateThreshold = parseInt(l.value) || 15;
     DB.company.breakEnabled    = false;
     DB.company.overtimeEnabled = false;
-    // Update workStart/workEnd from first/last period
     const periods = DB.company.workPeriods;
     if (periods.length) {
       DB.company.workStart = periods[0].start;
       DB.company.workEnd   = periods[periods.length-1].end;
     }
+    DB.saveCompany();
     App.toast('تم حفظ أوقات العمل بنجاح', 'success');
   },
 
@@ -775,22 +775,78 @@ const SettingsModule = {
         </div>
       `)}
 
-      ${this._group('إعدادات GPS','تكوين نطاق السياج الجغرافي',`
+      ${this._group('إعدادات GPS','تكوين نطاق السياج الجغرافي لتسجيل الحضور',`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>نطاق السياج الجغرافي الافتراضي (متر)</label>
-            <input class="app-form-input" type="number" value="200" min="50" max="5000">
+            <label>خط العرض (Latitude)</label>
+            <input class="app-form-input" type="number" id="gps-lat" step="0.000001"
+              value="${DB.company.gpsLat||''}" placeholder="مثال: 24.7136">
           </div>
           <div class="app-form-group">
-            <label>دقة GPS المطلوبة</label>
-            ${this._select('gps-acc',[{v:'high',l:'عالية (±5م)'},{v:'med',l:'متوسطة (±20م)'},{v:'low',l:'منخفضة (±50م)'}],'high')}
+            <label>خط الطول (Longitude)</label>
+            <input class="app-form-input" type="number" id="gps-lon" step="0.000001"
+              value="${DB.company.gpsLon||''}" placeholder="مثال: 46.6753">
           </div>
+          <div class="app-form-group">
+            <label>نطاق السياج (متر)</label>
+            <input class="app-form-input" type="number" id="gps-radius"
+              value="${DB.company.gpsRadius||200}" min="50" max="5000">
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule.detectCompanyGPS()">
+          <i class="fas fa-crosshairs"></i> تحديد موقع الشركة من موقعي الحالي
+        </button>
+        <div id="gps-status" style="margin-top:10px;font-size:12px;color:var(--text-muted)">
+          ${DB.company.gpsLat ? `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> تم تحديد الموقع: ${DB.company.gpsLat?.toFixed(4)}, ${DB.company.gpsLon?.toFixed(4)} — نطاق ${DB.company.gpsRadius||200}م</span>` : 'لم يتم تحديد موقع الشركة بعد'}
         </div>
         ${this._row('تحقق مزدوج (GPS + Face)','يتطلب التحقق من الموقع والوجه معاً',this._toggle('dual-verify',false))}
       `)}
 
-      ${this._saveBtn("App.toast('تم حفظ إعدادات الحضور','success')")}
+      ${this._saveBtn("SettingsModule.saveAttendanceSettings()")}
     `;
+  },
+
+  saveAttendanceSettings() {
+    const lat    = parseFloat(document.getElementById('gps-lat')?.value);
+    const lon    = parseFloat(document.getElementById('gps-lon')?.value);
+    const radius = parseInt(document.getElementById('gps-radius')?.value) || 200;
+    if (!isNaN(lat) && !isNaN(lon)) {
+      DB.company.gpsLat    = lat;
+      DB.company.gpsLon    = lon;
+      DB.company.gpsRadius = radius;
+    }
+    DB.saveCompany();
+    App.toast('تم حفظ إعدادات الحضور والـ GPS بنجاح', 'success');
+  },
+
+  detectCompanyGPS() {
+    const status = document.getElementById('gps-status');
+    if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ تحديد الموقع...';
+    if (!navigator.geolocation) {
+      if (status) status.innerHTML = '<span style="color:var(--danger)">المتصفح لا يدعم GPS</span>';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const latEl = document.getElementById('gps-lat');
+        const lonEl = document.getElementById('gps-lon');
+        if (latEl) latEl.value = lat.toFixed(6);
+        if (lonEl) lonEl.value = lon.toFixed(6);
+        DB.company.gpsLat = lat;
+        DB.company.gpsLon = lon;
+        if (!DB.company.gpsRadius) DB.company.gpsRadius = 200;
+        DB.saveCompany();
+        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> تم التحديد: ${lat.toFixed(4)}, ${lon.toFixed(4)} — دقة ±${Math.round(pos.coords.accuracy)}م</span>`;
+        App.toast('تم تحديد موقع الشركة بنجاح', 'success');
+      },
+      (err) => {
+        const msgs = { 1:'تم رفض إذن الموقع — فعّل الإذن من المتصفح', 2:'تعذّر تحديد الموقع', 3:'انتهت مهلة الطلب' };
+        if (status) status.innerHTML = `<span style="color:var(--danger)"><i class="fas fa-triangle-exclamation"></i> ${msgs[err.code]||err.message}</span>`;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   },
 
   /* ══════════════════════════════════════════

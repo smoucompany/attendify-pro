@@ -134,6 +134,7 @@ const RequestsModule = {
     const req = DB.requests.find(r => r.id === id);
     if (!req) return;
     req.status = 'approved';
+    DB.save();
     App.toast(currentLang==='ar'?'تمت الموافقة على الطلب':'Request approved', 'success');
     App._updateBadges();
     this._renderList();
@@ -145,6 +146,7 @@ const RequestsModule = {
     const req = DB.requests.find(r => r.id === id);
     if (!req) return;
     req.status = 'rejected';
+    DB.save();
     App.toast(currentLang==='ar'?'تم رفض الطلب':'Request rejected', 'error');
     App._updateBadges();
     this._renderList();
@@ -225,6 +227,7 @@ const RequestsModule = {
       desc:   data.desc,
       priority: data.priority,
     });
+    DB.save();
     App.closeModal();
     App.toast(currentLang==='ar'?'تم تقديم الطلب بنجاح':'Request submitted', 'success');
     App._updateBadges();

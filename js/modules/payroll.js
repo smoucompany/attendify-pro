@@ -259,6 +259,37 @@ const PayrollModule = {
     const lateThreshold = DB.company.lateThreshold || 15;
 
     const periodAtt = DB.attendance.filter(a => a.date && a.date.startsWith(period));
+
+    // ── إنشاء سجلات للموظفين الجدد الذين ليس لديهم راتب ──
+    DB.employees.filter(e => e.status === 'active').forEach(emp => {
+      if (!DB.payroll.find(p => p.empId === emp.id)) {
+        const base = emp.salary || 0;
+        DB.payroll.push({
+          id:              DB.nextId('pay'),
+          empId:           emp.id,
+          period,
+          base,
+          housing:         Math.round(base * 0.25),
+          transport:       Math.round(base * 0.10),
+          food:            Math.round(base * 0.05),
+          overtime:        0,
+          absentDeduction: 0,
+          lateDeduction:   0,
+          absentDays:      0,
+          total:           Math.round(base * 1.40),
+        });
+      } else {
+        // تحديث الراتب الأساسي إذا تغيّر
+        const p = DB.payroll.find(pr => pr.empId === emp.id);
+        if (p && emp.salary && p.base !== emp.salary) {
+          p.base      = emp.salary;
+          p.housing   = Math.round(emp.salary * 0.25);
+          p.transport = Math.round(emp.salary * 0.10);
+          p.food      = Math.round(emp.salary * 0.05);
+        }
+      }
+    });
+
     if (bar) bar.style.width = '60%';
 
     DB.payroll.forEach(p => {
@@ -302,6 +333,7 @@ const PayrollModule = {
     });
 
     if (bar) bar.style.width = '100%';
+    DB.save();
     setTimeout(() => {
       App.closeModal();
       DB.logAudit('admin', currentLang==='ar'?`معالجة رواتب ${period}`:`Payroll processed ${period}`, 'Payroll',

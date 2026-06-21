@@ -190,6 +190,7 @@ const RolesModule = {
     const data = Object.fromEntries(new FormData(e.target));
     const role = DB.roles.find(r => r.id === id);
     if (role) role.name = data.name;
+    DB.save();
     App.closeModal();
     App.toast(currentLang==='ar'?'تم التحديث':'Updated', 'success');
     this.render(document.getElementById('page-content'));
@@ -221,6 +222,7 @@ const RolesModule = {
       users: [],
       permissions: {},
     });
+    DB.save();
     App.closeModal();
     App.toast(currentLang==='ar'?'تم إضافة الدور':'Role added', 'success');
     this.render(document.getElementById('page-content'));
@@ -230,11 +232,11 @@ const RolesModule = {
     DB.roles.forEach(r => { r.users = r.users.filter(u => u !== empId); });
     const newRole = DB.roles.find(r => r.id === roleId);
     if (newRole && !newRole.users.includes(empId)) newRole.users.push(empId);
+    DB.save();
     App.toast(currentLang==='ar'?'تم تحديث الدور':'Role updated', 'success');
   },
 
   saveMatrix() {
-    // Read all checkboxes from the DOM and persist to DB.roles
     document.querySelectorAll('.perm-check[data-role]').forEach(el => {
       const { role: roleId, mod, perm } = el.dataset;
       const role = DB.roles.find(r => r.id === roleId);
@@ -242,6 +244,7 @@ const RolesModule = {
       if (!role.permissions[mod]) role.permissions[mod] = {};
       role.permissions[mod][perm] = el.classList.contains('checked');
     });
+    DB.save();
     DB.logAudit('admin', currentLang==='ar'?'تعديل مصفوفة الصلاحيات':'Edit Permission Matrix', 'Roles', '');
     App.toast(currentLang==='ar'?'تم حفظ الصلاحيات بنجاح ✓':'Permissions saved ✓', 'success');
   }

@@ -233,15 +233,54 @@ const AttendanceModule = {
 
   doCheckIn() {
     if (this._checkedIn) { App.toast(currentLang==='ar'?'أنت سجلت حضورك بالفعل':'Already checked in', 'warning'); return; }
-    this._checkedIn  = true;
-    this._checkInTime = new Date().toLocaleTimeString('ar-SA');
+    const now     = new Date();
+    const nowTime = now.toTimeString().slice(0,5);
+    const today   = now.toISOString().split('T')[0];
+    this._checkedIn   = true;
+    this._checkInTime = now.toLocaleTimeString(currentLang==='ar'?'ar-SA':'en-US');
+
+    // سجّل في DB.attendance
+    const adminId = App.state?.user?.id || 'admin';
+    const existing = DB.attendance.find(a => a.empId === adminId && a.date === today);
+    if (existing) {
+      existing.checkIn = nowTime;
+    } else {
+      const empShift = (() => {
+        const u = App.state?.user;
+        const emp = u ? DB.getEmployee(u.id) : null;
+        return emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      })();
+      const shiftStart = empShift?.start || DB.company.workStart || '08:00';
+      const [sh,sm] = shiftStart.split(':').map(Number);
+      const [ch,cm] = nowTime.split(':').map(Number);
+      const isLate  = (ch*60+cm) > (sh*60+sm + (DB.company.lateThreshold||15));
+      DB.attendance.push({
+        id: DB.nextId('att'), empId: adminId, date: today,
+        checkIn: nowTime, checkOut: null,
+        status: isLate ? 'late' : 'present',
+        method: 'manual', workedMins: 0, overtime: null,
+        location: currentLang==='ar'?'تطبيق الويب':'Web App', notes: '',
+      });
+    }
+    DB.save();
     App.toast(currentLang==='ar'?'تم تسجيل الحضور بنجاح':'Check-in recorded', 'success');
     this.render(document.getElementById('page-content'));
   },
 
   doCheckOut() {
     if (!this._checkedIn) { App.toast(currentLang==='ar'?'لم تسجل حضورك بعد':'Please check in first', 'warning'); return; }
+    const now     = new Date();
+    const nowTime = now.toTimeString().slice(0,5);
+    const today   = now.toISOString().split('T')[0];
     this._checkedIn = false;
+
+    const adminId  = App.state?.user?.id || 'admin';
+    const existing = DB.attendance.find(a => a.empId === adminId && a.date === today);
+    if (existing) {
+      existing.checkOut   = nowTime;
+      existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
+    }
+    DB.save();
     App.toast(currentLang==='ar'?'تم تسجيل الانصراف بنجاح':'Check-out recorded', 'success');
     this.render(document.getElementById('page-content'));
   },
@@ -287,23 +326,95 @@ const AttendanceModule = {
   openGPSVerify() {
     App.openModal('GPS ' + t('attendance.gpsVerify'), `
       <div style="padding:8px">
-        <div class="map-container" style="height:260px;border-radius:12px;margin-bottom:16px">
+        <div id="gps-modal-map" class="map-container" style="height:220px;border-radius:12px;margin-bottom:16px;position:relative;overflow:hidden">
           <div class="map-grid"></div>
-          <div class="geofence-circle"></div>
-          <div class="map-pin" style="top:calc(50% - 10px);left:calc(50% - 10px)"></div>
-        </div>
-        <div class="info-box info-box-success">
-          <i class="fas fa-circle-check"></i>
-          <div>
-            <div style="font-weight:700">${currentLang==='ar'?'أنت داخل نطاق العمل':'You are within the work zone'}</div>
-            <div style="font-size:12px">${currentLang==='ar'?'المركز الرئيسي — الرياض (120م)':'Head Office — Riyadh (120m)'}</div>
+          <div class="geofence-circle" id="gps-fence"></div>
+          <div class="map-pin" id="gps-pin" style="top:calc(50% - 10px);left:calc(50% - 10px)"></div>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border-radius:12px" id="gps-loading">
+            <div style="text-align:center;color:#fff">
+              <i class="fas fa-spinner fa-spin" style="font-size:28px;margin-bottom:8px;display:block"></i>
+              <span style="font-size:13px">${currentLang==='ar'?'جارٍ تحديد موقعك...':'Locating you...'}</span>
+            </div>
           </div>
         </div>
-        <button class="btn btn-primary w-full" onclick="App.closeModal(); AttendanceModule.doCheckIn()">
+        <div id="gps-result" style="margin-bottom:14px"></div>
+        <button id="gps-confirm-btn" class="btn btn-primary w-full" style="display:none"
+          onclick="App.closeModal(); AttendanceModule.doCheckIn()">
           <i class="fas fa-map-pin"></i> ${currentLang==='ar'?'تأكيد الموقع وتسجيل الحضور':'Confirm Location & Check In'}
+        </button>
+        <button id="gps-override-btn" class="btn btn-secondary w-full" style="display:none;margin-top:8px"
+          onclick="App.closeModal(); AttendanceModule.doCheckIn()">
+          <i class="fas fa-circle-exclamation"></i> ${currentLang==='ar'?'تسجيل رغم خارج النطاق':'Check In Anyway (Outside Zone)'}
         </button>
       </div>
     `, { size: 'sm' });
+    this._startGPS();
+  },
+
+  _calcDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  },
+
+  _startGPS() {
+    if (!navigator.geolocation) {
+      this._gpsResult(false, null, currentLang==='ar'?'المتصفح لا يدعم GPS':'Browser does not support GPS');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const userLat  = pos.coords.latitude;
+        const userLon  = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy);
+        const compLat  = DB.company.gpsLat;
+        const compLon  = DB.company.gpsLon;
+        const radius   = DB.company.gpsRadius || 200;
+
+        document.getElementById('gps-loading')?.remove();
+
+        if (!compLat || !compLon) {
+          // موقع الشركة غير محدد — نسمح بالتسجيل مع تحذير
+          this._gpsResult('unknown', accuracy,
+            currentLang==='ar'
+              ? `موقعك: ${userLat.toFixed(4)}, ${userLon.toFixed(4)} — موقع الشركة لم يُحدَّد بعد`
+              : `Your location: ${userLat.toFixed(4)}, ${userLon.toFixed(4)} — Company GPS not set`
+          );
+          return;
+        }
+
+        const dist   = this._calcDistance(userLat, userLon, compLat, compLon);
+        const inside = dist <= radius;
+        this._gpsResult(inside, accuracy,
+          currentLang==='ar'
+            ? `${inside?'أنت داخل':'أنت خارج'} نطاق العمل — المسافة: ${dist}م (النطاق: ${radius}م) — دقة GPS: ±${accuracy}م`
+            : `${inside?'Inside':'Outside'} work zone — Distance: ${dist}m (Radius: ${radius}m) — Accuracy: ±${accuracy}m`
+        );
+      },
+      (err) => {
+        const msgs = { 1:'تم رفض إذن الموقع — فعّل الإذن من إعدادات المتصفح', 2:'تعذّر تحديد الموقع', 3:'انتهت مهلة الطلب' };
+        document.getElementById('gps-loading')?.remove();
+        this._gpsResult(false, null, msgs[err.code] || err.message);
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  },
+
+  _gpsResult(inside, accuracy, msg) {
+    const el = document.getElementById('gps-result');
+    if (!el) return;
+    if (inside === true) {
+      el.innerHTML = `<div class="info-box info-box-success"><i class="fas fa-circle-check"></i><div><div style="font-weight:700">${currentLang==='ar'?'داخل نطاق العمل':'Inside Work Zone'}</div><div style="font-size:12px">${msg}</div></div></div>`;
+      document.getElementById('gps-confirm-btn').style.display = '';
+    } else if (inside === 'unknown') {
+      el.innerHTML = `<div class="info-box info-box-warning"><i class="fas fa-triangle-exclamation"></i><div><div style="font-weight:700">${currentLang==='ar'?'موقع الشركة غير محدد':'Company GPS Not Set'}</div><div style="font-size:12px">${msg}</div></div></div>`;
+      document.getElementById('gps-confirm-btn').style.display = '';
+    } else {
+      el.innerHTML = `<div class="info-box info-box-danger"><i class="fas fa-circle-xmark"></i><div><div style="font-weight:700">${currentLang==='ar'?'خارج نطاق العمل':'Outside Work Zone'}</div><div style="font-size:12px">${msg}</div></div></div>`;
+      document.getElementById('gps-override-btn').style.display = '';
+    }
   },
 
   openManual() {
@@ -458,6 +569,10 @@ const AttendanceModule = {
       rec.status   = data.status   || rec.status;
       rec.overtime = data.overtime || null;
     }
+    if (rec && rec.checkIn && rec.checkOut) {
+      rec.workedMins = this._shiftMinutes(rec.checkIn, rec.checkOut);
+    }
+    DB.save();
     App.closeModal();
     App.toast(currentLang==='ar'?'تم التحديث بنجاح':'Updated successfully', 'success');
     this._renderTable();
@@ -466,6 +581,7 @@ const AttendanceModule = {
   deleteRecord(id) {
     App.confirm(currentLang==='ar'?'هل تريد حذف هذا السجل؟':'Delete this record?', () => {
       DB.attendance = DB.attendance.filter(a => a.id !== id);
+      DB.save();
       App.toast(currentLang==='ar'?'تم الحذف':'Deleted', 'success');
       this._renderTable();
     });

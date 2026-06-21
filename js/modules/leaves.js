@@ -198,6 +198,7 @@ const LeavesModule = {
     if (!leave) return;
     leave.status = 'approved';
     leave.approvedBy = App.state.user?.id || 'admin';
+    DB.save();
     App.toast(currentLang==='ar'?'تمت الموافقة على الإجازة':'Leave approved', 'success');
     App._updateBadges();
     this._renderList();
@@ -214,6 +215,7 @@ const LeavesModule = {
     const leave = DB.leaves.find(l => l.id === id);
     if (!leave) return;
     leave.status = 'rejected';
+    DB.save();
     App.toast(currentLang==='ar'?'تم رفض الإجازة':'Leave rejected', 'error');
     App._updateBadges();
     this._renderList();
@@ -342,6 +344,7 @@ const LeavesModule = {
       appliedOn:  new Date().toISOString().split('T')[0],
     });
 
+    DB.save();
     App.closeModal();
     App.toast(t('leaves.addLeave') + ' — ' + (currentLang==='ar'?'تم بنجاح':'Submitted'), 'success');
     App._updateBadges();

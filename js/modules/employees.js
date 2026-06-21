@@ -330,6 +330,16 @@ const EmployeesModule = {
         emp.status = data.status;
         emp.gender = data.gender;
         emp.hireDate = data.hireDate;
+        // تحديث الراتب في سجل الـ payroll
+        const pr = DB.payroll.find(p => p.empId === id);
+        if (pr && emp.salary) {
+          pr.base      = emp.salary;
+          pr.housing   = Math.round(emp.salary * 0.25);
+          pr.transport = Math.round(emp.salary * 0.10);
+          pr.food      = Math.round(emp.salary * 0.05);
+          pr.total     = Math.max(0, pr.base + pr.housing + pr.transport + pr.food + pr.overtime - pr.absentDeduction - pr.lateDeduction);
+        }
+        DB.save();
         App.toast(`${t('common.edit')} ${fullName} ${currentLang==='ar'?'تم بنجاح':'updated'}`, 'success');
       }
     } else {
@@ -352,8 +362,25 @@ const EmployeesModule = {
         password: data.no || DB.nextEmpNo(), // default password = employee code
       };
       DB.employees.push(newEmp);
-      // Initialize leave balance for new employee
+      // رصيد الإجازات
       DB.leaveBalances[newEmp.id] = { annual: 21, sick: 10, emergency: 3, annualUsed: 0, sickUsed: 0, emerUsed: 0 };
+      // سجل الراتب
+      const base = newEmp.salary || 0;
+      DB.payroll.push({
+        id:              DB.nextId('pay'),
+        empId:           newEmp.id,
+        period:          new Date().toISOString().slice(0,7),
+        base,
+        housing:         Math.round(base * 0.25),
+        transport:       Math.round(base * 0.10),
+        food:            Math.round(base * 0.05),
+        overtime:        0,
+        absentDeduction: 0,
+        lateDeduction:   0,
+        absentDays:      0,
+        total:           Math.round(base * 1.40),
+      });
+      DB.save();
       App.toast(`${t('employees.addEmployee')} ${fullName} ${currentLang==='ar'?'تم بنجاح':'added'}`, 'success');
     }
 
