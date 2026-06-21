@@ -355,7 +355,7 @@ const EmployeesModule = {
         hireDate: data.hireDate || new Date().toISOString().split('T')[0],
         avatar: fullName.charAt(0),
         avatarColor: 'gradient-primary',
-        password: data.no || DB.nextEmpNo(), // default password = employee code
+        password: Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6),
       };
       DB.employees.push(newEmp);
       // رصيد الإجازات

@@ -238,22 +238,31 @@ const ProfileModule = {
     App.toast('تم حفظ البيانات الشخصية ✓', 'success');
   },
 
-  changePassword() {
+  async changePassword() {
     const oldPass  = document.getElementById('prof-old-pass')?.value;
     const newPass  = document.getElementById('prof-new-pass')?.value;
     const confirm  = document.getElementById('prof-confirm-pass')?.value;
 
     if (!oldPass || !newPass || !confirm) { App.toast('يرجى ملء جميع الحقول', 'error'); return; }
-    if (oldPass !== DB.adminCredentials.password) { App.toast('كلمة المرور الحالية غير صحيحة', 'error'); return; }
+
+    // Verify old password (supports hashed and legacy plaintext)
+    const stored = DB.adminCredentials.password || '';
+    let oldMatch = false;
+    if (stored.startsWith('sha256:')) {
+      oldMatch = ('sha256:' + await _sha256(oldPass)) === stored;
+    } else {
+      oldMatch = oldPass === stored;
+    }
+    if (!oldMatch) { App.toast('كلمة المرور الحالية غير صحيحة', 'error'); return; }
     if (newPass.length < 8) { App.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
     if (newPass !== confirm) { App.toast('كلمتا المرور الجديدتان غير متطابقتين', 'error'); return; }
 
-    DB.adminCredentials.password = newPass;
-    DB.saveCompany();
+    DB.adminCredentials.password = 'sha256:' + (await _sha256(newPass));
+    DB._saveToLocal();
     DB.logAudit(App.state.user?.id || 'admin', 'تغيير كلمة المرور', 'الملف الشخصي', 'تم تغيير كلمة المرور بنجاح');
 
-    document.getElementById('prof-old-pass').value  = '';
-    document.getElementById('prof-new-pass').value  = '';
+    document.getElementById('prof-old-pass').value     = '';
+    document.getElementById('prof-new-pass').value     = '';
     document.getElementById('prof-confirm-pass').value = '';
 
     App.toast('تم تغيير كلمة المرور بنجاح ✓', 'success');

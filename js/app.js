@@ -3,6 +3,22 @@
    Router · Auth · Theme · Language · Utilities
    ========================================================= */
 
+// ── HTML sanitizer — prevents XSS in all innerHTML assignments ──
+function _esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ── SHA-256 hash (async, returns hex string) ──────────────────
+async function _sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
 const App = {
 
   // State
@@ -113,7 +129,7 @@ const App = {
   },
 
   // ─── AUTH ─────────────────────────────────────────────────
-  login(e) {
+  async login(e) {
     e.preventDefault();
     const email    = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
@@ -124,7 +140,27 @@ const App = {
       return;
     }
 
-    if (email !== DB.adminCredentials.email || password !== DB.adminCredentials.password) {
+    const stored = DB.adminCredentials;
+    if (email !== stored.email) {
+      this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
+      return;
+    }
+
+    // Support both hashed (sha256:) and legacy plaintext passwords
+    let match = false;
+    if (stored.password?.startsWith('sha256:')) {
+      const hash = await _sha256(password);
+      match = hash === stored.password.slice(7);
+    } else {
+      match = password === stored.password;
+      // Migrate plaintext → hashed on successful login
+      if (match) {
+        stored.password = 'sha256:' + (await _sha256(password));
+        DB._saveToLocal();
+      }
+    }
+
+    if (!match) {
       this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
       return;
     }
@@ -149,31 +185,6 @@ const App = {
       this.toast(`أهلاً ${user.name}`, 'success');
       DB.logAudit(user.id, 'تسجيل دخول', 'النظام', 'تسجيل دخول ناجح');
     }, 800);
-  },
-
-  _debugLogin(e) {
-    e && e.preventDefault();
-    try {
-      const db    = JSON.parse(localStorage.getItem('attendify-db') || '{}');
-      const leg   = JSON.parse(localStorage.getItem('admin-credentials') || '{}');
-      const creds = DB.adminCredentials;
-      const msg = [
-        '=== تشخيص تسجيل الدخول ===',
-        '',
-        `DB.adminCredentials.email:    "${creds?.email || '(فارغ)'}"`,
-        `DB.adminCredentials.password: "${creds?.password ? '***' + creds.password.slice(-2) : '(فارغة)'}"`,
-        '',
-        `attendify-db.adminCreds.email:    "${db.adminCreds?.email || '(غير موجود)'}"`,
-        `attendify-db.adminCreds.password: "${db.adminCreds?.password ? '***' + db.adminCreds.password.slice(-2) : '(غير موجود)'}"`,
-        '',
-        `admin-credentials (legacy): "${leg?.email || '(غير موجود)'}"`,
-        '',
-        `الصفحة الحالية: ${document.getElementById('login-page')?.style.display}`,
-      ].join('\n');
-      alert(msg);
-    } catch(err) {
-      alert('خطأ في التشخيص: ' + err.message);
-    }
   },
 
   forgotPassword(e) {
@@ -229,12 +240,12 @@ const App = {
     document.getElementById('rp-new').focus();
   },
 
-  _doResetPassword() {
+  async _doResetPassword() {
     const newPass = document.getElementById('rp-new')?.value || '';
     const confirm = document.getElementById('rp-confirm')?.value || '';
     if (newPass.length < 8) { alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل'); return; }
     if (newPass !== confirm) { alert('كلمتا المرور غير متطابقتين'); return; }
-    DB.adminCredentials.password = newPass;
+    DB.adminCredentials.password = 'sha256:' + (await _sha256(newPass));
     DB._saveToLocal();
     document.getElementById('reset-overlay')?.remove();
     alert('✓ تم تغيير كلمة المرور بنجاح\nيمكنك الآن تسجيل الدخول بكلمة المرور الجديدة');
@@ -294,7 +305,7 @@ const App = {
     `;
   },
 
-  completeSetup(e) {
+  async completeSetup(e) {
     e.preventDefault();
     const email   = document.getElementById('setup-email').value.trim().toLowerCase();
     const pass    = document.getElementById('setup-pass').value;
@@ -306,8 +317,9 @@ const App = {
     if (pass !== confirm) { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
     if (pass.length < 8)  { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
 
-    Object.assign(DB.adminCredentials, { email, password: pass, name: fullName });
-    DB._saveToLocal(); // single source of truth: attendify-db
+    const hashed = 'sha256:' + (await _sha256(pass));
+    Object.assign(DB.adminCredentials, { email, password: hashed, name: fullName });
+    DB._saveToLocal();
 
     btn.disabled = true;
     btn.innerHTML = '<span>جارٍ الإعداد...</span>';
@@ -479,7 +491,7 @@ const App = {
         if (modules[page]) {
           modules[page]();
         } else {
-          content.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-exclamation-circle"></i></div><div class="empty-title">الصفحة غير موجودة</div><p class="empty-desc">الوحدة <strong>${page}</strong> غير متاحة</p></div>`;
+          content.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-exclamation-circle"></i></div><div class="empty-title">الصفحة غير موجودة</div><p class="empty-desc">الوحدة <strong>${_esc(page)}</strong> غير متاحة</p></div>`;
         }
 
         // Fade-in after render
@@ -493,7 +505,7 @@ const App = {
         });
       } catch (err) {
         console.error('Module render error:', err);
-        content.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-bug"></i></div><div class="empty-title">خطأ في التحميل</div><p class="empty-desc">${err.message}</p></div>`;
+        content.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-bug"></i></div><div class="empty-title">خطأ في التحميل</div><p class="empty-desc">${_esc(err.message)}</p></div>`;
         content.style.opacity = '1';
         content.style.transform = 'translateY(0)';
       }
@@ -599,8 +611,8 @@ const App = {
         <div class="notif-item ${n.read ? '' : 'unread'}" onclick="App.markNotifRead('${n.id}', this)">
           <div class="notif-icon ${n.iconBg}" style="color:white">${n.icon ? `<i class="${n.icon}"></i>` : ''}</div>
           <div class="notif-content">
-            <div class="notif-title">${n.title}</div>
-            <div class="notif-desc">${n.desc}</div>
+            <div class="notif-title">${_esc(n.title)}</div>
+            <div class="notif-desc">${_esc(n.desc)}</div>
             <div class="notif-time"><i class="fas fa-clock" style="font-size:10px"></i> ${time}</div>
           </div>
         </div>
