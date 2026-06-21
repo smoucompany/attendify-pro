@@ -103,6 +103,8 @@ const AttendanceModule = {
           <option value="all">${t('common.all')}</option>
           <option value="present">${t('attendance.present')}</option>
           <option value="late">${t('attendance.late')}</option>
+          <option value="absent">${currentLang==='ar'?'غائب':'Absent'}</option>
+          <option value="not_arrived">${currentLang==='ar'?'لم يصل بعد':'Not arrived'}</option>
         </select>
         <select class="toolbar-select" onchange="AttendanceModule._empFilter=this.value; AttendanceModule._renderTable()">
           <option value="all">${t('common.all')} ${t('nav.employees')}</option>
@@ -145,20 +147,64 @@ const AttendanceModule = {
     const container = document.getElementById('attendance-table');
     if (!container) return;
 
-    let records = DB.attendance.filter(a => {
-      const matchDate   = a.date === this._dateFilter;
-      const matchStatus = this._statusFilter === 'all' || a.status === this._statusFilter;
-      const matchEmp    = this._empFilter === 'all' || a.empId === this._empFilter;
-      const search      = (this._search||'').toLowerCase();
-      const emp         = DB.getEmployee(a.empId);
-      const matchSearch = !search || emp?.name.includes(search);
-      return matchDate && matchStatus && matchEmp && matchSearch;
-    });
+    const search = (this._search || '').toLowerCase();
 
-    if (!records.length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-clock"></i></div><div class="empty-title">${t('common.noData')}</div><p class="empty-desc">${currentLang==='ar'?'لا توجد سجلات حضور لهذا اليوم':'No attendance records for this date'}</p></div>`;
+    // Build merged list: all active employees + their attendance record for the selected date
+    const isToday = this._dateFilter === new Date().toISOString().split('T')[0];
+    const dayName = new Date(this._dateFilter + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+    const workDays = DB.company.workDays || ['sat','sun','mon','tue','wed','thu'];
+    const isWorkDay = workDays.includes(dayName);
+
+    // Check if date is an official holiday
+    const isHoliday = (DB.company.holidays || []).some(h => h.date === this._dateFilter);
+
+    const rows = DB.employees
+      .filter(e => e.status !== 'terminated')
+      .filter(e => this._empFilter === 'all' || e.id === this._empFilter)
+      .filter(e => !search || e.name.toLowerCase().includes(search) || (e.no||'').includes(search))
+      .map(emp => {
+        const rec  = DB.attendance.find(a => a.date === this._dateFilter && a.empId === emp.id);
+        const dept = DB.getDepartment(emp.dept);
+
+        // Determine effective status
+        let status, checkIn, checkOut, method, overtime, recId;
+        if (rec) {
+          status   = rec.status;
+          checkIn  = rec.checkIn;
+          checkOut = rec.checkOut;
+          method   = rec.method;
+          overtime = rec.overtime;
+          recId    = rec.id;
+        } else if (!isWorkDay || isHoliday) {
+          status = 'holiday';
+        } else if (!isToday) {
+          // Past date without record = absent
+          status = 'absent';
+        } else {
+          // Today, no record yet = not arrived
+          status = 'not_arrived';
+        }
+
+        return { emp, dept, rec, status, checkIn, checkOut, method, overtime, recId };
+      })
+      .filter(row => this._statusFilter === 'all' || row.status === this._statusFilter);
+
+    if (!DB.employees.filter(e => e.status !== 'terminated').length) {
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div><div class="empty-title">${currentLang==='ar'?'لا يوجد موظفون':'No employees'}</div></div>`;
       return;
     }
+
+    const statusBadge = (s) => {
+      const map = {
+        present:     `<span class="badge badge-success badge-dot">${t('attendance.present')}</span>`,
+        late:        `<span class="badge badge-warning badge-dot">${t('attendance.late')}</span>`,
+        absent:      `<span class="badge badge-danger badge-dot">${currentLang==='ar'?'غائب':'Absent'}</span>`,
+        not_arrived: `<span class="badge badge-secondary badge-dot">${currentLang==='ar'?'لم يصل بعد':'Not arrived'}</span>`,
+        holiday:     `<span class="badge badge-info badge-dot">${currentLang==='ar'?'إجازة':'Holiday'}</span>`,
+        on_leave:    `<span class="badge badge-warning badge-dot">${currentLang==='ar'?'في إجازة':'On leave'}</span>`,
+      };
+      return map[s] || `<span class="badge badge-secondary">${s}</span>`;
+    };
 
     container.innerHTML = `
       <div class="table-wrapper">
@@ -177,37 +223,50 @@ const AttendanceModule = {
             </tr>
           </thead>
           <tbody>
-            ${records.map(a => {
-              const emp  = DB.getEmployee(a.empId);
-              const dept = DB.getDepartment(emp?.dept);
-              const dur  = this._calcDuration(a.checkIn, a.checkOut);
+            ${rows.map(({ emp, dept, rec, status, checkIn, checkOut, method, overtime, recId }) => {
+              const dur = this._calcDuration(checkIn, checkOut);
+              const rowBg = status === 'absent' ? 'background:rgba(239,68,68,0.04)' :
+                            status === 'late'   ? 'background:rgba(245,158,11,0.04)' :
+                            status === 'not_arrived' ? 'background:rgba(148,163,184,0.04)' : '';
               return `
-                <tr class="stagger-item">
+                <tr class="stagger-item" style="${rowBg}">
                   <td>
                     <div class="table-avatar">
-                      <div class="avatar ${emp?.avatarColor||'gradient-primary'}">${emp?.avatar||'?'}</div>
+                      <div class="avatar ${emp.avatarColor||'gradient-primary'}">${emp.avatar||'?'}</div>
                       <div class="avatar-info">
-                        <div class="avatar-name">${emp?.name||'—'}</div>
-                        <div class="avatar-sub">${emp?.no||''}</div>
+                        <div class="avatar-name">${emp.name}</div>
+                        <div class="avatar-sub">${emp.no||''} · ${emp.position||''}</div>
                       </div>
                     </div>
                   </td>
-                  <td><span class="badge badge-primary">${dept?.name||''}</span></td>
-                  <td><span style="font-family:var(--font-en);font-weight:600;color:var(--success)">${a.checkIn||'—'}</span></td>
-                  <td><span style="font-family:var(--font-en);font-weight:600;color:var(--danger)">${a.checkOut||'—'}</span></td>
-                  <td><span style="font-family:var(--font-en);color:var(--text-primary);font-weight:600">${dur}</span></td>
-                  <td>${App.getMethodIcon(a.method||'manual')} <span style="font-size:11px;color:var(--text-muted)">${a.method||'manual'}</span></td>
-                  <td>${a.overtime ? `<span class="badge badge-info">${a.overtime}</span>` : `<span style="color:var(--text-muted)">—</span>`}</td>
-                  <td>${App.getStatusBadge(a.status||'present')}</td>
+                  <td><span class="badge badge-primary">${dept?.name||'—'}</span></td>
+                  <td><span style="font-family:var(--font-en);font-weight:600;color:var(--success)">${checkIn||'—'}</span></td>
+                  <td><span style="font-family:var(--font-en);font-weight:600;color:var(--danger)">${checkOut||'—'}</span></td>
+                  <td><span style="font-family:var(--font-en);color:var(--text-primary);font-weight:600">${dur||'—'}</span></td>
+                  <td>${method ? App.getMethodIcon(method)+' <span style="font-size:11px;color:var(--text-muted)">'+method+'</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+                  <td>${overtime ? `<span class="badge badge-info">${overtime} د</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+                  <td>${statusBadge(status)}</td>
                   <td>
                     <div style="display:flex;gap:4px">
-                      ${(a.status==='late'||a.status==='absent') ? `
-                        <button class="btn-icon btn" title="إرسال WhatsApp" style="color:#25d366"
-                          onclick="AttendanceModule.sendWA('${a.empId}','${a.status}','${a.id}')">
+                      ${(status==='absent'||status==='not_arrived') ? `
+                        <button class="btn btn-success btn-sm" title="${currentLang==='ar'?'تسجيل حضور':'Check in'}"
+                          onclick="AttendanceModule._quickCheckIn('${emp.id}')">
+                          <i class="fas fa-clock"></i>
+                        </button>` : ''}
+                      ${(status==='late'||status==='absent') ? `
+                        <button class="btn-icon btn" title="WhatsApp" style="color:#25d366"
+                          onclick="AttendanceModule.sendWA('${emp.id}','${status}','${recId||''}')">
                           <i class="fab fa-whatsapp"></i>
                         </button>` : ''}
-                      <button class="btn-icon btn" onclick="AttendanceModule.editRecord('${a.id}')" title="${t('common.edit')}"><i class="fas fa-pencil"></i></button>
-                      <button class="btn-icon btn" onclick="AttendanceModule.deleteRecord('${a.id}')" title="${t('common.delete')}" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
+                      ${recId ? `
+                        <button class="btn-icon btn" onclick="AttendanceModule.editRecord('${recId}')" title="${t('common.edit')}"><i class="fas fa-pencil"></i></button>
+                        <button class="btn-icon btn" onclick="AttendanceModule.deleteRecord('${recId}')" title="${t('common.delete')}" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
+                      ` : `
+                        <button class="btn-icon btn" title="${currentLang==='ar'?'إضافة سجل':'Add record'}"
+                          onclick="AttendanceModule._quickCheckIn('${emp.id}')">
+                          <i class="fas fa-plus" style="color:var(--primary)"></i>
+                        </button>
+                      `}
                     </div>
                   </td>
                 </tr>
@@ -216,10 +275,33 @@ const AttendanceModule = {
           </tbody>
         </table>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
-        ${t('common.showing')} ${records.length} ${t('common.results')}
+      <p style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 4px">
+        ${t('common.showing')} ${rows.length} ${currentLang==='ar'?'موظف':'employees'} ·
+        <span style="color:var(--success)">${rows.filter(r=>r.status==='present').length} ${t('attendance.present')}</span> ·
+        <span style="color:var(--warning)">${rows.filter(r=>r.status==='late').length} ${t('attendance.late')}</span> ·
+        <span style="color:var(--danger)">${rows.filter(r=>r.status==='absent').length} ${currentLang==='ar'?'غائب':'absent'}</span> ·
+        <span style="color:var(--text-muted)">${rows.filter(r=>r.status==='not_arrived').length} ${currentLang==='ar'?'لم يصل':'not arrived'}</span>
       </p>
     `;
+  },
+
+  _quickCheckIn(empId) {
+    const now  = new Date();
+    const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const workStart = DB.company.workStart || '08:00';
+    const late = time > workStart;
+    const [wh, wm] = workStart.split(':').map(Number);
+    const [ch, cm] = time.split(':').map(Number);
+    const lateMin  = late ? (ch*60+cm) - (wh*60+wm) : 0;
+
+    DB.attendance.push({
+      id: DB.nextId('a'), empId, date: this._dateFilter,
+      checkIn: time, checkOut: null,
+      status: late && lateMin > (DB.company.lateThreshold||15) ? 'late' : 'present',
+      method: 'manual', overtime: 0, lateMin: late ? lateMin : 0,
+    });
+    App.toast(`${DB.getEmployee(empId)?.name} — ${currentLang==='ar'?'تم تسجيل الحضور':'Checked in'} ${time}`, 'success');
+    this._renderTable();
   },
 
   _calcDuration(start, end) {
