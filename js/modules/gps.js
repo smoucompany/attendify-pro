@@ -209,19 +209,44 @@ const GpsModule = {
           <label>${t('gps.locationName')}</label>
           <input class="app-form-input" type="text" name="name" required>
         </div>
-        <div style="margin-bottom:8px">
+
+        <!-- Map URL extractor -->
+        <div class="app-form-group">
+          <label style="display:flex;align-items:center;gap:6px">
+            <i class="fas fa-link" style="color:var(--primary)"></i>
+            ${currentLang==='ar'?'رابط الموقع على الخريطة (اختياري)':'Map URL (optional)'}
+          </label>
+          <div style="display:flex;gap:8px">
+            <input class="app-form-input" id="map-url-input" type="url"
+              dir="ltr" placeholder="https://maps.google.com/... أو maps.apple.com/..."
+              oninput="GpsModule._extractFromUrl(this.value)" style="flex:1">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="GpsModule._extractFromUrl(document.getElementById('map-url-input').value)" title="استخراج">
+              <i class="fas fa-wand-magic-sparkles"></i>
+            </button>
+          </div>
+          <div id="url-extract-status" style="font-size:11px;margin-top:4px;min-height:16px"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+          <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text-muted)">${currentLang==='ar'?'أو':'or'}</span>
+          <hr style="flex:1;border:none;border-top:1px solid var(--border)">
+        </div>
+
+        <div style="margin-bottom:12px">
           <button type="button" class="btn btn-secondary btn-sm" onclick="GpsModule._fillCurrentLocation()">
             <i class="fas fa-crosshairs"></i> ${currentLang==='ar'?'استخدام موقعي الحالي':'Use My Current Location'}
           </button>
         </div>
+
         <div class="app-form-row">
           <div class="app-form-group">
             <label>Latitude</label>
-            <input class="app-form-input" type="number" id="add-lat" name="lat" step="0.00001" placeholder="مثال: 24.7136" required>
+            <input class="app-form-input" type="number" id="add-lat" name="lat" step="0.000001" placeholder="مثال: 24.7136" required>
           </div>
           <div class="app-form-group">
             <label>Longitude</label>
-            <input class="app-form-input" type="number" id="add-lng" name="lng" step="0.00001" placeholder="مثال: 46.6753" required>
+            <input class="app-form-input" type="number" id="add-lng" name="lng" step="0.000001" placeholder="مثال: 46.6753" required>
           </div>
         </div>
         <div class="app-form-group">
@@ -240,6 +265,38 @@ const GpsModule = {
         </div>
       </form>
     `, { size: 'sm' });
+  },
+
+  // يستخرج الإحداثيات من رابط Google Maps / Apple Maps / أي رابط يحتوي إحداثيات
+  _extractFromUrl(url) {
+    const status = document.getElementById('url-extract-status');
+    if (!url || url.length < 10) { if (status) status.innerHTML = ''; return; }
+
+    const setCoords = (lat, lng) => {
+      const latEl = document.getElementById('add-lat');
+      const lngEl = document.getElementById('add-lng');
+      if (latEl) latEl.value = parseFloat(lat).toFixed(6);
+      if (lngEl) lngEl.value = parseFloat(lng).toFixed(6);
+      if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> تم استخراج الإحداثيات: ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}</span>`;
+    };
+
+    // Google Maps: @lat,lng,  OR  ll=lat,lng  OR  q=lat,lng  OR  !3dlat!4dlng
+    const patterns = [
+      /@(-?\d+\.?\d*),(-?\d+\.?\d*)/,           // @lat,lng (most common)
+      /[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/,      // ll=lat,lng
+      /[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/,        // q=lat,lng
+      /[?&]center=(-?\d+\.?\d*),(-?\d+\.?\d*)/,   // center=lat,lng
+      /!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/,         // Google embed !3d!4d
+      /\/(-?\d+\.\d{4,}),(-?\d+\.\d{4,})/,        // /lat,lng in path
+    ];
+
+    for (const pat of patterns) {
+      const m = url.match(pat);
+      if (m) { setCoords(m[1], m[2]); return; }
+    }
+
+    // إذا لم يُعثر على إحداثيات — رابط مختصر أو مشفّر
+    if (status) status.innerHTML = `<span style="color:var(--warning)"><i class="fas fa-triangle-exclamation"></i> لم يتم العثور على إحداثيات في الرابط. انسخ الرابط الكامل من المتصفح بعد فتح الخريطة.</span>`;
   },
 
   _fillCurrentLocation() {
