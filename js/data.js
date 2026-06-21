@@ -257,6 +257,7 @@ const DB = {
         locations:     Array.from(this.locations),
         roles:         Array.from(this.roles),
         audit:         Array.from(this.audit).slice(0, 300),
+        leaveBalances: this.leaveBalances,
       };
       localStorage.setItem('attendify-db', JSON.stringify(snap));
     } catch(e) {
@@ -282,6 +283,9 @@ const DB = {
           snap[k].forEach(r => Array.prototype.push.call(this[k], r));
         }
       });
+      if (snap.leaveBalances && typeof snap.leaveBalances === 'object') {
+        Object.assign(this.leaveBalances, snap.leaveBalances);
+      }
       console.log('[DB] Loaded from localStorage ✓', snap.ts ? new Date(snap.ts).toLocaleTimeString() : '');
       return true;
     } catch(e) {

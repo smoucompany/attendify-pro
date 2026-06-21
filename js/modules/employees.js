@@ -363,7 +363,7 @@ const EmployeesModule = {
       };
       DB.employees.push(newEmp);
       // رصيد الإجازات
-      DB.leaveBalances[newEmp.id] = { annual: 21, sick: 10, emergency: 3, annualUsed: 0, sickUsed: 0, emerUsed: 0 };
+      DB.leaveBalances[newEmp.id] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0 };
       // سجل الراتب
       const base = newEmp.salary || 0;
       DB.payroll.push({

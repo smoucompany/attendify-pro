@@ -281,6 +281,14 @@ const AttendanceModule = {
     if (existing) {
       existing.checkOut   = nowTime;
       existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
+      const u = App.state?.user;
+      const empForOT = u ? DB.getEmployee(u.id) : null;
+      const shiftForOT = empForOT?.shift ? DB.shifts.find(s => s.id === empForOT.shift) : null;
+      if (shiftForOT?.start && shiftForOT?.end) {
+        const shiftMins = this._shiftMinutes(shiftForOT.start, shiftForOT.end);
+        const ot = existing.workedMins - shiftMins;
+        existing.overtime = ot > 30 ? Math.round(ot) : null;
+      }
     }
     DB.save();
     App.toast(currentLang==='ar'?'تم تسجيل الانصراف بنجاح':'Check-out recorded', 'success');
@@ -364,8 +372,16 @@ const AttendanceModule = {
     if (existing && !existing.checkOut) {
       existing.checkOut   = nowTime;
       existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
+      // حساب الأوفرتايم
+      const empShiftForOT = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      if (empShiftForOT?.start && empShiftForOT?.end) {
+        const shiftMins = this._shiftMinutes(empShiftForOT.start, empShiftForOT.end);
+        const ot = existing.workedMins - shiftMins;
+        existing.overtime = ot > 30 ? Math.round(ot) : null;
+      }
       DB.save();
-      App.toast(`✅ ${currentLang==='ar'?'تم تسجيل انصراف':'Checkout recorded for'} ${emp.name} ${currentLang==='ar'?'الساعة':'at'} ${nowTime}`, 'success');
+      const otNote = existing.overtime ? ` (+${Math.floor(existing.overtime/60)}:${String(existing.overtime%60).padStart(2,'0')} ${currentLang==='ar'?'إضافي':'OT'})` : '';
+      App.toast(`✅ ${currentLang==='ar'?'تم تسجيل انصراف':'Checkout recorded for'} ${emp.name} ${currentLang==='ar'?'الساعة':'at'} ${nowTime}${otNote}`, 'success');
     } else if (!existing) {
       const empShift    = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
       const shiftStart  = empShift?.start || DB.company.workStart || '08:00';
@@ -762,6 +778,16 @@ const AttendanceModule = {
     }
     if (rec && rec.checkIn && rec.checkOut) {
       rec.workedMins = this._shiftMinutes(rec.checkIn, rec.checkOut);
+      // حساب الأوفرتايم إن لم يُدخله المستخدم يدوياً
+      if (!data.overtime) {
+        const emp2 = DB.getEmployee(rec.empId);
+        const sh2  = emp2?.shift ? DB.shifts.find(s => s.id === emp2.shift) : null;
+        if (sh2?.start && sh2?.end) {
+          const shMins = this._shiftMinutes(sh2.start, sh2.end);
+          const ot = rec.workedMins - shMins;
+          rec.overtime = ot > 30 ? Math.round(ot) : null;
+        }
+      }
     }
     DB.save();
     App.closeModal();
@@ -941,22 +967,24 @@ const AttendanceModule = {
         } else if (!existing) {
           // Check-in
           const shift = DB.shifts?.find(s => s.id === emp.shift);
-          const workStart = shift?.startTime || DB.company.workPeriods?.[0]?.start || '08:00';
+          const workStart = shift?.start || DB.company.workPeriods?.[0]?.start || DB.company.workStart || '08:00';
           const [wh, wm] = workStart.split(':').map(Number);
           const [nh, nm] = now.split(':').map(Number);
           const lateMin = Math.max(0, (nh * 60 + nm) - (wh * 60 + wm));
           const status  = lateMin > 15 ? 'late' : 'present';
 
           DB.attendance.unshift({
-            id:       DB.nextId('a'),
-            empId:    emp.id,
-            date:     today,
-            checkIn:  now,
-            checkOut: null,
+            id:        DB.nextId('a'),
+            empId:     emp.id,
+            date:      today,
+            checkIn:   now,
+            checkOut:  null,
             status,
-            lateMin:  lateMin || null,
-            method:   'face',
-            overtime: null,
+            workedMins: 0,
+            overtime:  null,
+            method:    'face',
+            location:  currentLang==='ar'?'تطبيق الويب':'Web App',
+            notes:     '',
           });
           DB.logAudit(emp.id, 'تسجيل حضور بالوجه', 'الحضور', `تسجيل حضور ${emp.name} عبر التعرف على الوجه`);
           const lateNote = status === 'late' ? ` (متأخر ${lateMin} دقيقة)` : '';

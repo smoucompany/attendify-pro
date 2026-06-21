@@ -199,14 +199,15 @@ const LeavesModule = {
     leave.status = 'approved';
     leave.approvedBy = App.state.user?.id || 'admin';
 
-    // خصم أيام الإجازة من رصيد الموظف
-    if (leave.startDate && leave.endDate) {
-      const days = Math.max(1, Math.round((new Date(leave.endDate) - new Date(leave.startDate)) / 86400000) + 1);
-      if (!DB.leaveBalances[leave.empId]) DB.leaveBalances[leave.empId] = { annual: 21, taken: 0, remaining: 21 };
+    // خصم أيام الإجازة من رصيد الموظف (الحقول المستخدمة هي from/to)
+    const leaveFrom = leave.from || leave.startDate;
+    const leaveTo   = leave.to   || leave.endDate;
+    if (leaveFrom && leaveTo) {
+      const days = leave.days || Math.max(1, Math.round((new Date(leaveTo) - new Date(leaveFrom)) / 86400000) + 1);
+      if (!DB.leaveBalances[leave.empId]) DB.leaveBalances[leave.empId] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0 };
       const bal = DB.leaveBalances[leave.empId];
       bal.taken     = (bal.taken || 0) + days;
       bal.remaining = Math.max(0, (bal.remaining ?? 21) - days);
-      DB.saveCompany();
     }
 
     DB.save();
