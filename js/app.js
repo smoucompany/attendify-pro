@@ -741,22 +741,24 @@ const App = {
 
   // ─── CLOCK ────────────────────────────────────────────────
   _startClock() {
+    const pad = n => String(n).padStart(2, '0');
     const updateClock = () => {
-      const now     = new Date();
-      const timeEl  = document.getElementById('live-time');
-      const dateEl  = document.getElementById('live-date');
+      const now    = new Date();
+      const timeEl = document.getElementById('live-time');
+      const dateEl = document.getElementById('live-date');
 
       if (timeEl) {
-        timeEl.textContent = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        timeEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
       }
       if (dateEl) {
-        dateEl.textContent = now.toLocaleDateString(currentLang === 'ar' ? 'ar-SA' : 'en-US', {
-          weekday: 'long', year: 'numeric', month: 'short', day: 'numeric'
+        dateEl.textContent = now.toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
       }
     };
+    if (this._clockInterval) clearInterval(this._clockInterval);
     updateClock();
-    setInterval(updateClock, 1000);
+    this._clockInterval = setInterval(updateClock, 1000);
   },
 
   // ─── UTILITIES ────────────────────────────────────────────
