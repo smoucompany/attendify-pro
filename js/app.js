@@ -152,62 +152,67 @@ const App = {
   },
 
   forgotPassword(e) {
-    e.preventDefault();
-    const savedEmail = DB.adminCredentials?.email || '';
-    const formBody = document.querySelector('.login-form-body');
-    if (!formBody) return;
-    formBody.innerHTML = `
-      <div class="login-welcome">
-        <h2>استرجاع الحساب</h2>
-        <p>${savedEmail ? `البريد: <strong>${savedEmail}</strong>` : 'أدخل كلمة مرور جديدة'}</p>
-      </div>
-      <form onsubmit="App._doResetPassword(event)">
-        <div class="form-group">
-          <label>كلمة المرور الجديدة</label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock input-icon-left"></i>
-            <input type="password" id="reset-new-pass" placeholder="8 أحرف على الأقل" class="form-input" required minlength="8">
-            <button type="button" class="input-icon-right btn-icon" onclick="App.togglePasswordVisibility(this)"><i class="fas fa-eye"></i></button>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>تأكيد كلمة المرور</label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock input-icon-left"></i>
-            <input type="password" id="reset-confirm-pass" placeholder="••••••••" class="form-input" required minlength="8">
-            <button type="button" class="input-icon-right btn-icon" onclick="App.togglePasswordVisibility(this)"><i class="fas fa-eye"></i></button>
-          </div>
-        </div>
-        <button type="submit" class="btn-login-submit">
-          <span>تعيين كلمة المرور الجديدة</span>
-          <i class="fas fa-arrow-left btn-arrow"></i>
-        </button>
-        <button type="button" onclick="App._showLoginForm()" style="width:100%;margin-top:10px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px">
-          ← العودة لتسجيل الدخول
-        </button>
-      </form>
+    e && e.preventDefault();
+    // Build a full-page overlay — works even before app loads
+    const existing = document.getElementById('reset-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'reset-overlay';
+    overlay.style.cssText = `
+      position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);
     `;
+    overlay.innerHTML = `
+      <div style="background:var(--bg-card,#fff);border-radius:20px;padding:36px 32px;width:380px;max-width:90vw;
+                  box-shadow:0 24px 60px rgba(0,0,0,0.25);text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);
+                    display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;color:#fff">
+          <i class="fas fa-key"></i>
+        </div>
+        <h3 style="margin:0 0 6px;font-size:20px;font-weight:800;color:var(--text-primary,#1e293b)">استرجاع الحساب</h3>
+        <p style="color:var(--text-muted,#64748b);font-size:13px;margin-bottom:24px">
+          ${DB.adminCredentials?.email ? `البريد: <strong>${DB.adminCredentials.email}</strong>` : 'أدخل كلمة مرور جديدة'}
+        </p>
+        <div style="text-align:right;margin-bottom:12px">
+          <label style="font-size:13px;font-weight:600;color:var(--text-primary,#1e293b);display:block;margin-bottom:6px">كلمة المرور الجديدة</label>
+          <input type="password" id="rp-new" placeholder="8 أحرف على الأقل"
+            style="width:100%;padding:11px 14px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;
+                   font-size:14px;box-sizing:border-box;outline:none;background:var(--bg-input,#f8fafc);
+                   color:var(--text-primary,#1e293b);font-family:inherit">
+        </div>
+        <div style="text-align:right;margin-bottom:24px">
+          <label style="font-size:13px;font-weight:600;color:var(--text-primary,#1e293b);display:block;margin-bottom:6px">تأكيد كلمة المرور</label>
+          <input type="password" id="rp-confirm" placeholder="••••••••"
+            style="width:100%;padding:11px 14px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;
+                   font-size:14px;box-sizing:border-box;outline:none;background:var(--bg-input,#f8fafc);
+                   color:var(--text-primary,#1e293b);font-family:inherit">
+        </div>
+        <button onclick="App._doResetPassword()"
+          style="width:100%;padding:13px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;
+                 border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;font-family:inherit">
+          تعيين كلمة المرور الجديدة
+        </button>
+        <button onclick="document.getElementById('reset-overlay').remove()"
+          style="width:100%;padding:10px;background:none;border:1.5px solid var(--border,#e2e8f0);border-radius:12px;
+                 font-size:14px;cursor:pointer;color:var(--text-muted,#64748b);font-family:inherit">
+          إلغاء
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('rp-new').focus();
   },
 
-  _doResetPassword(e) {
-    e.preventDefault();
-    const newPass = document.getElementById('reset-new-pass')?.value;
-    const confirm = document.getElementById('reset-confirm-pass')?.value;
-    if (!newPass || newPass.length < 8) { this.toast('يجب أن تكون كلمة المرور 8 أحرف على الأقل', 'error'); return; }
-    if (newPass !== confirm)            { this.toast('كلمتا المرور غير متطابقتين', 'error'); return; }
+  _doResetPassword() {
+    const newPass = document.getElementById('rp-new')?.value || '';
+    const confirm = document.getElementById('rp-confirm')?.value || '';
+    if (newPass.length < 8) { alert('يجب أن تكون كلمة المرور 8 أحرف على الأقل'); return; }
+    if (newPass !== confirm) { alert('كلمتا المرور غير متطابقتين'); return; }
     DB.adminCredentials.password = newPass;
     DB._saveToLocal();
-    this.toast('تم تغيير كلمة المرور ✓', 'success');
-    setTimeout(() => this._showLoginForm(), 800);
-  },
-
-  _showLoginForm() {
-    const formBody = document.querySelector('.login-form-body');
-    if (!formBody) return;
-    // Restore original login tabs HTML
-    document.getElementById('login-page').style.display = 'none';
-    document.getElementById('login-page').style.display = 'flex';
-    // Easiest: reload the page to reset the login form
+    document.getElementById('reset-overlay')?.remove();
+    alert('✓ تم تغيير كلمة المرور بنجاح\nيمكنك الآن تسجيل الدخول بكلمة المرور الجديدة');
     location.reload();
   },
 
