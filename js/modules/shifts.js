@@ -5,19 +5,23 @@
 
 const ShiftsModule = {
   render(container) {
-    const days = [
-      t('day.sat'), t('day.sun'), t('day.mon'),
-      t('day.tue'), t('day.wed'), t('day.thu'), t('day.fri')
-    ];
-    // Build assignments dynamically from emp.shift field
+    const dayKeys = ['sat','sun','mon','tue','wed','thu','fri'];
+    const days = dayKeys.map(d => t('day.'+d));
+
+    // Build weekly grid from emp.shift — respect shift's own days
     const shiftAssignments = {};
     DB.employees.forEach(emp => {
       if (emp.shift && emp.shift !== 'off') {
-        shiftAssignments[emp.id] = Array(7).fill(emp.shift);
-        shiftAssignments[emp.id][6] = 'off'; // Friday off by default
+        const tpl = DB.shifts.find(s => s.id === emp.shift && s.type !== 'assignment');
+        if (tpl) {
+          const activeDays = new Set(tpl.days || dayKeys.slice(0,6));
+          shiftAssignments[emp.id] = dayKeys.map(d => activeDays.has(d) ? emp.shift : 'off');
+        } else {
+          shiftAssignments[emp.id] = Array(7).fill(emp.shift);
+        }
       }
     });
-    const displayEmps = DB.employees.slice(0, 7);
+    const displayEmps = DB.employees.filter(e => e.status !== 'terminated').slice(0, 10);
 
     container.innerHTML = `
       <div class="page-header">
@@ -244,31 +248,44 @@ const ShiftsModule = {
   saveAssign(e) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    const emp = DB.getEmployee(data.empId);
-    if (emp) {
-      emp.shift = data.shiftId;
-      // Record or update the assignment
-      const existing = DB.shifts.find(s => s.type === 'assignment' && s.empId === data.empId);
-      const rec = {
-        id:      existing?.id || DB.nextId('sa'),
-        type:    'assignment',
-        empId:   data.empId,
-        shiftId: data.shiftId,
-        from:    data.from,
-        to:      data.to || null,
-      };
-      if (existing) {
-        Object.assign(existing, rec);
-      } else {
-        DB.shifts.push(rec);
-      }
-      const shiftName = DB.shifts.find(s => s.id === data.shiftId)?.name || data.shiftId;
-      DB.logAudit('admin', currentLang==='ar'?'تعيين وردية':'Assign Shift', 'Shifts',
-        `${emp.name} ← ${shiftName}`);
+    if (!data.empId || !data.shiftId) {
+      App.toast(currentLang==='ar'?'يرجى اختيار الموظف والوردية':'Select employee and shift', 'error');
+      return;
     }
-    DB.save();
+
+    // Find employee index and modify directly in the raw array
+    const idx = DB.employees.findIndex(emp => emp.id === data.empId);
+    if (idx === -1) { App.toast(currentLang==='ar'?'الموظف غير موجود':'Employee not found', 'error'); return; }
+
+    // Direct mutation + immediate save (bypass 600ms debounce)
+    DB.employees[idx].shift = data.shiftId;
+
+    // Update or add assignment record
+    const existIdx = DB.shifts.findIndex(s => s.type === 'assignment' && s.empId === data.empId);
+    const rec = {
+      id:      existIdx !== -1 ? DB.shifts[existIdx].id : DB.nextId('sa'),
+      type:    'assignment',
+      empId:   data.empId,
+      shiftId: data.shiftId,
+      from:    data.from,
+      to:      data.to || null,
+    };
+    if (existIdx !== -1) {
+      DB.shifts.splice(existIdx, 1, rec);
+    } else {
+      DB.shifts.push(rec);
+    }
+
+    // Immediate save — don't rely on debounce
+    DB._saveToLocal();
+
+    const emp       = DB.employees[idx];
+    const shiftName = DB.shifts.find(s => s.id === data.shiftId)?.name || '';
+    DB.logAudit('admin', currentLang==='ar'?'تعيين وردية':'Assign Shift', 'Shifts',
+      `${emp.name} ← ${shiftName}`);
+
     App.closeModal();
-    App.toast(currentLang==='ar'?'تم تعيين الوردية بنجاح':'Shift assigned successfully', 'success');
+    App.toast(`${currentLang==='ar'?'تم تعيين وردية':'Shift assigned'} "${shiftName}" ${currentLang==='ar'?'للموظف':'to'} ${emp.name} ✓`, 'success');
     this.render(document.getElementById('page-content'));
   }
 };
