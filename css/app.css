@@ -72,7 +72,8 @@
 
   /* Fonts */
   --font-ar: 'ThmanyahSans', 'Cairo', sans-serif;
-  --font-en: 'TANHeadline', 'Inter', sans-serif;
+  --font-en: 'ThmanyahSans', 'Inter', system-ui, sans-serif;
+  --font-display: 'TANHeadline', 'ThmanyahSans', sans-serif;
 
   /* Sizes */
   --sidebar-w: 260px;
@@ -1142,6 +1143,7 @@ ul { list-style: none; }
   font-weight: 800;
   color: var(--text-primary);
   margin-bottom: 4px;
+  font-family: var(--font-display);
 }
 
 .page-header-text p { font-size: 13px; color: var(--text-muted); }
@@ -1754,9 +1756,10 @@ ul { list-style: none; }
 .checkin-clock {
   font-size: 48px;
   font-weight: 800;
-  font-family: var(--font-en);
-  letter-spacing: -1px;
+  font-family: 'ThmanyahSans', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 2px;
   margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
 .checkin-date { font-size: 14px; opacity: 0.7; margin-bottom: 24px; }
