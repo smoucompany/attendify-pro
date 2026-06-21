@@ -1133,12 +1133,12 @@ ${(() => {
     <div class="sig-box">
       <div class="sig-role">${_esc(s.role||'')}</div>
       <div class="sig-name">${_esc(s.name||'─────────────')}</div>
+      ${s.title?`<div class="sig-sub" style="margin-bottom:0;margin-top:2px">${_esc(s.title)}</div>`:''}
       ${s.signature
-        ? `<div style="height:56px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:6px"><img src="${s.signature}" style="max-height:52px;max-width:140px;object-fit:contain"></div>`
-        : `<div style="height:56px"></div>`}
+        ? `<div style="height:56px;display:flex;align-items:flex-end;justify-content:center;margin-top:8px;margin-bottom:6px"><img src="${s.signature}" style="max-height:52px;max-width:140px;object-fit:contain"></div>`
+        : `<div style="height:64px"></div>`}
       <div class="sig-line-wrap">
         <div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div>
-        ${s.title?`<div class="sig-sub">${_esc(s.title)}</div>`:''}
       </div>
     </div>`).join('')}
   </div>
