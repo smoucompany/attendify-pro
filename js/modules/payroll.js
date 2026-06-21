@@ -15,6 +15,9 @@ const PayrollModule = {
   },
 
   render(container) {
+    // Auto-calculate deductions for current period before rendering
+    this._autoCalc();
+
     const totalBase = DB.payroll.reduce((s,p) => s + p.base, 0);
     const totalNet  = DB.payroll.reduce((s,p) => s + p.total, 0);
     const totalDeductions = DB.payroll.reduce((s,p) => s + p.absentDeduction + p.lateDeduction, 0);
@@ -310,6 +313,90 @@ const PayrollModule = {
         </button>
       </div>
     `, { size: 'sm' });
+  },
+
+  _autoCalc() {
+    const period = this._getPeriod();
+    const [year, month] = period.split('-').map(Number);
+    const workDayMap    = { sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
+    const allowedDays   = new Set((DB.company.workDays||['sat','sun','mon','tue','wed','thu']).map(d => workDayMap[d]));
+    const today         = new Date();
+
+    // Count working days in period UP TO TODAY
+    let workdaysInPeriod = 0;
+    const daysInMonth   = new Date(year, month, 0).getDate();
+    const lastDay       = (year === today.getFullYear() && month === today.getMonth()+1)
+      ? today.getDate() : daysInMonth;
+    for (let d = 1; d <= lastDay; d++) {
+      if (allowedDays.has(new Date(year, month-1, d).getDay())) workdaysInPeriod++;
+    }
+    if (!workdaysInPeriod) workdaysInPeriod = 1;
+
+    const [wsh, wsm]   = (DB.company.workStart||'08:00').split(':').map(Number);
+    const [weh, wem]   = (DB.company.workEnd||'17:00').split(':').map(Number);
+    const workMins     = Math.max(1, (weh*60+wem) - (wsh*60+wsm));
+    const lateThresh   = DB.company.lateThreshold || 15;
+    const periodAtt    = DB.attendance.filter(a => a.date?.startsWith(period));
+
+    // Ensure payroll record exists for every active employee
+    DB.employees.filter(e => e.status === 'active').forEach(emp => {
+      if (!DB.payroll.find(p => p.empId === emp.id)) {
+        DB.payroll.push({
+          id: DB.nextId('pay'), empId: emp.id, period,
+          base: emp.salary||0, housing:0, transport:0, food:0,
+          overtime:0, absentDeduction:0, lateDeduction:0, absentDays:0,
+          customDeduction:0, total: emp.salary||0,
+        });
+      }
+    });
+
+    DB.payroll.forEach(p => {
+      const emp        = DB.getEmployee(p.empId);
+      if (!emp || emp.status === 'terminated') return;
+      // Always sync base salary
+      if (emp.salary) p.base = emp.salary;
+
+      const empAtt     = periodAtt.filter(a => a.empId === p.empId);
+      const attended   = empAtt.filter(a => a.status !== 'absent').length;
+      const absentDays = Math.max(0, workdaysInPeriod - attended);
+      const dailyRate  = p.base / (workdaysInPeriod || 22);
+      const hourlyRate = dailyRate / (workMins / 60);
+
+      let lateMins = 0;
+      empAtt.forEach(a => {
+        if (a.lateMinutes > 0) {
+          lateMins += a.lateMinutes;
+        } else if (a.status === 'late' && a.checkIn) {
+          const [ch, cm] = a.checkIn.split(':').map(Number);
+          const diff = (ch*60+cm) - (wsh*60+wsm);
+          if (diff > lateThresh) lateMins += diff;
+        }
+      });
+
+      let otMins = 0;
+      empAtt.forEach(a => {
+        if (a.overtime > 0) {
+          otMins += a.overtime;
+        } else if (a.checkOut) {
+          const [oh, om] = a.checkOut.split(':').map(Number);
+          const ot = (oh*60+om) - (weh*60+wem);
+          if (ot > 0) otMins += ot;
+        }
+      });
+
+      const customDed = typeof DeductionsModule !== 'undefined'
+        ? DeductionsModule.getTotal(p.empId, period) : 0;
+
+      p.period          = period;
+      p.absentDays      = absentDays;
+      p.absentDeduction = Math.round(absentDays * dailyRate);
+      p.lateDeduction   = Math.round((lateMins / 60) * hourlyRate * 0.5);
+      p.overtime        = Math.round((otMins  / 60) * hourlyRate * 1.5);
+      p.customDeduction = customDed;
+      p.total = Math.max(0, p.base + (p.housing||0) + (p.transport||0) + (p.food||0)
+                           + p.overtime - p.absentDeduction - p.lateDeduction - customDed);
+    });
+    DB.save();
   },
 
   _doRunPayroll() {
