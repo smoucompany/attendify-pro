@@ -381,27 +381,6 @@ const App = {
       if (dEmail) dEmail.textContent = user.email || DB.adminCredentials.email || '';
     }
 
-  _updateUserUI() {
-    const user = this.state.user;
-    if (!user) return;
-    const initials = user.avatar || user.name?.charAt(0) || '?';
-    ['sidebar-user-avatar','header-user-avatar','dropdown-avatar'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) { el.textContent = initials; el.className = `avatar ${user.avatarColor||'gradient-primary'}`; }
-    });
-    const nameEl = document.getElementById('sidebar-user-info');
-    if (nameEl) {
-      nameEl.querySelector('.user-name-sm').textContent = user.name;
-      nameEl.querySelector('.user-role-sm').textContent = user.position;
-    }
-    const hName = document.getElementById('header-user-name');
-    const hRole = document.getElementById('header-user-role');
-    const dName = document.getElementById('dropdown-name');
-    if (hName) hName.textContent = user.name;
-    if (hRole) hRole.textContent = user.position;
-    if (dName) dName.textContent = user.name;
-  },
-
     // Show company logo in sidebar if uploaded
     if (typeof SettingsModule !== 'undefined') SettingsModule._updateSidebarLogo();
 
@@ -416,6 +395,27 @@ const App = {
     // Navigate to current hash or dashboard
     const hash = window.location.hash.slice(1) || 'dashboard';
     this._navigate(hash);
+  },
+
+  _updateUserUI() {
+    const user = this.state.user;
+    if (!user) return;
+    const initials = user.avatar || user.name?.charAt(0) || '?';
+    ['sidebar-user-avatar','header-user-avatar','dropdown-avatar'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = initials; el.className = `avatar ${user.avatarColor||'gradient-primary'}`; }
+    });
+    const nameEl = document.getElementById('sidebar-user-info');
+    if (nameEl) {
+      nameEl.querySelector('.user-name-sm')?.textContent && (nameEl.querySelector('.user-name-sm').textContent = user.name);
+      nameEl.querySelector('.user-role-sm')?.textContent && (nameEl.querySelector('.user-role-sm').textContent = user.position);
+    }
+    const hName = document.getElementById('header-user-name');
+    const hRole = document.getElementById('header-user-role');
+    const dName = document.getElementById('dropdown-name');
+    if (hName) hName.textContent = user.name;
+    if (hRole) hRole.textContent = user.position;
+    if (dName) dName.textContent = user.name;
   },
 
   // ─── ROUTER ───────────────────────────────────────────────
