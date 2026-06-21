@@ -5,12 +5,14 @@
 const DeductionsModule = {
 
   _types: {
-    loan:      { label: 'قرض',       icon: 'fas fa-hand-holding-dollar', color: '#6366f1' },
-    advance:   { label: 'سلفة',      icon: 'fas fa-money-bill-transfer',  color: '#f59e0b' },
-    fine:      { label: 'غرامة',     icon: 'fas fa-gavel',               color: '#ef4444' },
-    insurance: { label: 'تأمين',     icon: 'fas fa-shield-halved',       color: '#10b981' },
-    tax:       { label: 'ضريبة',     icon: 'fas fa-receipt',             color: '#8b5cf6' },
-    other:     { label: 'أخرى',      icon: 'fas fa-circle-minus',        color: '#64748b' },
+    loan:      { label: 'قرض',           icon: 'fas fa-hand-holding-dollar', color: '#6366f1' },
+    advance:   { label: 'سلفة',          icon: 'fas fa-money-bill-transfer',  color: '#f59e0b' },
+    fine:      { label: 'غرامة',         icon: 'fas fa-gavel',               color: '#ef4444' },
+    admin:     { label: 'جزاء إداري',    icon: 'fas fa-triangle-exclamation', color: '#dc2626' },
+    custody:   { label: 'عهدة',          icon: 'fas fa-box-archive',          color: '#0891b2' },
+    insurance: { label: 'تأمين',         icon: 'fas fa-shield-halved',       color: '#10b981' },
+    tax:       { label: 'ضريبة',         icon: 'fas fa-receipt',             color: '#8b5cf6' },
+    other:     { label: 'أخرى',          icon: 'fas fa-circle-minus',        color: '#64748b' },
   },
 
   render(container) {
