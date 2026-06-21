@@ -1014,12 +1014,13 @@ const ReportsModule = {
   .sig-section{margin-top:40px;padding-top:24px;border-top:2px dashed #e2e8f0}
   .sig-hd{font-size:9.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:22px;text-align:center}
   .sig-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
-  .sig-box{text-align:center}
+  .sig-box{text-align:center;display:flex;flex-direction:column}
   .sig-role{font-size:10px;color:#9ca3af;margin-bottom:3px;font-weight:600}
-  .sig-name{font-size:13px;font-weight:800;color:#1e1b4b;margin-bottom:56px}
-  .sig-line-wrap{border-top:1.5px solid #94a3b8;padding-top:7px}
+  .sig-name{font-size:13px;font-weight:800;color:#1e1b4b;margin-bottom:4px}
+  .sig-sub{font-size:10px;color:#64748b;margin-bottom:0}
+  .sig-space{flex:1;min-height:52px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px}
+  .sig-line-wrap{border-top:1.5px solid #94a3b8;padding-top:6px;margin-top:0}
   .sig-line-lbl{font-size:10px;color:#64748b;font-weight:600}
-  .sig-sub{font-size:9px;color:#94a3b8;margin-top:2px}
   .footer{background:#f8fafc;border-top:1px solid #e2e8f0;padding:14px 36px;display:flex;align-items:center;justify-content:space-between;margin-top:28px}
   .footer-l{font-size:9.5px;color:#9ca3af;line-height:1.9}
   .footer-r{font-size:9.5px;color:#9ca3af;text-align:${ar?'left':'right'};line-height:1.9}
@@ -1133,10 +1134,10 @@ ${(() => {
     <div class="sig-box">
       <div class="sig-role">${_esc(s.role||'')}</div>
       <div class="sig-name">${_esc(s.name||'─────────────')}</div>
-      ${s.title?`<div class="sig-sub" style="margin-bottom:0;margin-top:2px">${_esc(s.title)}</div>`:''}
-      ${s.signature
-        ? `<div style="height:56px;display:flex;align-items:flex-end;justify-content:center;margin-top:8px;margin-bottom:6px"><img src="${s.signature}" style="max-height:52px;max-width:140px;object-fit:contain"></div>`
-        : `<div style="height:64px"></div>`}
+      ${s.title?`<div class="sig-sub">${_esc(s.title)}</div>`:''}
+      <div class="sig-space">
+        ${s.signature?`<img src="${s.signature}" style="max-height:48px;max-width:130px;object-fit:contain">`:''}
+      </div>
       <div class="sig-line-wrap">
         <div class="sig-line-lbl">${ar?'التوقيع':'Signature'}</div>
       </div>
