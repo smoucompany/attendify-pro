@@ -104,7 +104,6 @@ const AttendanceModule = {
           <option value="present">${t('attendance.present')}</option>
           <option value="late">${t('attendance.late')}</option>
           <option value="absent">${currentLang==='ar'?'غائب':'Absent'}</option>
-          <option value="not_arrived">${currentLang==='ar'?'لم يصل بعد':'Not arrived'}</option>
         </select>
         <select class="toolbar-select" onchange="AttendanceModule._empFilter=this.value; AttendanceModule._renderTable()">
           <option value="all">${t('common.all')} ${t('nav.employees')}</option>
@@ -177,12 +176,9 @@ const AttendanceModule = {
           recId    = rec.id;
         } else if (!isWorkDay || isHoliday) {
           status = 'holiday';
-        } else if (!isToday) {
-          // Past date without record = absent
-          status = 'absent';
         } else {
-          // Today, no record yet = not arrived
-          status = 'not_arrived';
+          // No record = absent (whether today or past)
+          status = 'absent';
         }
 
         return { emp, dept, rec, status, checkIn, checkOut, method, overtime, recId };
