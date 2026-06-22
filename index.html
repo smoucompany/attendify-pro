@@ -21,14 +21,23 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
   <!-- Sanitization utilities — must load before any other app script -->
-  <script src="js/utils.js?v=4"></script>
+  <script src="js/utils.js?v=5"></script>
 
-  <!-- Inline safety net + diagnostic -->
+  <!-- Inline safety net + one-time token cleanup -->
   <script>
   (function () {
     var BOM = '\uFEFF';
 
-    // 1. Clean BOM from ALL localStorage values on startup
+    // Step 1: one-time nuclear cleanup of auth tokens (removes old BOM-contaminated tokens)
+    try {
+      if (!localStorage.getItem('_clean_v5')) {
+        localStorage.removeItem('attendify-token');
+        localStorage.removeItem('attendify-refresh-token');
+        localStorage.setItem('_clean_v5', '1');
+      }
+    } catch (_ce) {}
+
+    // Step 2: clean BOM from every remaining localStorage value
     try {
       var _keys = [];
       for (var _i = 0; _i < localStorage.length; _i++) { _keys.push(localStorage.key(_i)); }
@@ -41,55 +50,25 @@
       }
     } catch (_e) {}
 
-    // 2. Diagnostic overlay — shows on-screen when ByteString error occurs
-    function _showDiag(msg, url, headers) {
-      try {
-        var div = document.getElementById('_bsd') || document.createElement('div');
-        div.id = '_bsd';
-        div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7f1d1d;color:#fef2f2;z-index:2147483647;padding:12px 16px;font:11px monospace;word-break:break-all;direction:ltr;max-height:40vh;overflow:auto;border-bottom:3px solid #ef4444';
-        var authVal = (headers && headers['Authorization']) || '';
-        var authCodes = '';
-        for (var _ai = 0; _ai < Math.min(authVal.length, 15); _ai++) {
-          authCodes += authVal.charCodeAt(_ai) + ' ';
-        }
-        div.innerHTML = '<b>[BYTESTRING DEBUG]</b><br>'
-          + 'URL: ' + url + '<br>'
-          + 'Auth header first 15 chars (as char codes): [' + authCodes.trim() + ']<br>'
-          + 'Error: ' + msg
-          + '<br><small>Click to close</small>';
-        div.onclick = function () { div.remove(); };
-        if (document.body) document.body.appendChild(div);
-        else document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(div); });
-      } catch (_de) {}
-    }
-
-    // 3. Patch window.fetch — strip BOM from URL + headers, show diagnostic on failure
+    // Step 3: patch window.fetch to strip ALL chars > 127 from URL and header values
     var _of = window.fetch;
     function _sc(s) {
       if (typeof s !== 'string') return s;
-      var out = '', c;
-      for (var i = 0; i < s.length; i++) {
-        c = s.charCodeAt(i);
-        if (c !== 0xFEFF && c !== 0x200B && c !== 0x200C && c !== 0x200D && c !== 0x00AD && c !== 0x200E && c !== 0x200F) out += s[i];
-      }
-      return out.trim();
+      var out = '', cc;
+      for (var i = 0; i < s.length; i++) { cc = s.charCodeAt(i); if (cc < 128) out += s[i]; }
+      return out;
     }
     window.fetch = function (url, opts) {
       var cleanUrl = (typeof url === 'string') ? _sc(url) : url;
       var cleanOpts = opts;
       if (opts && opts.headers) {
         var _h = {}, _hk = Object.keys(opts.headers);
-        for (var _j = 0; _j < _hk.length; _j++) _h[_hk[_j]] = _sc(String(opts.headers[_hk[_j]] == null ? '' : opts.headers[_hk[_j]]));
+        for (var _j2 = 0; _j2 < _hk.length; _j2++) {
+          _h[_hk[_j2]] = _sc(String(opts.headers[_hk[_j2]] == null ? '' : opts.headers[_hk[_j2]]));
+        }
         cleanOpts = Object.assign({}, opts, { headers: _h });
       }
-      try {
-        return _of.apply(window, [cleanUrl, cleanOpts]);
-      } catch (fe) {
-        if (fe && fe.message && fe.message.indexOf('ByteString') !== -1) {
-          _showDiag(fe.message, cleanUrl, cleanOpts && cleanOpts.headers);
-        }
-        throw fe;
-      }
+      return _of.apply(window, [cleanUrl, cleanOpts]);
     };
   })();
   </script>
@@ -571,27 +550,27 @@
   <!-- ===== SCRIPTS ===== -->
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/modules/dashboard.js?v=4"></script>
-  <script src="js/modules/employees.js?v=4"></script>
-  <script src="js/modules/attendance.js?v=4"></script>
-  <script src="js/modules/shifts.js?v=4"></script>
-  <script src="js/modules/leaves.js?v=4"></script>
-  <script src="js/modules/requests.js?v=4"></script>
-  <script src="js/modules/departments.js?v=4"></script>
-  <script src="js/modules/reports.js?v=4"></script>
-  <script src="js/modules/notifications.js?v=4"></script>
-  <script src="js/modules/payroll.js?v=4"></script>
-  <script src="js/modules/gps.js?v=4"></script>
-  <script src="js/modules/audit.js?v=4"></script>
-  <script src="js/modules/settings.js?v=4"></script>
-  <script src="js/modules/roles.js?v=4"></script>
-  <script src="js/modules/deductions.js?v=4"></script>
-  <script src="js/modules/profile.js?v=4"></script>
-  <script src="js/whatsapp.js?v=4"></script>
-  <script src="js/biometrics.js?v=4"></script>
-  <script src="js/config.js?v=4"></script>
-  <script src="js/supabase.js?v=4"></script>
-  <script src="js/app.js?v=4"></script>
+  <script src="js/modules/dashboard.js?v=5"></script>
+  <script src="js/modules/employees.js?v=5"></script>
+  <script src="js/modules/attendance.js?v=5"></script>
+  <script src="js/modules/shifts.js?v=5"></script>
+  <script src="js/modules/leaves.js?v=5"></script>
+  <script src="js/modules/requests.js?v=5"></script>
+  <script src="js/modules/departments.js?v=5"></script>
+  <script src="js/modules/reports.js?v=5"></script>
+  <script src="js/modules/notifications.js?v=5"></script>
+  <script src="js/modules/payroll.js?v=5"></script>
+  <script src="js/modules/gps.js?v=5"></script>
+  <script src="js/modules/audit.js?v=5"></script>
+  <script src="js/modules/settings.js?v=5"></script>
+  <script src="js/modules/roles.js?v=5"></script>
+  <script src="js/modules/deductions.js?v=5"></script>
+  <script src="js/modules/profile.js?v=5"></script>
+  <script src="js/whatsapp.js?v=5"></script>
+  <script src="js/biometrics.js?v=5"></script>
+  <script src="js/config.js?v=5"></script>
+  <script src="js/supabase.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 
   <!-- ===== UNIFIED LOGIN SWITCHER ===== -->
   <script>
