@@ -1679,7 +1679,21 @@ const SettingsModule = {
      11. BACKUP & DATA
   ══════════════════════════════════════════ */
   _backup() {
+    const hasLocal = (() => { try { const r = localStorage.getItem('attendify-db'); if (!r) return false; const s = JSON.parse(r); return ['employees','attendance','leaves'].some(k => Array.isArray(s[k]) && s[k].length > 0); } catch(e) { return false; } })();
+    const isConn   = typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected;
     return `
+      ${hasLocal ? `
+      <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:14px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px">
+        <i class="fas fa-triangle-exclamation" style="font-size:28px;color:#d97706;flex-shrink:0"></i>
+        <div style="flex:1">
+          <div style="font-size:14px;font-weight:800;color:#92400e;margin-bottom:4px">يوجد بيانات محفوظة على هذا الجهاز فقط</div>
+          <div style="font-size:12.5px;color:#78350f">هذه البيانات غير موجودة على الأجهزة الأخرى. اضغط الزر لرفعها للسيرفر.</div>
+        </div>
+        <button class="btn btn-primary" style="background:#d97706;border-color:#d97706;flex-shrink:0;white-space:nowrap" onclick="SettingsModule.syncFromLocal()" ${isConn ? '' : 'disabled'}>
+          <i class="fas fa-upload"></i> رفع بيانات هذا الجهاز
+        </button>
+      </div>` : ''}
+
       ${this._group('تصدير البيانات','تحميل نسخة من بيانات النظام',`
         <div class="grid-2" style="gap:12px;margin-top:4px">
           ${[
