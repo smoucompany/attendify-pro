@@ -8,7 +8,7 @@ const cors     = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-app.use(cors({ origin: '*', credentials: true }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
 // ── Supabase Clients ──────────────────────────────────────────
@@ -99,7 +99,9 @@ app.get('/api/data/:table', authenticate, async (req, res) => {
 app.post('/api/data/:table/upsert', authenticate, async (req, res) => {
   const { table } = req.params;
   if (!ALLOWED.has(table)) return res.status(404).json({ error: 'جدول غير موجود' });
-  const rows = Array.isArray(req.body) ? req.body : [req.body];
+  const raw  = Array.isArray(req.body) ? req.body : [req.body];
+  const rows = raw.filter(r => r && r.id).map(r => ({ id: r.id, data: r.data ?? r }));
+  if (!rows.length) return res.status(400).json({ error: 'لا توجد بيانات صالحة' });
   const { error } = await supabaseAdmin.from(table).upsert(rows);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });

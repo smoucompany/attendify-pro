@@ -89,8 +89,8 @@ const SupabaseDB = {
 
   async init() {
     const cfg = this.getConfig();
-    this._baseUrl = cfg.backendUrl || '';
-    if (!this._baseUrl) { this._status = 'disconnected'; return false; }
+    // استخدم الـ URL المحفوظ، أو origin الصفحة الحالية للنشر على Vercel
+    this._baseUrl = cfg.backendUrl || (typeof window !== 'undefined' ? window.location.origin : '');
 
     // استعادة الـ tokens
     this._token        = localStorage.getItem('attendify-token')         || null;

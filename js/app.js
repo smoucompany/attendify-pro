@@ -363,15 +363,17 @@ const App = {
     // Update user info in sidebar and header
     const user = this.state.user;
     if (user) {
-      const initials = user.avatar || user.name.charAt(0);
+      const initials = user.avatar || user.name?.charAt(0)?.toUpperCase() || '?';
       ['sidebar-user-avatar', 'header-user-avatar', 'dropdown-avatar'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.textContent = initials;
+        if (el) { el.textContent = initials; el.classList.add('avatar', user.avatarColor||'gradient-primary'); }
       });
       const nameEl = document.getElementById('sidebar-user-info');
       if (nameEl) {
-        nameEl.querySelector('.user-name-sm').textContent = user.name;
-        nameEl.querySelector('.user-role-sm').textContent = user.position;
+        const nameSmEl = nameEl.querySelector('.user-name-sm');
+        const roleSmEl = nameEl.querySelector('.user-role-sm');
+        if (nameSmEl) nameSmEl.textContent = user.name || '';
+        if (roleSmEl) roleSmEl.textContent = user.position || '';
       }
       const hName  = document.getElementById('header-user-name');
       const hRole  = document.getElementById('header-user-role');
@@ -405,12 +407,14 @@ const App = {
     const initials = user.avatar || user.name?.charAt(0) || '?';
     ['sidebar-user-avatar','header-user-avatar','dropdown-avatar'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.textContent = initials; el.className = `avatar ${user.avatarColor||'gradient-primary'}`; }
+      if (el) { el.textContent = initials; el.classList.add('avatar', user.avatarColor||'gradient-primary'); }
     });
     const nameEl = document.getElementById('sidebar-user-info');
     if (nameEl) {
-      nameEl.querySelector('.user-name-sm')?.textContent && (nameEl.querySelector('.user-name-sm').textContent = user.name);
-      nameEl.querySelector('.user-role-sm')?.textContent && (nameEl.querySelector('.user-role-sm').textContent = user.position);
+      const nameSmEl = nameEl.querySelector('.user-name-sm');
+      const roleSmEl = nameEl.querySelector('.user-role-sm');
+      if (nameSmEl) nameSmEl.textContent = user.name || '';
+      if (roleSmEl) roleSmEl.textContent = user.position || '';
     }
     const hName = document.getElementById('header-user-name');
     const hRole = document.getElementById('header-user-role');
@@ -798,7 +802,7 @@ const App = {
       on_leave: { class: 'badge-warning',  label: t('nav.leaves') },
       present:  { class: 'badge-success',  label: t('attendance.present') },
       late:     { class: 'badge-warning',  label: t('attendance.late') },
-      absent:   { class: 'badge-danger',   label: t('attendance.present').replace('حاضر','غائب') },
+      absent:   { class: 'badge-danger',   label: t('attendance.absent') },
       pending:  { class: 'badge-warning',  label: t('common.pending') },
       approved: { class: 'badge-success',  label: t('common.approved') },
       rejected: { class: 'badge-danger',   label: t('common.rejected') },

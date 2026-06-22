@@ -1132,8 +1132,7 @@ body{font-family:'F','Cairo',Arial,sans-serif;font-size:11px;direction:${ar?'rtl
   --OK:#1a5c38;--WR:#7c5e08;--ER:#8b1a1a;--IN:#1a3a5c;
 }
 /* ── Exec: header ── */
-[data-tpl="exec"] .doc-hdr{border-bottom:1px solid #dcd8cc;background:#fff;position:relative}
-[data-tpl="exec"] .doc-hdr::before{content:'';position:absolute;top:0;${ar?'right':'left'}:0;width:5px;height:100%;background:linear-gradient(180deg,var(--PA),var(--PB))}
+[data-tpl="exec"] .doc-hdr{border-bottom:1px solid #dcd8cc;background:#fff;border-${ar?'right':'left'}:5px solid var(--PA)}
 [data-tpl="exec"] .hdr-band{display:none}
 [data-tpl="exec"] .hdr-main{padding:18px 18mm;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px}
 [data-tpl="exec"] .hdr-logo-wrap{display:flex;align-items:center;gap:12px}
