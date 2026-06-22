@@ -1,4 +1,4 @@
-﻿/* =========================================================
+/* =========================================================
    SETTINGS MODULE — Enterprise Full System Settings
    11 sections covering the entire platform
    ========================================================= */
@@ -1433,8 +1433,8 @@ const SettingsModule = {
   // ── SUPABASE ACTIONS ─────────────────────────────────────
 
   async supabaseSave() {
-    const url = document.getElementById('sb-url')?.value?.trim();
-    const key = document.getElementById('sb-key')?.value?.trim();
+    const url = sanitizeUrl(document.getElementById('sb-url')?.value?.trim());
+    const key = sanitizeText(document.getElementById('sb-key')?.value?.trim());
     if (!url || !key) { App.toast('أدخل الرابط والمفتاح أولاً','warning'); return; }
     App.toast('جارٍ الاتصال بـ Supabase...','info');
     document.getElementById('sb-status-badge').innerHTML = '<span class="badge badge-warning badge-dot">جارٍ الاتصال...</span>';
