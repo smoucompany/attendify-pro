@@ -201,25 +201,63 @@ const SupabaseDB = {
   async loadAll() {
     if (!this.isConnected) return false;
     try {
+      // Read local snapshot BEFORE any overwrite (data.js may not have run yet)
+      let localSnap = null;
+      try {
+        const _raw = localStorage.getItem('attendify-db');
+        if (_raw) localSnap = JSON.parse(_raw);
+      } catch(_) {}
+
       // Single request fetches all tables at once
       const { ok, data: all } = await this._fetch('/api/data/all');
       if (!ok) return false;
 
-      // Company
+      // Company — only overwrite if server has company data
       const co = all.data?.company;
-      if (co?.data) Object.assign(DB.company, co.data);
+      if (co?.data && Object.keys(co.data).length > 0) Object.assign(DB.company, co.data);
+
+      // Local key → localStorage snapshot key mapping
+      const _snapKey = { departments:'departments', employees:'employees', shifts:'shifts',
+        attendance:'attendance', leaves:'leaves', requests:'requests',
+        notifications:'notifications', payroll:'payroll', deductions:'deductions',
+        locations:'locations', roles:'roles', audit:'audit_logs' };
+
+      let _needsUpload = false;
 
       // Arrays
       for (const [jsKey, table] of Object.entries(this._tables)) {
         const td = all.data?.[table];
         if (!td) continue;
-        DB[jsKey].length = 0;
-        (td.rows || []).forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
+        const serverRows = td.rows || [];
+
+        if (serverRows.length === 0) {
+          // Server empty — check if local snapshot has data for this table
+          const snapK = _snapKey[jsKey] || jsKey;
+          const localArr = localSnap?.[snapK] || localSnap?.[jsKey] || [];
+          if (Array.isArray(localArr) && localArr.length > 0) {
+            // Keep local data in memory and mark for upload
+            DB[jsKey].length = 0;
+            localArr.forEach(r => Array.prototype.push.call(DB[jsKey], r));
+            _needsUpload = true;
+          }
+          // else: already empty, nothing to do
+        } else {
+          // Server has data — use it as source of truth
+          DB[jsKey].length = 0;
+          serverRows.forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
+        }
         DB[jsKey] = this._proxyArray(DB[jsKey], table);
         this._checksums[table] = this._checksum(DB[jsKey]);
       }
 
       this._startPeriodicSync();
+
+      // Auto-upload local data to server if server was empty (silent — no toast)
+      if (_needsUpload) {
+        console.log('[Backend] Server empty — auto-uploading local data...');
+        setTimeout(() => this.syncFromLocal(true), 1500);
+      }
+
       console.log('[Backend] Data loaded ✓');
       return true;
     } catch(e) {
@@ -334,19 +372,25 @@ const SupabaseDB = {
 
   // ── MIGRATE LOCAL → SERVER ────────────────────────────────
 
-  async syncFromLocal() {
+  async syncFromLocal(silent = false) {
     if (!this.isConnected) {
-      if (typeof App !== 'undefined') App.toast('يجب الاتصال بالسيرفر أولاً', 'warning');
+      if (!silent && typeof App !== 'undefined') App.toast('يجب الاتصال بالسيرفر أولاً', 'warning');
       return false;
     }
     let snap;
     try {
       const raw = localStorage.getItem('attendify-db');
-      if (!raw) { App.toast('لا توجد بيانات محلية', 'warning'); return false; }
+      if (!raw) {
+        if (!silent && typeof App !== 'undefined') App.toast('لا توجد بيانات محلية', 'warning');
+        return false;
+      }
       snap = JSON.parse(raw);
-    } catch(e) { App.toast('خطأ في قراءة البيانات المحلية', 'error'); return false; }
+    } catch(e) {
+      if (!silent && typeof App !== 'undefined') App.toast('خطأ في قراءة البيانات المحلية', 'error');
+      return false;
+    }
 
-    if (typeof App !== 'undefined') App.toast('جارٍ رفع البيانات المحلية للسيرفر...', 'info');
+    if (!silent && typeof App !== 'undefined') App.toast('جارٍ رفع البيانات المحلية للسيرفر...', 'info');
 
     const tableMap = {
       departments: 'departments', employees: 'employees', shifts: 'shifts',
@@ -355,14 +399,14 @@ const SupabaseDB = {
       locations: 'locations', roles: 'roles', audit: 'audit_logs',
     };
 
-    let ok = true;
+    let uploadedAny = false, failed = false;
 
     // Company
     if (snap.company && Object.keys(snap.company).length > 0) {
       const r = await this._fetch('/api/data/company/upsert', {
         method: 'POST', body: JSON.stringify({ id: 'main', data: snap.company }),
       });
-      if (!r.ok) ok = false;
+      if (r.ok) uploadedAny = true; else failed = true;
     }
 
     // Tables
@@ -374,16 +418,37 @@ const SupabaseDB = {
       const r = await this._fetch(`/api/data/${table}/upsert`, {
         method: 'POST', body: JSON.stringify(rows),
       });
-      if (!r.ok) ok = false;
+      if (r.ok) uploadedAny = true; else failed = true;
     }
 
-    if (ok) {
-      if (typeof App !== 'undefined') App.toast('تم رفع جميع البيانات ✓ جارٍ التحديث...', 'success');
-      await this.loadAll();
-    } else {
-      if (typeof App !== 'undefined') App.toast('اكتمل الرفع مع بعض الأخطاء', 'warning');
+    if (uploadedAny && !failed) {
+      if (!silent && typeof App !== 'undefined') App.toast('تم رفع جميع البيانات ✓', 'success');
+      // Reload from server WITHOUT triggering syncFromLocal again
+      await this._loadAllFromServer();
+    } else if (failed) {
+      if (!silent && typeof App !== 'undefined') App.toast('اكتمل الرفع مع بعض الأخطاء', 'warning');
     }
-    return ok;
+    return !failed;
+  },
+
+  // Internal: reload from server without the local-data-rescue logic
+  async _loadAllFromServer() {
+    try {
+      const { ok, data: all } = await this._fetch('/api/data/all');
+      if (!ok) return false;
+      const co = all.data?.company;
+      if (co?.data && Object.keys(co.data).length > 0) Object.assign(DB.company, co.data);
+      for (const [jsKey, table] of Object.entries(this._tables)) {
+        const td = all.data?.[table];
+        if (!td) continue;
+        DB[jsKey].length = 0;
+        (td.rows || []).forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
+        DB[jsKey] = this._proxyArray(DB[jsKey], table);
+        this._checksums[table] = this._checksum(DB[jsKey]);
+      }
+      if (typeof App !== 'undefined' && App.render) App.render();
+      return true;
+    } catch(e) { return false; }
   },
 
   // ── COMPANY SAVE ──────────────────────────────────────────
