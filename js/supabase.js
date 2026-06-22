@@ -35,14 +35,27 @@ const SupabaseDB = {
 
   // ── HTTP HELPER (مع تجديد تلقائي للـ token) ──────────────
 
+  // حذف أحرف invisible بـ charCode مباشرة — بدون regex لضمان 100% ASCII-safe
+  _strip(s) {
+    if (!s) return '';
+    var out = '', c;
+    for (var i = 0; i < s.length; i++) {
+      c = s.charCodeAt(i);
+      if (c !== 0xFEFF && c !== 0x200B && c !== 0x200C && c !== 0x200D && c !== 0x00AD) out += s[i];
+    }
+    return out.trim();
+  },
+
   async _fetch(path, options = {}, _retry = false) {
+    var safeToken = this._strip(this._token);
+    var safeBase  = this._strip(this._baseUrl);
     const headers = {
       'Content-Type': 'application/json',
-      ...(this._token ? { 'Authorization': `Bearer ${this._token}` } : {}),
+      ...(safeToken ? { 'Authorization': 'Bearer ' + safeToken } : {}),
       ...(options.headers || {}),
     };
     try {
-      const r    = await fetch(this._baseUrl + path, { ...options, headers });
+      const r    = await fetch(safeBase + path, { ...options, headers });
       const json = await r.json().catch(() => ({}));
 
       // إذا انتهت الجلسة وعندنا refresh token — جدّد تلقائياً
@@ -60,7 +73,7 @@ const SupabaseDB = {
 
   async _doRefresh() {
     try {
-      const r    = await fetch(this._baseUrl + '/api/auth/refresh', {
+      const r    = await fetch(this._strip(this._baseUrl) + '/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: this._refreshToken }),
@@ -153,7 +166,7 @@ const SupabaseDB = {
   async isFirstSetup() {
     try {
       // endpoint بدون auth — يعمل حتى قبل تسجيل الدخول
-      const r    = await fetch(this._baseUrl + '/api/first-setup');
+      const r    = await fetch(this._strip(this._baseUrl) + '/api/first-setup');
       const data = await r.json().catch(() => ({}));
       return data.firstSetup === true;
     } catch(e) {
