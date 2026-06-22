@@ -72,10 +72,10 @@ const SupabaseDB = {
     } catch(e) { this._clearTokens(); return false; }
   },
 
-  // BOM + invisible chars removed — prevents ByteString error in fetch
+  // BOM + invisible chars stripped — prevents ByteString error in fetch
   _clean(s) {
     if (!s) return null;
-    return s.replace(/﻿|​|‌|‍|­/g, '').replace(/ /g, ' ').trim() || null;
+    return s.replace(/\uFEFF|\u200B|\u200C|\u200D|\u00AD/g, '').replace(/\u00A0/g, ' ').trim() || null;
   },
 
   _saveTokens(token, refreshToken) {
