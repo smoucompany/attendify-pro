@@ -23,6 +23,34 @@
   <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
+  <!-- Global fetch interceptor: strips BOM (U+FEFF) and chars > 255 before any request -->
+  <script>
+  (function () {
+    function stripHigh(s) {
+      if (!s) return s;
+      var out = '', code;
+      for (var i = 0; i < s.length; i++) {
+        code = s.charCodeAt(i);
+        if (code <= 255) out += s[i];
+      }
+      return out;
+    }
+    var _origFetch = window.fetch;
+    window.fetch = function (url, opts) {
+      if (typeof url === 'string') url = stripHigh(url);
+      if (opts && opts.headers) {
+        var cleaned = {};
+        var keys = Object.keys(opts.headers);
+        for (var k = 0; k < keys.length; k++) {
+          cleaned[keys[k]] = stripHigh(opts.headers[keys[k]]);
+        }
+        opts = Object.assign({}, opts, { headers: cleaned });
+      }
+      return _origFetch.call(this, url, opts);
+    };
+  })();
+  </script>
+
   <!-- App CSS -->
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/pro-ui.css">
