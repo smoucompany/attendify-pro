@@ -50,6 +50,15 @@ const SupabaseDB = {
       ...(safeToken ? { 'Authorization': 'Bearer ' + safeToken } : {}),
       ...(options.headers || {}),
     };
+    // Last-resort: verify no char > 127 survived — delete header if so
+    if (headers['Authorization']) {
+      var _authOk = true;
+      for (var _ci = 0; _ci < headers['Authorization'].length; _ci++) {
+        if (headers['Authorization'].charCodeAt(_ci) > 127) { _authOk = false; break; }
+      }
+      if (!_authOk) { delete headers['Authorization']; this._clearTokens(); }
+    }
+
     try {
       const r    = await fetch(safeBase + path, { ...options, headers });
       const json = await r.json().catch(() => ({}));
@@ -62,6 +71,21 @@ const SupabaseDB = {
 
       return { ok: r.ok, status: r.status, data: json };
     } catch(e) {
+      // Show visible diagnostic when ByteString error occurs
+      if (e.message && e.message.indexOf('ByteString') !== -1) {
+        var _dbgAuth = headers['Authorization'] || '';
+        var _dbgCodes = [];
+        for (var _di = 0; _di < Math.min(_dbgAuth.length, 12); _di++) { _dbgCodes.push(_dbgAuth.charCodeAt(_di)); }
+        var _dbgMsg = 'ByteString at path=' + path + ' | auth[0-12]=[' + _dbgCodes.join(',') + '] | base=' + safeBase;
+        console.error('[BYTESTRING DBG]', _dbgMsg);
+        try {
+          var _dv = document.getElementById('_bsdbg') || document.createElement('div');
+          _dv.id = '_bsdbg';
+          _dv.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#7f1d1d;color:#fff;z-index:9999999;padding:10px;font:11px monospace;word-break:break-all;direction:ltr';
+          _dv.textContent = _dbgMsg;
+          if (!document.getElementById('_bsdbg')) document.body.appendChild(_dv);
+        } catch(_) {}
+      }
       console.warn('[API]', path, e.message);
       return { ok: false, status: 0, data: { error: e.message } };
     }

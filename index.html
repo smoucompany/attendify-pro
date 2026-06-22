@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
   <!-- Sanitization utilities — must load before any other app script -->
-  <script src="js/utils.js?v=5"></script>
+  <script src="js/utils.js?v=6"></script>
 
   <!-- Inline safety net + one-time token cleanup -->
   <script>
@@ -30,10 +30,10 @@
 
     // Step 1: one-time nuclear cleanup of auth tokens (removes old BOM-contaminated tokens)
     try {
-      if (!localStorage.getItem('_clean_v5')) {
+      if (!localStorage.getItem('_clean_v6')) {
         localStorage.removeItem('attendify-token');
         localStorage.removeItem('attendify-refresh-token');
-        localStorage.setItem('_clean_v5', '1');
+        localStorage.setItem('_clean_v6', '1');
       }
     } catch (_ce) {}
 
@@ -50,23 +50,50 @@
       }
     } catch (_e) {}
 
-    // Step 3: patch window.fetch to strip ALL chars > 127 from URL and header values
-    var _of = window.fetch;
+    // Helper: strip all chars >= 128 (non-ASCII, BOM, etc.)
     function _sc(s) {
       if (typeof s !== 'string') return s;
       var out = '', cc;
-      for (var i = 0; i < s.length; i++) { cc = s.charCodeAt(i); if (cc < 128) out += s[i]; }
+      for (var i = 0; i < s.length; i++) {
+        cc = s.charCodeAt(i);
+        if (cc < 128) out += s[i];
+      }
       return out;
     }
+
+    // Step 3: patch Headers prototype (if it exists) to intercept and clean headers set/appended
+    if (typeof Headers !== 'undefined') {
+      var _set = Headers.prototype.set;
+      Headers.prototype.set = function (key, val) {
+        return _set.call(this, _sc(key), _sc(val));
+      };
+      var _append = Headers.prototype.append;
+      Headers.prototype.append = function (key, val) {
+        return _append.call(this, _sc(key), _sc(val));
+      };
+    }
+
+    // Step 4: patch window.fetch to strip non-ASCII / BOM from URLs and header values
+    var _of = window.fetch;
     window.fetch = function (url, opts) {
       var cleanUrl = (typeof url === 'string') ? _sc(url) : url;
       var cleanOpts = opts;
       if (opts && opts.headers) {
-        var _h = {}, _hk = Object.keys(opts.headers);
-        for (var _j2 = 0; _j2 < _hk.length; _j2++) {
-          _h[_hk[_j2]] = _sc(String(opts.headers[_hk[_j2]] == null ? '' : opts.headers[_hk[_j2]]));
+        if (typeof opts.headers.forEach === 'function') {
+          // If it is a Headers instance
+          var newHeaders = new Headers();
+          opts.headers.forEach(function (val, key) {
+            newHeaders.append(_sc(key), _sc(val));
+          });
+          cleanOpts = Object.assign({}, opts, { headers: newHeaders });
+        } else {
+          // If it is a plain object
+          var _h = {}, _hk = Object.keys(opts.headers);
+          for (var _j2 = 0; _j2 < _hk.length; _j2++) {
+            _h[_hk[_j2]] = _sc(String(opts.headers[_hk[_j2]] == null ? '' : opts.headers[_hk[_j2]]));
+          }
+          cleanOpts = Object.assign({}, opts, { headers: _h });
         }
-        cleanOpts = Object.assign({}, opts, { headers: _h });
       }
       return _of.apply(window, [cleanUrl, cleanOpts]);
     };
@@ -550,27 +577,27 @@
   <!-- ===== SCRIPTS ===== -->
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/modules/dashboard.js?v=5"></script>
-  <script src="js/modules/employees.js?v=5"></script>
-  <script src="js/modules/attendance.js?v=5"></script>
-  <script src="js/modules/shifts.js?v=5"></script>
-  <script src="js/modules/leaves.js?v=5"></script>
-  <script src="js/modules/requests.js?v=5"></script>
-  <script src="js/modules/departments.js?v=5"></script>
-  <script src="js/modules/reports.js?v=5"></script>
-  <script src="js/modules/notifications.js?v=5"></script>
-  <script src="js/modules/payroll.js?v=5"></script>
-  <script src="js/modules/gps.js?v=5"></script>
-  <script src="js/modules/audit.js?v=5"></script>
-  <script src="js/modules/settings.js?v=5"></script>
-  <script src="js/modules/roles.js?v=5"></script>
-  <script src="js/modules/deductions.js?v=5"></script>
-  <script src="js/modules/profile.js?v=5"></script>
-  <script src="js/whatsapp.js?v=5"></script>
-  <script src="js/biometrics.js?v=5"></script>
-  <script src="js/config.js?v=5"></script>
-  <script src="js/supabase.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/modules/dashboard.js?v=6"></script>
+  <script src="js/modules/employees.js?v=6"></script>
+  <script src="js/modules/attendance.js?v=6"></script>
+  <script src="js/modules/shifts.js?v=6"></script>
+  <script src="js/modules/leaves.js?v=6"></script>
+  <script src="js/modules/requests.js?v=6"></script>
+  <script src="js/modules/departments.js?v=6"></script>
+  <script src="js/modules/reports.js?v=6"></script>
+  <script src="js/modules/notifications.js?v=6"></script>
+  <script src="js/modules/payroll.js?v=6"></script>
+  <script src="js/modules/gps.js?v=6"></script>
+  <script src="js/modules/audit.js?v=6"></script>
+  <script src="js/modules/settings.js?v=6"></script>
+  <script src="js/modules/roles.js?v=6"></script>
+  <script src="js/modules/deductions.js?v=6"></script>
+  <script src="js/modules/profile.js?v=6"></script>
+  <script src="js/whatsapp.js?v=6"></script>
+  <script src="js/biometrics.js?v=6"></script>
+  <script src="js/config.js?v=6"></script>
+  <script src="js/supabase.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
 
   <!-- ===== UNIFIED LOGIN SWITCHER ===== -->
   <script>
