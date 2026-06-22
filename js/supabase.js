@@ -302,6 +302,29 @@ const SupabaseDB = {
 
   // ── SYNC QUEUE ────────────────────────────────────────────
 
+  _setSyncUI(state) {
+    try {
+      const icon = document.getElementById('sync-icon');
+      const text = document.getElementById('sync-text');
+      const wrap = document.getElementById('sync-indicator');
+      if (!icon || !text || !wrap) return;
+      if (state === 'saving') {
+        icon.className = 'fas fa-rotate fa-spin'; icon.style.color = '#f59e0b';
+        text.textContent = 'جارٍ الحفظ...'; wrap.style.borderColor = '#f59e0b';
+      } else if (state === 'saved') {
+        icon.className = 'fas fa-cloud-check'; icon.style.color = '#10b981';
+        text.textContent = 'محفوظ'; wrap.style.borderColor = '#10b981';
+        setTimeout(() => {
+          if (icon) { icon.className = 'fas fa-cloud-arrow-up'; icon.style.color = ''; }
+          if (wrap) wrap.style.borderColor = '';
+        }, 3000);
+      } else if (state === 'error') {
+        icon.className = 'fas fa-cloud-xmark'; icon.style.color = '#ef4444';
+        text.textContent = 'خطأ في الحفظ'; wrap.style.borderColor = '#ef4444';
+      }
+    } catch(_) {}
+  },
+
   _enqueue(op, table, record) {
     if (!this.isConnected || !record?.id) return;
     this._syncQueue = this._syncQueue.filter(q => !(q.table === table && q.id === record.id));
@@ -311,6 +334,7 @@ const SupabaseDB = {
 
   _scheduleFlush() {
     clearTimeout(this._flushTimer);
+    this._setSyncUI('saving');
     this._flushTimer = setTimeout(() => this._flush(), 1500);
   },
 
@@ -327,16 +351,20 @@ const SupabaseDB = {
       byTable[q.table].push({ id: q.id, data: q.data });
     });
 
+    let anyFail = false;
     for (const [table, rows] of Object.entries(byTable)) {
       const { ok } = await this._fetch(`/api/data/${table}/upsert`, {
         method: 'POST', body: JSON.stringify(rows),
       });
-      if (!ok) rows.forEach(r => this._syncQueue.push({ op:'upsert', table, id:r.id, data:r.data }));
+      if (!ok) { rows.forEach(r => this._syncQueue.push({ op:'upsert', table, id:r.id, data:r.data })); anyFail = true; }
     }
 
     for (const q of deletes) {
-      await this._fetch(`/api/data/${q.table}/${q.id}`, { method: 'DELETE' });
+      const { ok } = await this._fetch(`/api/data/${q.table}/${q.id}`, { method: 'DELETE' });
+      if (!ok) anyFail = true;
     }
+
+    this._setSyncUI(anyFail ? 'error' : 'saved');
   },
 
   // ── PERIODIC DIRTY CHECK ──────────────────────────────────
