@@ -42,6 +42,19 @@ const ALLOWED = new Set([
 // ── Health ───────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// ── First Setup Check (بدون auth — للمستخدم الجديد) ─────────
+app.get('/api/first-setup', async (req, res) => {
+  try {
+    // هل يوجد أي مستخدم في النظام؟
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
+    if (error) return res.json({ firstSetup: true });
+    // إذا لا يوجد مستخدمين → إعداد أولي
+    res.json({ firstSetup: !users?.users?.length });
+  } catch(e) {
+    res.json({ firstSetup: true });
+  }
+});
+
 // ── Auth ─────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;

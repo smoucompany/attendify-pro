@@ -144,9 +144,14 @@ const SupabaseDB = {
   },
 
   async isFirstSetup() {
-    const { ok, data } = await this._fetch('/api/data/company');
-    if (!ok) return false;
-    return !data.data;
+    try {
+      // endpoint بدون auth — يعمل حتى قبل تسجيل الدخول
+      const r    = await fetch(this._baseUrl + '/api/first-setup');
+      const data = await r.json().catch(() => ({}));
+      return data.firstSetup === true;
+    } catch(e) {
+      return false;
+    }
   },
 
   async updatePassword(newPassword) {

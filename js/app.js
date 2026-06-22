@@ -69,7 +69,7 @@ const App = {
         this.state.user = {
           id:          session.user.id,
           name:        meta.name || session.user.email.split('@')[0],
-          avatar:      (meta.name || session.user.email).charAt(0).toUpperCase(),
+          avatar:      (meta.name || session.user.email).charAt(0)?.toUpperCase() || '?',
           position:    'مدير النظام',
           email:       session.user.email,
           avatarColor: 'gradient-primary',
@@ -80,7 +80,15 @@ const App = {
       }
       // لا توجد جلسة — هل هذا أول إعداد؟
       const firstTime = await SupabaseDB.isFirstSetup();
-      if (firstTime) { this._showSetupForm(); } else { document.getElementById('login-page').style.display = 'flex'; }
+      if (firstTime) {
+        this._showSetupForm();
+      } else {
+        // يوجد حسابات مسبقة — اعرض صفحة تسجيل الدخول
+        document.getElementById('login-page').style.display = 'flex';
+        // أخفِ رابط "إنشاء حساب" لأن النظام فيه مستخدمين
+        const regLink = document.getElementById('btn-register-link');
+        if (regLink) regLink.style.display = 'none';
+      }
       return;
     }
 
@@ -111,7 +119,7 @@ const App = {
     // ── Supabase Auth ──────────────────────────────────────────
     if (SupabaseDB.isConnected) {
       const { data, error } = await SupabaseDB.signIn(email, password);
-      if (error) {
+      if (error || !data?.user) {
         this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
         resetBtn(); return;
       }
@@ -119,7 +127,7 @@ const App = {
       const user = {
         id:          data.user.id,
         name:        meta.name || email.split('@')[0],
-        avatar:      (meta.name || email).charAt(0).toUpperCase(),
+        avatar:      (meta.name || email).charAt(0)?.toUpperCase() || '?',
         position:    'مدير النظام',
         email,
         avatarColor: 'gradient-primary',
@@ -309,13 +317,16 @@ const App = {
         btn.disabled = false; btn.innerHTML = '<span>إنشاء الحساب والبدء</span><i class="fas fa-arrow-left btn-arrow"></i>'; return;
       }
       const { data: sd, error: signInErr } = await SupabaseDB.signIn(email, pass);
-      if (signInErr) {
+      if (signInErr || !sd?.user) {
         this.toast('تم إنشاء الحساب — يرجى تسجيل الدخول', 'success');
         document.getElementById('login-page').style.display = 'flex'; return;
       }
       const meta = sd.user.user_metadata || {};
-      const user = { id: sd.user.id, name: meta.name||fullName, avatar: fullName.charAt(0), position:'مدير النظام', email, avatarColor:'gradient-primary' };
+      const user = { id: sd.user.id, name: meta.name||fullName, avatar: fullName.charAt(0)?.toUpperCase()||'?', position:'مدير النظام', email, avatarColor:'gradient-primary' };
       this.state.user = user;
+      // احفظ بيانات الشركة لضمان isFirstSetup=false في الزيارات القادمة
+      if (!DB.company.name) DB.company.name = fullName;
+      await SupabaseDB.saveCompany();
       await SupabaseDB.loadAll();
       document.getElementById('login-page').style.display = 'none';
       this._showApp();
