@@ -332,6 +332,60 @@ const SupabaseDB = {
     return `${a.length}|${a[0]?.id||''}|${a[a.length-1]?.id||''}`;
   },
 
+  // ── MIGRATE LOCAL → SERVER ────────────────────────────────
+
+  async syncFromLocal() {
+    if (!this.isConnected) {
+      if (typeof App !== 'undefined') App.toast('يجب الاتصال بالسيرفر أولاً', 'warning');
+      return false;
+    }
+    let snap;
+    try {
+      const raw = localStorage.getItem('attendify-db');
+      if (!raw) { App.toast('لا توجد بيانات محلية', 'warning'); return false; }
+      snap = JSON.parse(raw);
+    } catch(e) { App.toast('خطأ في قراءة البيانات المحلية', 'error'); return false; }
+
+    if (typeof App !== 'undefined') App.toast('جارٍ رفع البيانات المحلية للسيرفر...', 'info');
+
+    const tableMap = {
+      departments: 'departments', employees: 'employees', shifts: 'shifts',
+      attendance: 'attendance', leaves: 'leaves', requests: 'requests',
+      notifications: 'notifications', payroll: 'payroll', deductions: 'deductions',
+      locations: 'locations', roles: 'roles', audit: 'audit_logs',
+    };
+
+    let ok = true;
+
+    // Company
+    if (snap.company && Object.keys(snap.company).length > 0) {
+      const r = await this._fetch('/api/data/company/upsert', {
+        method: 'POST', body: JSON.stringify({ id: 'main', data: snap.company }),
+      });
+      if (!r.ok) ok = false;
+    }
+
+    // Tables
+    for (const [snapKey, table] of Object.entries(tableMap)) {
+      const arr = snap[snapKey];
+      if (!Array.isArray(arr) || !arr.length) continue;
+      const rows = arr.filter(r => r && r.id).map(r => ({ id: r.id, data: { ...r } }));
+      if (!rows.length) continue;
+      const r = await this._fetch(`/api/data/${table}/upsert`, {
+        method: 'POST', body: JSON.stringify(rows),
+      });
+      if (!r.ok) ok = false;
+    }
+
+    if (ok) {
+      if (typeof App !== 'undefined') App.toast('تم رفع جميع البيانات ✓ جارٍ التحديث...', 'success');
+      await this.loadAll();
+    } else {
+      if (typeof App !== 'undefined') App.toast('اكتمل الرفع مع بعض الأخطاء', 'warning');
+    }
+    return ok;
+  },
+
   // ── COMPANY SAVE ──────────────────────────────────────────
 
   async saveCompany() {

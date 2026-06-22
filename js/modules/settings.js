@@ -1318,6 +1318,9 @@ const SettingsModule = {
               <button class="btn btn-secondary" onclick="SettingsModule.supabaseSync()" ${sbConn?'':'disabled'}>
                 <i class="fas fa-rotate"></i> مزامنة الآن
               </button>
+              <button class="btn btn-warning" onclick="SettingsModule.syncFromLocal()" ${sbConn?'':'disabled'} title="ارفع بيانات هذا الجهاز للسيرفر">
+                <i class="fas fa-upload"></i> استعادة بيانات هذا الجهاز
+              </button>
               <button class="btn btn-secondary" onclick="SettingsModule.supabaseSetup()" style="margin-${currentLang==='ar'?'right':'left'}:auto">
                 <i class="fas fa-book"></i> كيفية الإعداد
               </button>
@@ -1445,6 +1448,10 @@ const SettingsModule = {
 
   async supabaseSync() {
     await SupabaseDB.syncAll();
+  },
+
+  async syncFromLocal() {
+    await SupabaseDB.syncFromLocal();
   },
 
   supabaseDisconnect() {
