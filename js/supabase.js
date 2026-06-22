@@ -72,11 +72,17 @@ const SupabaseDB = {
     } catch(e) { this._clearTokens(); return false; }
   },
 
+  // BOM + invisible chars removed — prevents ByteString error in fetch
+  _clean(s) {
+    if (!s) return null;
+    return s.replace(/﻿|​|‌|‍|­/g, '').replace(/ /g, ' ').trim() || null;
+  },
+
   _saveTokens(token, refreshToken) {
-    this._token        = token;
-    this._refreshToken = refreshToken;
-    localStorage.setItem('attendify-token',         token);
-    localStorage.setItem('attendify-refresh-token', refreshToken);
+    this._token        = this._clean(token);
+    this._refreshToken = this._clean(refreshToken);
+    if (this._token)        localStorage.setItem('attendify-token',         this._token);
+    if (this._refreshToken) localStorage.setItem('attendify-refresh-token', this._refreshToken);
   },
 
   _clearTokens() {
@@ -90,11 +96,12 @@ const SupabaseDB = {
   async init() {
     const cfg = this.getConfig();
     // استخدم الـ URL المحفوظ، أو origin الصفحة الحالية للنشر على Vercel
-    this._baseUrl = cfg.backendUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    const rawUrl = cfg.backendUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    this._baseUrl = this._clean(rawUrl) || '';
 
-    // استعادة الـ tokens
-    this._token        = localStorage.getItem('attendify-token')         || null;
-    this._refreshToken = localStorage.getItem('attendify-refresh-token') || null;
+    // استعادة الـ tokens مع حذف BOM
+    this._token        = this._clean(localStorage.getItem('attendify-token'));
+    this._refreshToken = this._clean(localStorage.getItem('attendify-refresh-token'));
 
     this._status = 'connecting';
     const { ok } = await this._fetch('/api/health');
