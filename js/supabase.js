@@ -35,9 +35,16 @@ const SupabaseDB = {
 
   // ── HTTP HELPER (مع تجديد تلقائي للـ token) ──────────────
 
+  _ascii(s) {
+    if (!s || typeof s !== 'string') return '';
+    var o = '';
+    for (var i = 0; i < s.length; i++) { if (s.charCodeAt(i) < 128) o += s[i]; }
+    return o;
+  },
+
   async _fetch(path, options = {}, _retry = false) {
-    var safeToken = sanitizeText(this._token) || '';
-    var safeBase  = sanitizeUrl(this._baseUrl);
+    var safeToken = this._ascii(sanitizeText(this._token) || '');
+    var safeBase  = this._ascii(sanitizeUrl(this._baseUrl));
     const headers = {
       'Content-Type': 'application/json',
       ...(safeToken ? { 'Authorization': 'Bearer ' + safeToken } : {}),
@@ -62,7 +69,7 @@ const SupabaseDB = {
 
   async _doRefresh() {
     try {
-      const r    = await fetch(sanitizeUrl(this._baseUrl) + '/api/auth/refresh', {
+      const r    = await fetch(this._ascii(sanitizeUrl(this._baseUrl)) + '/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: this._refreshToken }),
@@ -149,7 +156,7 @@ const SupabaseDB = {
   async isFirstSetup() {
     try {
       // endpoint بدون auth — يعمل حتى قبل تسجيل الدخول
-      const r    = await fetch(sanitizeUrl(this._baseUrl) + '/api/first-setup');
+      const r    = await fetch(this._ascii(sanitizeUrl(this._baseUrl)) + '/api/first-setup');
       const data = await r.json().catch(() => ({}));
       return data.firstSetup === true;
     } catch(e) {
