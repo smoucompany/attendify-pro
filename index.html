@@ -24,7 +24,42 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
   <!-- Sanitization utilities — must load before any other app script -->
-  <script src="js/utils.js?v=1"></script>
+  <script src="js/utils.js?v=4"></script>
+
+  <!-- Inline safety net: runs before any cached JS, cleans localStorage BOM + patches fetch -->
+  <script>
+  (function () {
+    var BOM = '\uFEFF';
+    // 1. Clean BOM from all localStorage values on startup
+    try {
+      for (var _i = 0; _i < localStorage.length; _i++) {
+        var _k = localStorage.key(_i);
+        if (!_k) continue;
+        var _v = localStorage.getItem(_k);
+        if (_v && _v.indexOf(BOM) !== -1) {
+          localStorage.setItem(_k, _v.split(BOM).join(''));
+        }
+      }
+    } catch (_e) {}
+    // 2. Patch window.fetch to strip BOM from URL + header values
+    var _of = window.fetch;
+    function _sc(s) {
+      if (typeof s !== 'string') return s;
+      var out = '', c;
+      for (var i = 0; i < s.length; i++) { c = s.charCodeAt(i); if (c !== 0xFEFF && c !== 0x200B && c !== 0x200C && c !== 0x200D && c !== 0x00AD) out += s[i]; }
+      return out.trim();
+    }
+    window.fetch = function (url, opts) {
+      if (typeof url === 'string') url = _sc(url);
+      if (opts && opts.headers) {
+        var _h = {}, _hk = Object.keys(opts.headers);
+        for (var _j = 0; _j < _hk.length; _j++) _h[_hk[_j]] = _sc(opts.headers[_hk[_j]]);
+        opts = Object.assign({}, opts, { headers: _h });
+      }
+      return _of.apply(this, [url, opts]);
+    };
+  })();
+  </script>
 
   <!-- App CSS -->
   <link rel="stylesheet" href="css/app.css">
@@ -503,27 +538,27 @@
   <!-- ===== SCRIPTS ===== -->
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/modules/dashboard.js?v=3"></script>
-  <script src="js/modules/employees.js?v=3"></script>
-  <script src="js/modules/attendance.js?v=3"></script>
-  <script src="js/modules/shifts.js?v=3"></script>
-  <script src="js/modules/leaves.js?v=3"></script>
-  <script src="js/modules/requests.js?v=3"></script>
-  <script src="js/modules/departments.js?v=3"></script>
-  <script src="js/modules/reports.js?v=3"></script>
-  <script src="js/modules/notifications.js?v=3"></script>
-  <script src="js/modules/payroll.js?v=3"></script>
-  <script src="js/modules/gps.js?v=3"></script>
-  <script src="js/modules/audit.js?v=3"></script>
-  <script src="js/modules/settings.js?v=3"></script>
-  <script src="js/modules/roles.js?v=3"></script>
-  <script src="js/modules/deductions.js?v=3"></script>
-  <script src="js/modules/profile.js?v=3"></script>
-  <script src="js/whatsapp.js?v=3"></script>
-  <script src="js/biometrics.js?v=3"></script>
-  <script src="js/config.js?v=3"></script>
-  <script src="js/supabase.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/modules/dashboard.js?v=4"></script>
+  <script src="js/modules/employees.js?v=4"></script>
+  <script src="js/modules/attendance.js?v=4"></script>
+  <script src="js/modules/shifts.js?v=4"></script>
+  <script src="js/modules/leaves.js?v=4"></script>
+  <script src="js/modules/requests.js?v=4"></script>
+  <script src="js/modules/departments.js?v=4"></script>
+  <script src="js/modules/reports.js?v=4"></script>
+  <script src="js/modules/notifications.js?v=4"></script>
+  <script src="js/modules/payroll.js?v=4"></script>
+  <script src="js/modules/gps.js?v=4"></script>
+  <script src="js/modules/audit.js?v=4"></script>
+  <script src="js/modules/settings.js?v=4"></script>
+  <script src="js/modules/roles.js?v=4"></script>
+  <script src="js/modules/deductions.js?v=4"></script>
+  <script src="js/modules/profile.js?v=4"></script>
+  <script src="js/whatsapp.js?v=4"></script>
+  <script src="js/biometrics.js?v=4"></script>
+  <script src="js/config.js?v=4"></script>
+  <script src="js/supabase.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
 
   <!-- ===== UNIFIED LOGIN SWITCHER ===== -->
   <script>
