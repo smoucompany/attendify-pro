@@ -201,16 +201,20 @@ const SupabaseDB = {
   async loadAll() {
     if (!this.isConnected) return false;
     try {
+      // Single request fetches all tables at once
+      const { ok, data: all } = await this._fetch('/api/data/all');
+      if (!ok) return false;
+
       // Company
-      const { ok: cok, data: co } = await this._fetch('/api/data/company');
-      if (cok && co.data) Object.assign(DB.company, co.data);
+      const co = all.data?.company;
+      if (co?.data) Object.assign(DB.company, co.data);
 
       // Arrays
       for (const [jsKey, table] of Object.entries(this._tables)) {
-        const { ok, data } = await this._fetch(`/api/data/${table}`);
-        if (!ok) { console.warn('[Backend] Load failed:', table); continue; }
+        const td = all.data?.[table];
+        if (!td) continue;
         DB[jsKey].length = 0;
-        (data.rows || []).forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
+        (td.rows || []).forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
         DB[jsKey] = this._proxyArray(DB[jsKey], table);
         this._checksums[table] = this._checksum(DB[jsKey]);
       }

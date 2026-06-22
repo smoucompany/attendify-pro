@@ -11,15 +11,22 @@ const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
+// ── Sanitize env vars (strip BOM / invisible chars) ───────────
+function cleanEnv(key) {
+  const val = process.env[key] || '';
+  // Remove BOM (U+FEFF), zero-width spaces, and other invisible chars
+  return val.replace(/[\uFEFF\u200B\u200C\u200D\u00AD\u200E\u200F]/g, '').trim();
+}
+
 // ── Supabase Clients ──────────────────────────────────────────
 const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
+  cleanEnv('SUPABASE_URL'),
+  cleanEnv('SUPABASE_SERVICE_KEY'),
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 const supabaseAnon = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
+  cleanEnv('SUPABASE_URL'),
+  cleanEnv('SUPABASE_ANON_KEY'),
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
@@ -93,6 +100,30 @@ app.post('/api/auth/password', authenticate, async (req, res) => {
   const { error } = await supabaseAdmin.auth.admin.updateUserById(req.user.id, { password });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
+});
+
+// ── Load ALL data in one shot (replaces 13 sequential requests) ──
+app.get('/api/data/all', authenticate, async (req, res) => {
+  const tables = [
+    'company','departments','employees','shifts','attendance',
+    'leaves','requests','notifications','payroll','deductions',
+    'locations','roles','audit_logs',
+  ];
+  try {
+    const results = await Promise.all(tables.map(async (table) => {
+      if (table === 'company') {
+        const { data, error } = await supabaseAdmin.from('company').select('data').eq('id','main').maybeSingle();
+        return { table, single: true, data: error ? null : (data?.data || null) };
+      }
+      const { data, error } = await supabaseAdmin.from(table).select('id,data').order('created_at', { ascending: true });
+      return { table, rows: error ? [] : (data || []) };
+    }));
+    const out = {};
+    results.forEach(r => { out[r.table] = r; });
+    res.json({ ok: true, data: out });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Data ─────────────────────────────────────────────────────
