@@ -23,8 +23,12 @@ const EmployeesModule = {
           <p>${t('employees.subtitle')} — ${total} ${t('employees.totalEmp')}</p>
         </div>
         <div class="page-header-actions">
-          <button class="btn btn-secondary" onclick="EmployeesModule.exportData()"><i class="fas fa-file-excel"></i> ${t('common.export')}</button>
-          <button class="btn btn-primary" onclick="EmployeesModule.openAdd()"><i class="fas fa-user-plus"></i> ${t('employees.addEmployee')}</button>
+          <button class="btn btn-secondary" onclick="EmployeesModule.openImportExport()">
+            <i class="fas fa-arrows-up-down"></i> استيراد / تصدير
+          </button>
+          <button class="btn btn-primary" onclick="EmployeesModule.openAdd()">
+            <i class="fas fa-user-plus"></i> ${t('employees.addEmployee')}
+          </button>
         </div>
       </div>
 
@@ -435,18 +439,373 @@ const EmployeesModule = {
     });
   },
 
-  exportData() {
+  exportData() { this.openImportExport(); },
+
+  // ── IMPORT / EXPORT MODAL ─────────────────────────────────
+  openImportExport() {
+    App.openModal('استيراد وتصدير بيانات الموظفين', `
+      <div style="display:flex;flex-direction:column;gap:0">
+
+        <!-- TABS -->
+        <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:20px">
+          <button id="ie-tab-import" onclick="EmployeesModule._ieTab('import')"
+            style="flex:1;padding:11px;font-size:13px;font-weight:700;border:none;background:var(--primary);color:#fff;cursor:pointer;border-radius:8px 0 0 0">
+            <i class="fas fa-upload"></i>  استيراد
+          </button>
+          <button id="ie-tab-export" onclick="EmployeesModule._ieTab('export')"
+            style="flex:1;padding:11px;font-size:13px;font-weight:700;border:none;background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;border-radius:0 8px 0 0">
+            <i class="fas fa-download"></i>  تصدير
+          </button>
+        </div>
+
+        <!-- IMPORT PANEL -->
+        <div id="ie-panel-import">
+
+          <!-- Step 1: Download template -->
+          <div style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1.5px solid #93c5fd;border-radius:12px;padding:16px 18px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:42px;height:42px;border-radius:10px;background:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <i class="fas fa-file-excel" style="color:#fff;font-size:19px"></i>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:2px">الخطوة 1 — تحميل القالب</div>
+                <div style="font-size:11.5px;color:#3b82f6;line-height:1.5">حمّل القالب الجاهز، عبّئ بيانات موظفيك، ثم ارفعه</div>
+              </div>
+              <button onclick="EmployeesModule.downloadTemplate()"
+                style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px">
+                <i class="fas fa-download"></i> تحميل القالب
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Upload -->
+          <div style="margin-bottom:16px">
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
+              <span style="background:#6366f1;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-left:6px">2</span>
+              رفع ملف Excel المعبّأ
+            </div>
+            <label id="ie-dropzone"
+              style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+                     border:2px dashed #c7d2fe;border-radius:12px;padding:28px 20px;cursor:pointer;
+                     background:#fafafa;transition:all 0.2s;text-align:center"
+              ondragover="event.preventDefault();this.style.borderColor='#6366f1';this.style.background='#eef2ff'"
+              ondragleave="this.style.borderColor='#c7d2fe';this.style.background='#fafafa'"
+              ondrop="event.preventDefault();this.style.borderColor='#c7d2fe';this.style.background='#fafafa';EmployeesModule._handleImportFile(event.dataTransfer.files[0])">
+              <i class="fas fa-cloud-arrow-up" style="font-size:32px;color:#a5b4fc"></i>
+              <div style="font-size:13px;font-weight:700;color:var(--text-primary)">اسحب الملف هنا أو اضغط للاختيار</div>
+              <div style="font-size:11px;color:var(--text-muted)">يدعم .xlsx و .xls فقط</div>
+              <input type="file" accept=".xlsx,.xls" style="display:none" id="ie-file-input"
+                onchange="EmployeesModule._handleImportFile(this.files[0])">
+            </label>
+          </div>
+
+          <!-- Preview area -->
+          <div id="ie-preview" style="display:none"></div>
+        </div>
+
+        <!-- EXPORT PANEL -->
+        <div id="ie-panel-export" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+            <div onclick="EmployeesModule.exportExcel()"
+              style="border:1.5px solid #86efac;border-radius:12px;padding:20px;cursor:pointer;background:#f0fdf4;text-align:center;transition:all 0.2s"
+              onmouseenter="this.style.background='#dcfce7'" onmouseleave="this.style.background='#f0fdf4'">
+              <i class="fas fa-file-excel" style="font-size:30px;color:#16a34a;margin-bottom:8px;display:block"></i>
+              <div style="font-size:13px;font-weight:800;color:#166534">Excel</div>
+              <div style="font-size:11px;color:#4ade80;margin-top:3px">تصدير كامل البيانات</div>
+            </div>
+
+            <div onclick="EmployeesModule.exportCSVFile()"
+              style="border:1.5px solid #93c5fd;border-radius:12px;padding:20px;cursor:pointer;background:#eff6ff;text-align:center;transition:all 0.2s"
+              onmouseenter="this.style.background='#dbeafe'" onmouseleave="this.style.background='#eff6ff'">
+              <i class="fas fa-file-csv" style="font-size:30px;color:#2563eb;margin-bottom:8px;display:block"></i>
+              <div style="font-size:13px;font-weight:800;color:#1e40af">CSV</div>
+              <div style="font-size:11px;color:#60a5fa;margin-top:3px">متوافق مع جميع البرامج</div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;background:var(--bg-secondary);border-radius:10px;padding:12px 14px">
+            <div style="font-size:12px;color:var(--text-muted);line-height:1.7">
+              <i class="fas fa-circle-info" style="color:var(--primary);margin-left:4px"></i>
+              سيتم تصدير <strong style="color:var(--text-primary)">${DB.employees.length} موظف</strong>
+              بجميع بياناتهم
+            </div>
+          </div>
+        </div>
+      </div>
+    `, { size: 'normal' });
+  },
+
+  _ieTab(tab) {
+    ['import','export'].forEach(t => {
+      const btn   = document.getElementById('ie-tab-' + t);
+      const panel = document.getElementById('ie-panel-' + t);
+      if (!btn || !panel) return;
+      const active = t === tab;
+      btn.style.background   = active ? 'var(--primary)' : 'var(--bg-secondary)';
+      btn.style.color        = active ? '#fff' : 'var(--text-muted)';
+      panel.style.display    = active ? '' : 'none';
+    });
+  },
+
+  // ── TEMPLATE DOWNLOAD (generated in browser via SheetJS) ──
+  downloadTemplate() {
+    if (typeof XLSX === 'undefined') {
+      App.toast('جارٍ تحميل مكتبة Excel...', 'info');
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+
+    // ── شيت البيانات ──
+    const headers = [
+      'الاسم الأول *', 'اسم العائلة *', 'رقم الهاتف', 'البريد الإلكتروني',
+      'القسم *', 'المنصب / الوظيفة', 'الراتب الأساسي *', 'تاريخ التعيين *',
+      'الجنس', 'الحالة', 'رقم الموظف', 'ملاحظات'
+    ];
+    const sample = [
+      'أحمد', 'محمد', '0501234567', 'ahmed@company.com',
+      'الموارد البشرية', 'محاسب', 5000, '2024-01-15',
+      'ذكر', 'نشط', 'EMP-001', 'موظف نموذجي'
+    ];
+
+    const wsData = [headers, sample];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // عرض الأعمدة
+    ws['!cols'] = [
+      {wch:16},{wch:16},{wch:15},{wch:24},{wch:18},{wch:20},
+      {wch:15},{wch:15},{wch:10},{wch:12},{wch:13},{wch:22}
+    ];
+
+    // نطاق الجدول
+    ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:101,c:11} });
+
+    XLSX.utils.book_append_sheet(wb, ws, 'بيانات الموظفين');
+
+    // ── شيت التعليمات ──
+    const wsInst = XLSX.utils.aoa_to_sheet([
+      ['حقل', 'مطلوب؟', 'الوصف', 'مثال'],
+      ['الاسم الأول',         'نعم', 'اسم الموظف الأول',                    'أحمد'],
+      ['اسم العائلة',         'نعم', 'اسم العائلة',                           'محمد'],
+      ['رقم الهاتف',          'لا',  'رقم الجوال مع رمز الدولة',             '0501234567'],
+      ['البريد الإلكتروني',   'لا',  'للتواصل والإشعارات',                   'ahmed@co.com'],
+      ['القسم',               'نعم', 'يجب أن يكون موجوداً في النظام',        'الموارد البشرية'],
+      ['المنصب / الوظيفة',    'لا',  'المسمى الوظيفي',                        'محاسب'],
+      ['الراتب الأساسي',      'نعم', 'أرقام فقط بدون رموز',                  '5000'],
+      ['تاريخ التعيين',       'نعم', 'بالصيغة YYYY-MM-DD',                   '2024-01-15'],
+      ['الجنس',               'لا',  'ذكر أو أنثى',                           'ذكر'],
+      ['الحالة',              'لا',  'نشط / غير نشط / في إجازة',             'نشط'],
+      ['رقم الموظف',          'لا',  'سيُولَّد تلقائياً إن تُرك فارغاً',     'EMP-001'],
+      ['ملاحظات',             'لا',  'أي ملاحظات إضافية',                    ''],
+      [],
+      ['تعليمات مهمة:'],
+      ['• لا تغيّر أسماء الأعمدة في الصف الأول'],
+      ['• احذف صف المثال (الصف 2) قبل الرفع'],
+      ['• الحقول المعلّمة بـ (*) إلزامية'],
+    ]);
+    wsInst['!cols'] = [{wch:20},{wch:10},{wch:36},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, wsInst, 'تعليمات');
+
+    XLSX.writeFile(wb, 'قالب_رفع_الموظفين.xlsx');
+    App.toast('تم تحميل القالب ✓', 'success');
+  },
+
+  // ── IMPORT: handle uploaded file ──────────────────────────
+  _handleImportFile(file) {
+    if (!file) return;
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+      App.toast('يُقبل فقط ملفات .xlsx أو .xls', 'error'); return;
+    }
+    if (typeof XLSX === 'undefined') {
+      App.toast('مكتبة Excel غير محملة، يرجى الانتظار', 'error'); return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb   = XLSX.read(e.target.result, { type: 'binary' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+        if (!rows.length) { App.toast('الملف فارغ أو لا يحتوي بيانات', 'error'); return; }
+
+        // map headers → employee fields
+        const mapped = rows.map((r, idx) => {
+          const firstName = (r['الاسم الأول *'] || r['الاسم الأول'] || '').toString().trim();
+          const lastName  = (r['اسم العائلة *'] || r['اسم العائلة'] || '').toString().trim();
+          const name = [firstName, lastName].filter(Boolean).join(' ');
+
+          const statusRaw = (r['الحالة'] || 'نشط').toString().trim();
+          const statusMap = { 'نشط':'active', 'active':'active', 'غير نشط':'inactive', 'inactive':'inactive', 'في إجازة':'on_leave', 'on_leave':'on_leave' };
+
+          const genderRaw = (r['الجنس'] || '').toString().trim();
+          const genderMap = { 'ذكر':'male', 'male':'male', 'أنثى':'female', 'female':'female' };
+
+          const dept    = (r['القسم *'] || r['القسم'] || '').toString().trim();
+          const salary  = parseFloat(r['الراتب الأساسي *'] || r['الراتب الأساسي'] || 0) || 0;
+          const hireDate= (r['تاريخ التعيين *'] || r['تاريخ التعيين'] || new Date().toISOString().split('T')[0]).toString().trim();
+
+          return {
+            _row:     idx + 2,
+            _valid:   !!name,
+            _error:   !name ? 'الاسم مطلوب' : '',
+            name, firstName, lastName,
+            phone:    (r['رقم الهاتف']         || '').toString().trim(),
+            email:    (r['البريد الإلكتروني']   || '').toString().trim(),
+            deptName: dept,
+            position: (r['المنصب / الوظيفة']    || '').toString().trim(),
+            salary,
+            hireDate,
+            gender:   genderMap[genderRaw] || 'male',
+            status:   statusMap[statusRaw]  || 'active',
+            no:       (r['رقم الموظف']         || '').toString().trim(),
+            notes:    (r['ملاحظات']             || '').toString().trim(),
+          };
+        }).filter(r => r.name); // skip fully empty rows
+
+        if (!mapped.length) { App.toast('لم يُعثر على بيانات صالحة', 'error'); return; }
+
+        this._showImportPreview(mapped);
+      } catch(err) {
+        App.toast('خطأ في قراءة الملف: ' + err.message, 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
+  },
+
+  _showImportPreview(rows) {
+    const valid   = rows.filter(r => r._valid);
+    const invalid = rows.filter(r => !r._valid);
+
+    const preview = document.getElementById('ie-preview');
+    if (!preview) return;
+    preview.style.display = '';
+    preview.innerHTML = `
+      <div style="border-radius:10px;overflow:hidden;border:1.5px solid var(--border)">
+        <div style="background:var(--bg-secondary);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">
+            معاينة البيانات
+            <span style="background:#dcfce7;color:#166534;border-radius:20px;padding:2px 10px;font-size:11px;margin-right:6px">${valid.length} صالح</span>
+            ${invalid.length ? `<span style="background:#fee2e2;color:#991b1b;border-radius:20px;padding:2px 10px;font-size:11px">${invalid.length} خطأ</span>` : ''}
+          </div>
+          <button onclick="EmployeesModule._confirmImport(${JSON.stringify(valid).replace(/"/g,'&quot;')})"
+            style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">
+            <i class="fas fa-check"></i> استيراد ${valid.length} موظف
+          </button>
+        </div>
+        <div style="max-height:220px;overflow-y:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:11.5px">
+            <thead>
+              <tr style="background:var(--bg-secondary)">
+                ${['#','الاسم','القسم','المنصب','الراتب','الحالة',''].map(h=>`<th style="padding:7px 10px;text-align:right;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map((r,i) => `
+                <tr style="border-bottom:1px solid var(--border);background:${r._valid ? (i%2?'var(--bg)':'var(--bg-secondary)') : '#fff5f5'}">
+                  <td style="padding:7px 10px;color:var(--text-muted)">${r._row}</td>
+                  <td style="padding:7px 10px;font-weight:600;color:var(--text-primary)">${r.name || '—'}</td>
+                  <td style="padding:7px 10px;color:var(--text-muted)">${r.deptName || '—'}</td>
+                  <td style="padding:7px 10px;color:var(--text-muted)">${r.position || '—'}</td>
+                  <td style="padding:7px 10px">${r.salary ? r.salary.toLocaleString() : '—'}</td>
+                  <td style="padding:7px 10px">
+                    <span style="background:${r.status==='active'?'#dcfce7':r.status==='inactive'?'#fee2e2':'#fef3c7'};
+                                 color:${r.status==='active'?'#166534':r.status==='inactive'?'#991b1b':'#92400e'};
+                                 border-radius:20px;padding:2px 8px;font-size:10px">
+                      ${r.status==='active'?'نشط':r.status==='inactive'?'غير نشط':'في إجازة'}
+                    </span>
+                  </td>
+                  <td style="padding:7px 10px;color:#ef4444;font-size:11px">${r._error || ''}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
+  _confirmImport(rows) {
+    let added = 0;
+    rows.forEach(r => {
+      // find or create dept
+      let dept = DB.departments.find(d =>
+        d.name === r.deptName || d.nameEn === r.deptName
+      );
+      if (!dept && r.deptName) {
+        dept = { id: DB.nextId('d'), name: r.deptName, nameEn: r.deptName,
+                 icon:'fas fa-building', hex:'#6366f1', manager:'', managerId:'', count:0, branch:'b1' };
+        DB.departments.push(dept);
+      }
+
+      const empNo = r.no || DB.nextEmpNo();
+      const newEmp = {
+        id:        DB.nextId('e'),
+        no:        empNo,
+        name:      r.name,
+        nameEn:    r.name,
+        email:     r.email,
+        phone:     r.phone,
+        dept:      dept?.id || '',
+        position:  r.position,
+        salary:    r.salary,
+        status:    r.status,
+        gender:    r.gender,
+        hireDate:  r.hireDate,
+        notes:     r.notes,
+        avatar:    r.name.charAt(0),
+        avatarColor: 'gradient-primary',
+        password:  Math.random().toString(36).slice(2, 10),
+      };
+      DB.employees.push(newEmp);
+      DB.leaveBalances[newEmp.id] = { annual:21, sick:10, emergency:3, remaining:21, taken:0 };
+      added++;
+    });
+
+    DB.save();
+    App.closeModal();
+    App.toast(`تم استيراد ${added} موظف بنجاح ✓`, 'success');
+    this.render(document.getElementById('page-content'));
+  },
+
+  // ── EXPORT TO EXCEL ───────────────────────────────────────
+  exportExcel() {
+    if (typeof XLSX === 'undefined') { App.toast('جارٍ تحميل مكتبة Excel...', 'info'); return; }
+
+    const headers = ['رقم الموظف','الاسم الكامل','البريد الإلكتروني','الهاتف','القسم','المنصب','الراتب الأساسي','تاريخ التعيين','الجنس','الحالة','ملاحظات'];
+    const rows = DB.employees.map(e => [
+      e.no, e.name, e.email, e.phone,
+      DB.getDepartment(e.dept)?.name || '',
+      e.position, e.salary, e.hireDate,
+      e.gender === 'male' ? 'ذكر' : e.gender === 'female' ? 'أنثى' : '',
+      e.status === 'active' ? 'نشط' : e.status === 'inactive' ? 'غير نشط' : 'في إجازة',
+      e.notes || ''
+    ]);
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      {wch:13},{wch:20},{wch:24},{wch:14},{wch:18},{wch:18},
+      {wch:14},{wch:14},{wch:8},{wch:10},{wch:24}
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'الموظفون');
+    XLSX.writeFile(wb, `الموظفون_${new Date().toISOString().split('T')[0]}.xlsx`);
+    App.toast('تم تصدير البيانات ✓', 'success');
+  },
+
+  exportCSVFile() {
     const data = DB.employees.map(e => ({
-      [t('employees.employeeId')]: e.no,
-      [t('common.name')]:          e.name,
-      [t('common.email')]:         e.email,
-      [t('common.phone')]:         e.phone,
-      [t('common.department')]:    DB.getDepartment(e.dept)?.name || '',
-      [t('common.position')]:      e.position,
-      [t('employees.salary')]:     e.salary,
-      [t('common.status')]:        e.status,
-      [t('employees.hireDate')]:   e.hireDate,
+      'رقم الموظف':       e.no,
+      'الاسم الكامل':     e.name,
+      'البريد الإلكتروني':e.email,
+      'الهاتف':           e.phone,
+      'القسم':            DB.getDepartment(e.dept)?.name || '',
+      'المنصب':           e.position,
+      'الراتب الأساسي':   e.salary,
+      'تاريخ التعيين':    e.hireDate,
+      'الحالة':           e.status === 'active' ? 'نشط' : e.status === 'inactive' ? 'غير نشط' : 'في إجازة',
     }));
-    App.exportCSV(data, 'employees.csv');
-  }
+    App.exportCSV(data, `الموظفون_${new Date().toISOString().split('T')[0]}.csv`);
+    App.toast('تم تصدير CSV ✓', 'success');
+  },
 };
