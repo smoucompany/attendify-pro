@@ -296,6 +296,7 @@ const AttendanceModule = {
       status: late && lateMin > (DB.company.lateThreshold||15) ? 'late' : 'present',
       method: 'manual', overtime: 0, lateMin: late ? lateMin : 0,
     });
+    DB.save();
     App.toast(`${DB.getEmployee(empId)?.name} — ${currentLang==='ar'?'تم تسجيل الحضور':'Checked in'} ${time}`, 'success');
     this._renderTable();
   },

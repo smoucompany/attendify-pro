@@ -520,6 +520,17 @@ const SupabaseDB = {
 
   // ── CONFIG ────────────────────────────────────────────────
 
+  clearConfig() {
+    try { localStorage.removeItem('backend-config'); } catch(_) {}
+    this._status       = 'disconnected';
+    this._token        = null;
+    this._refreshToken = null;
+    this._clearTokens();
+    clearInterval(this._syncTimer);
+    clearTimeout(this._flushTimer);
+    this._syncQueue = [];
+  },
+
   async saveConfig(url, key) {
     // key is not used on frontend (backend uses env vars) — save URL only
     const cleanUrl = sanitizeUrl((url || '').trim().replace(/\/$/, ''));
