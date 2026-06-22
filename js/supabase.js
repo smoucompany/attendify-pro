@@ -62,7 +62,7 @@ const SupabaseDB = {
 
   async _doRefresh() {
     try {
-      const r    = await fetch(this._strip(this._baseUrl) + '/api/auth/refresh', {
+      const r    = await fetch(sanitizeUrl(this._baseUrl) + '/api/auth/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: this._refreshToken }),
@@ -149,7 +149,7 @@ const SupabaseDB = {
   async isFirstSetup() {
     try {
       // endpoint بدون auth — يعمل حتى قبل تسجيل الدخول
-      const r    = await fetch(this._strip(this._baseUrl) + '/api/first-setup');
+      const r    = await fetch(sanitizeUrl(this._baseUrl) + '/api/first-setup');
       const data = await r.json().catch(() => ({}));
       return data.firstSetup === true;
     } catch(e) {
