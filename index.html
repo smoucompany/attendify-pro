@@ -26,37 +26,73 @@
   <!-- Sanitization utilities — must load before any other app script -->
   <script src="js/utils.js?v=4"></script>
 
-  <!-- Inline safety net: runs before any cached JS, cleans localStorage BOM + patches fetch -->
+  <!-- Inline safety net + diagnostic -->
   <script>
   (function () {
     var BOM = '\uFEFF';
-    // 1. Clean BOM from all localStorage values on startup
+
+    // 1. Clean BOM from ALL localStorage values on startup
     try {
-      for (var _i = 0; _i < localStorage.length; _i++) {
-        var _k = localStorage.key(_i);
-        if (!_k) continue;
-        var _v = localStorage.getItem(_k);
-        if (_v && _v.indexOf(BOM) !== -1) {
-          localStorage.setItem(_k, _v.split(BOM).join(''));
+      var _keys = [];
+      for (var _i = 0; _i < localStorage.length; _i++) { _keys.push(localStorage.key(_i)); }
+      for (var _j = 0; _j < _keys.length; _j++) {
+        if (!_keys[_j]) continue;
+        var _v = localStorage.getItem(_keys[_j]);
+        if (typeof _v === 'string' && _v.indexOf(BOM) !== -1) {
+          localStorage.setItem(_keys[_j], _v.split(BOM).join(''));
         }
       }
     } catch (_e) {}
-    // 2. Patch window.fetch to strip BOM from URL + header values
+
+    // 2. Diagnostic overlay — shows on-screen when ByteString error occurs
+    function _showDiag(msg, url, headers) {
+      try {
+        var div = document.getElementById('_bsd') || document.createElement('div');
+        div.id = '_bsd';
+        div.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#7f1d1d;color:#fef2f2;z-index:2147483647;padding:12px 16px;font:11px monospace;word-break:break-all;direction:ltr;max-height:40vh;overflow:auto;border-bottom:3px solid #ef4444';
+        var authVal = (headers && headers['Authorization']) || '';
+        var authCodes = '';
+        for (var _ai = 0; _ai < Math.min(authVal.length, 15); _ai++) {
+          authCodes += authVal.charCodeAt(_ai) + ' ';
+        }
+        div.innerHTML = '<b>[BYTESTRING DEBUG]</b><br>'
+          + 'URL: ' + url + '<br>'
+          + 'Auth header first 15 chars (as char codes): [' + authCodes.trim() + ']<br>'
+          + 'Error: ' + msg
+          + '<br><small>Click to close</small>';
+        div.onclick = function () { div.remove(); };
+        if (document.body) document.body.appendChild(div);
+        else document.addEventListener('DOMContentLoaded', function () { document.body.appendChild(div); });
+      } catch (_de) {}
+    }
+
+    // 3. Patch window.fetch — strip BOM from URL + headers, show diagnostic on failure
     var _of = window.fetch;
     function _sc(s) {
       if (typeof s !== 'string') return s;
       var out = '', c;
-      for (var i = 0; i < s.length; i++) { c = s.charCodeAt(i); if (c !== 0xFEFF && c !== 0x200B && c !== 0x200C && c !== 0x200D && c !== 0x00AD) out += s[i]; }
+      for (var i = 0; i < s.length; i++) {
+        c = s.charCodeAt(i);
+        if (c !== 0xFEFF && c !== 0x200B && c !== 0x200C && c !== 0x200D && c !== 0x00AD && c !== 0x200E && c !== 0x200F) out += s[i];
+      }
       return out.trim();
     }
     window.fetch = function (url, opts) {
-      if (typeof url === 'string') url = _sc(url);
+      var cleanUrl = (typeof url === 'string') ? _sc(url) : url;
+      var cleanOpts = opts;
       if (opts && opts.headers) {
         var _h = {}, _hk = Object.keys(opts.headers);
-        for (var _j = 0; _j < _hk.length; _j++) _h[_hk[_j]] = _sc(opts.headers[_hk[_j]]);
-        opts = Object.assign({}, opts, { headers: _h });
+        for (var _j = 0; _j < _hk.length; _j++) _h[_hk[_j]] = _sc(String(opts.headers[_hk[_j]] == null ? '' : opts.headers[_hk[_j]]));
+        cleanOpts = Object.assign({}, opts, { headers: _h });
       }
-      return _of.apply(this, [url, opts]);
+      try {
+        return _of.apply(window, [cleanUrl, cleanOpts]);
+      } catch (fe) {
+        if (fe && fe.message && fe.message.indexOf('ByteString') !== -1) {
+          _showDiag(fe.message, cleanUrl, cleanOpts && cleanOpts.headers);
+        }
+        throw fe;
+      }
     };
   })();
   </script>
