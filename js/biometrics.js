@@ -93,20 +93,47 @@ const Biometrics = {
     return faceapi.detectSingleFace(videoEl, opts).withFaceLandmarks().withFaceDescriptor();
   },
 
-  // ─── GET STORED DESCRIPTOR FOR EMPLOYEE ──────────────────
+  // ─── DESCRIPTOR STORAGE: DB.employees (syncs to server) ──
   getStoredDescriptor(empId) {
     try {
+      // Primary: read from DB (syncs across devices)
+      const emp = (typeof DB !== 'undefined') ? DB.employees.find(e => e.id === empId) : null;
+      if (emp?.faceDescriptor && Array.isArray(emp.faceDescriptor) && emp.faceDescriptor.length === 128) {
+        return new Float32Array(emp.faceDescriptor);
+      }
+      // Fallback: legacy localStorage (migration path)
       const raw = localStorage.getItem(`face-desc-${empId}`);
       if (!raw) return null;
-      return new Float32Array(JSON.parse(raw));
+      const arr = JSON.parse(raw);
+      // Migrate to DB automatically
+      if (emp && arr.length === 128) {
+        emp.faceDescriptor = arr;
+        if (typeof DB !== 'undefined') DB.save();
+        localStorage.removeItem(`face-desc-${empId}`);
+      }
+      return new Float32Array(arr);
     } catch(e) { return null; }
   },
 
   storeDescriptor(empId, descriptor) {
-    localStorage.setItem(`face-desc-${empId}`, JSON.stringify(Array.from(descriptor)));
+    const arr = Array.from(descriptor);
+    // Store in DB employee record (syncs to Supabase)
+    if (typeof DB !== 'undefined') {
+      const emp = DB.employees.find(e => e.id === empId);
+      if (emp) {
+        emp.faceDescriptor = arr;
+        DB.save();
+      }
+    }
+    // Keep localStorage as backup
+    try { localStorage.setItem(`face-desc-${empId}`, JSON.stringify(arr)); } catch(_) {}
   },
 
   hasStoredFace(empId) {
+    if (typeof DB !== 'undefined') {
+      const emp = DB.employees.find(e => e.id === empId);
+      if (emp?.faceDescriptor?.length === 128) return true;
+    }
     return !!localStorage.getItem(`face-desc-${empId}`);
   },
 
@@ -578,7 +605,11 @@ const Biometrics = {
 
   _deleteFace(empId) {
     localStorage.removeItem(`face-desc-${empId}`);
-    const emp = DB.getEmployee(empId);
+    if (typeof DB !== 'undefined') {
+      const emp = DB.employees.find(e => e.id === empId);
+      if (emp) { delete emp.faceDescriptor; DB.save(); }
+    }
+    const emp = (typeof DB !== 'undefined') ? DB.getEmployee(empId) : null;
     _BioUI.toast(`تم حذف بصمة وجه ${emp?.name||'الموظف'}`, 'info');
   },
 

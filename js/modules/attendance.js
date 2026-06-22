@@ -1043,48 +1043,11 @@ const AttendanceModule = {
     Biometrics.openFaceVerify({
       onSuccess: (matchedName) => {
         const emp = DB.employees.find(e => e.name === matchedName);
-        if (!emp) { App.toast('لم يُعثر على الموظف', 'error'); return; }
-
-        const today = new Date().toISOString().split('T')[0];
-        const now   = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', hour12: false });
-        const existing = DB.attendance.find(a => a.empId === emp.id && a.date === today);
-
-        if (existing && !existing.checkOut) {
-          // Check-out
-          existing.checkOut = now;
-          App.toast(`✅ تم تسجيل انصراف ${emp.name} الساعة ${now}`, 'success');
-        } else if (!existing) {
-          // Check-in
-          const shift = DB.shifts?.find(s => s.id === emp.shift);
-          const workStart = shift?.start || DB.company.workPeriods?.[0]?.start || DB.company.workStart || '08:00';
-          const [wh, wm] = workStart.split(':').map(Number);
-          const [nh, nm] = now.split(':').map(Number);
-          const lateMin = Math.max(0, (nh * 60 + nm) - (wh * 60 + wm));
-          const status  = lateMin > 15 ? 'late' : 'present';
-
-          DB.attendance.unshift({
-            id:        DB.nextId('a'),
-            empId:     emp.id,
-            date:      today,
-            checkIn:   now,
-            checkOut:  null,
-            status,
-            workedMins: 0,
-            overtime:  null,
-            method:    'face',
-            location:  currentLang==='ar'?'تطبيق الويب':'Web App',
-            notes:     '',
-          });
-          DB.logAudit(emp.id, 'تسجيل حضور بالوجه', 'الحضور', `تسجيل حضور ${emp.name} عبر التعرف على الوجه`);
-          const lateNote = status === 'late' ? ` (متأخر ${lateMin} دقيقة)` : '';
-          App.toast(`✅ تم تسجيل حضور ${emp.name} الساعة ${now}${lateNote}`, status === 'late' ? 'warning' : 'success');
-        } else {
-          App.toast(`تم تسجيل حضور ${emp.name} مسبقاً اليوم`, 'info');
-        }
-
+        if (!emp) { App.toast('لم يُعثر على الموظف في النظام', 'error'); return; }
+        this._recordCheckin(emp.id, 'face');
         this._renderTable?.();
       },
-      onFail: () => App.toast('لم يتم التعرف على الوجه — حاول مرة أخرى', 'error'),
+      onFail: () => App.toast('لم يتم التعرف على الوجه — حاول مرة أخرى في ضوء أفضل', 'error'),
     });
   },
 };

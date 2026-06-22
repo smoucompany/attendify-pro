@@ -419,6 +419,11 @@ const App = {
     // Navigate to current hash or dashboard
     const hash = window.location.hash.slice(1) || 'dashboard';
     this._navigate(hash);
+
+    // Preload face recognition models in background (silent — improves first-use speed)
+    if (typeof Biometrics !== 'undefined' && Biometrics.canCamera()) {
+      setTimeout(() => Biometrics.loadFaceApi().catch(() => {}), 3000);
+    }
   },
 
   _updateUserUI() {
