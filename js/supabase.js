@@ -520,6 +520,25 @@ const SupabaseDB = {
 
   // ── CONFIG ────────────────────────────────────────────────
 
+  async saveConfig(url, key) {
+    // key is not used on frontend (backend uses env vars) — save URL only
+    const cleanUrl = sanitizeUrl((url || '').trim().replace(/\/$/, ''));
+    if (!cleanUrl) { if (typeof App !== 'undefined') App.toast('أدخل رابط الـ backend', 'warning'); return false; }
+    try { localSet('backend-config', JSON.stringify({ backendUrl: cleanUrl })); } catch(_) {}
+    this._baseUrl = cleanUrl;
+    this._status  = 'connecting';
+    const { ok } = await this._fetch('/api/health');
+    if (!ok) {
+      this._status = 'error';
+      if (typeof App !== 'undefined') App.toast('تعذّر الاتصال — تحقق من الرابط', 'error');
+      return false;
+    }
+    this._status = 'connected';
+    if (typeof App !== 'undefined') App.toast('تم الاتصال بنجاح ✓', 'success');
+    await this.loadAll();
+    return true;
+  },
+
   getConfig() {
     try {
       const saved = localGetJson('backend-config', {});

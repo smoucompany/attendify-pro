@@ -311,18 +311,27 @@ const App = {
 
     // ── Supabase Auth ──────────────────────────────────────────
     if (SupabaseDB.isConnected) {
-      const { error: signUpErr } = await SupabaseDB.signUp(email, pass, { name: fullName });
+      // signUp ينشئ الحساب ويسجّل الدخول تلقائياً (يعيد token + user)
+      const { data: signUpData, error: signUpErr } = await SupabaseDB.signUp(email, pass, { name: fullName });
       if (signUpErr) {
         this.toast(signUpErr.message, 'error');
         btn.disabled = false; btn.innerHTML = '<span>إنشاء الحساب والبدء</span><i class="fas fa-arrow-left btn-arrow"></i>'; return;
       }
-      const { data: sd, error: signInErr } = await SupabaseDB.signIn(email, pass);
-      if (signInErr || !sd?.user) {
-        this.toast('تم إنشاء الحساب — يرجى تسجيل الدخول', 'success');
-        document.getElementById('login-page').style.display = 'flex'; return;
+
+      // إذا signUp أعاد user مباشرة — استخدمه بدون signIn ثاني
+      let userData = signUpData?.user;
+      if (!userData) {
+        // Fallback: حاول تسجيل الدخول يدوياً
+        const { data: sd, error: signInErr } = await SupabaseDB.signIn(email, pass);
+        if (signInErr || !sd?.user) {
+          this.toast('تم إنشاء الحساب — يرجى تسجيل الدخول', 'success');
+          location.reload(); return;
+        }
+        userData = sd.user;
       }
-      const meta = sd.user.user_metadata || {};
-      const user = { id: sd.user.id, name: meta.name||fullName, avatar: fullName.charAt(0)?.toUpperCase()||'?', position:'مدير النظام', email, avatarColor:'gradient-primary' };
+
+      const meta = userData.user_metadata || {};
+      const user = { id: userData.id, name: meta.name||fullName, avatar: fullName.charAt(0)?.toUpperCase()||'?', position:'مدير النظام', email, avatarColor:'gradient-primary' };
       this.state.user = user;
       // احفظ بيانات الشركة لضمان isFirstSetup=false في الزيارات القادمة
       if (!DB.company.name) DB.company.name = fullName;

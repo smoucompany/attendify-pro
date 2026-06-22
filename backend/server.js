@@ -18,19 +18,25 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
+// ── Sanitize env vars (strip BOM / invisible chars) ───────────
+function cleanEnv(key) {
+  const val = process.env[key] || '';
+  return val.replace(/[\uFEFF\u200B\u200C\u200D\u00AD\u200E\u200F]/g, '').trim();
+}
+
 // ── SUPABASE CLIENTS ──────────────────────────────────────────
 
 // Admin client — service role key (bypasses RLS, NEVER sent to frontend)
 const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
+  cleanEnv('SUPABASE_URL'),
+  cleanEnv('SUPABASE_SERVICE_KEY'),
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
 // Anon client — used ONLY for user auth operations
 const supabaseAnon = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
+  cleanEnv('SUPABASE_URL'),
+  cleanEnv('SUPABASE_ANON_KEY'),
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
@@ -72,7 +78,11 @@ app.post('/api/auth/login', async (req, res) => {
   if (error)
     return res.status(401).json({ error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة' });
 
-  res.json({ token: data.session.access_token, user: data.user });
+  res.json({
+    token: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    user: data.user
+  });
 });
 
 // إنشاء حساب (يُنفَّذ على السيرفر — يؤكد البريد تلقائياً)
@@ -94,14 +104,31 @@ app.post('/api/auth/signup', async (req, res) => {
   // تسجيل دخول فوري
   const { data: sd, error: signInErr } = await supabaseAnon.auth.signInWithPassword({ email, password });
   if (signInErr)
-    return res.status(200).json({ user: newUser.user, token: null, message: 'تم الإنشاء — سجّل دخولك الآن' });
+    return res.status(200).json({ user: newUser.user, token: null, refreshToken: null, message: 'تم الإنشاء — سجّل دخولك الآن' });
 
-  res.json({ token: sd.session.access_token, user: sd.user });
+  res.json({
+    token: sd.session.access_token,
+    refreshToken: sd.session.refresh_token,
+    user: sd.user
+  });
 });
 
 // بيانات المستخدم الحالي
 app.get('/api/auth/me', authenticate, (req, res) => {
   res.json({ user: req.user });
+});
+
+// تجديد الجلسة
+app.post('/api/auth/refresh', async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'لا يوجد refresh token' });
+  const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refreshToken });
+  if (error || !data.session) return res.status(401).json({ error: 'انتهت الجلسة — سجّل دخولك' });
+  res.json({
+    token: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    user: data.user
+  });
 });
 
 // تغيير كلمة المرور
@@ -113,6 +140,19 @@ app.post('/api/auth/password', authenticate, async (req, res) => {
   const { error } = await supabaseAdmin.auth.admin.updateUserById(req.user.id, { password });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
+});
+
+// ── First Setup Check (بدون auth — للمستخدم الجديد) ─────────
+app.get('/api/first-setup', async (req, res) => {
+  try {
+    // هل يوجد أي مستخدم في النظام؟
+    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
+    if (error) return res.json({ firstSetup: true });
+    // إذا لا يوجد مستخدمين → إعداد أولي
+    res.json({ firstSetup: !users?.users?.length });
+  } catch(e) {
+    res.json({ firstSetup: true });
+  }
 });
 
 // ════════════════════════════════════════════════════════
