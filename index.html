@@ -729,12 +729,21 @@
       },
 
       _findEmp(code) {
-        const c = String(code || '').trim();
-        return DB.employees.find(x =>
-          String(x.no) === c ||
-          String(x.no) === c.padStart(3, '0') ||
-          String(x.no).replace(/^0+/,'') === c.replace(/^0+/,'')
-        );
+        const c    = String(code || '').trim();
+        const cNum = c.replace(/\D/g, '').replace(/^0+/, '') || c;
+        return DB.employees.find(x => {
+          const no  = String(x.no  || '').trim();
+          const id  = String(x.id  || '').trim();
+          const noN = no.replace(/\D/g, '').replace(/^0+/, '') || no;
+          return (
+            no  === c  || id  === c  ||
+            no.toLowerCase() === c.toLowerCase() ||
+            id.toLowerCase() === c.toLowerCase() ||
+            noN === cNum ||
+            no  === c.padStart(3, '0') ||
+            no.padStart(3, '0') === c.padStart(3, '0')
+          );
+        }) || null;
       },
 
       _passOk(emp, pass) {
@@ -742,8 +751,10 @@
         const norm = v => s(v).replace(/^0+/, '') || '0';
         const p    = s(pass);
         const code = s(emp.no);
-        // Employee code ALWAYS works as password (universal default)
+        const id   = s(emp.id);
+        // Employee code AND employee id always work as password
         if (p === code || norm(p) === norm(code)) return true;
+        if (p === id   || norm(p) === norm(id))   return true;
         // Custom password (only if non-empty and different from code)
         const custom = s(emp.password);
         if (custom && custom !== code && p === custom) return true;
@@ -766,7 +777,7 @@
           btn.innerHTML = '<span>دخول بوابة الموظف</span><i class="fas fa-arrow-left btn-arrow"></i>';
         };
 
-        // 1️⃣ Try backend API (works on any device)
+        // 1️⃣ Try backend API first (works on any device via Supabase)
         try {
           const res  = await fetch('/api/emp/login', {
             method: 'POST',
@@ -778,24 +789,38 @@
             LoginSwitch._afterEmpAuth(json.emp);
             return;
           }
-          // Server responded with error (401/400/500)
-          restore();
-          App.toast(json.error || 'بيانات الدخول غير صحيحة', 'error');
-          return;
+          if (res.status === 401) {
+            // Server found the employee but password is wrong → try local with normalization
+            const empLocal = this._findEmp(code);
+            if (empLocal && this._passOk(empLocal, pass)) {
+              LoginSwitch._afterEmpAuth(empLocal);
+              return;
+            }
+            restore();
+            App.toast('كود الموظف أو كلمة المرور غير صحيحة', 'error');
+            return;
+          }
+          // 400/500 → fall through to local
         } catch (_) {
           // Network error → fall through to localStorage
         }
 
-        // 2️⃣ Offline fallback: localStorage (same device only)
+        // 2️⃣ Offline fallback: data already loaded from Supabase into DB
         const emp = this._findEmp(code);
         if (!emp) {
           restore();
-          App.toast('لا يوجد اتصال بالإنترنت — تحقق من الشبكة', 'error');
+          const hasEmps = DB.employees.length > 0;
+          App.toast(
+            hasEmps
+              ? `كود الموظف "${code}" غير موجود — تأكد من الكود الصحيح`
+              : 'لا يوجد اتصال بالإنترنت — تحقق من الشبكة وأعد المحاولة',
+            'error'
+          );
           return;
         }
         if (!this._passOk(emp, pass)) {
           restore();
-          App.toast(`كلمة المرور غير صحيحة — جرّب كود الموظف كمبدئي: ${emp.no}`, 'error');
+          App.toast(`كلمة المرور غير صحيحة — كلمة المرور الافتراضية هي كود الموظف: ${emp.no}`, 'error');
           return;
         }
         LoginSwitch._afterEmpAuth(emp);
@@ -920,13 +945,11 @@
             LoginSwitch._offerRegisterFace(emp);
             return;
           }
+          // Pass empId so verify checks only THIS employee's face (not all faces)
           Biometrics.openFaceVerify({
-            onSuccess: (name) => {
-              const matched = DB.employees.find(e => e.name === name);
-              if (!matched) { App.toast('لم يُعثر على الموظف', 'error'); return; }
-              LoginSwitch._afterEmpAuth(matched);
-            },
-            onFail: () => App.toast('لم يتم التعرف — حاول مجدداً', 'error'),
+            empId:     emp.id,
+            onSuccess: () => LoginSwitch._afterEmpAuth(emp),
+            onFail:    () => App.toast('لم يتم التعرف — حاول في ضوء أفضل أو أقرب للكاميرا', 'error'),
           });
         }
       },

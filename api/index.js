@@ -323,24 +323,39 @@ app.post('/api/emp/login', _rateLimitLogin, async (req, res) => {
   } else {
     const code    = String(empNo).trim();
     const codeLow = code.toLowerCase();
-    const codeNum = code.replace(/\D/g, '').replace(/^0+/, '');  // "M001" → "1"
+    const codeNum = code.replace(/\D/g, '').replace(/^0+/, '') || code;
     empRow = rows.find(r => {
-      const no = String(r.data?.no || '');
+      const no  = String(r.data?.no || '').trim();
+      const id  = String(r.data?.id || r.id || '').trim();
+      const noN = no.replace(/\D/g, '').replace(/^0+/, '') || no;
       return (
-        no === code ||
-        no.toLowerCase() === codeLow ||
-        no === code.padStart(3, '0') ||
-        no.padStart(3, '0') === code.padStart(3, '0') ||
-        (codeNum && no.replace(/\D/g, '').replace(/^0+/, '') === codeNum)
+        no  === code || id  === code ||
+        no.toLowerCase() === codeLow || id.toLowerCase() === codeLow ||
+        noN === codeNum ||
+        no  === code.padStart(3, '0') ||
+        no.padStart(3, '0') === code.padStart(3, '0')
       );
     });
   }
 
-  if (!empRow) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+  if (!empRow) return res.status(401).json({ error: 'كود الموظف غير موجود' });
 
-  const emp = empRow.data || {};
-  const validPass = emp.password || emp.no;
-  if (password !== validPass) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+  const emp  = empRow.data || {};
+  const s    = v => String(v || '').trim();
+  const norm = v => s(v).replace(/^0+/, '') || '0';
+  const p    = s(password);
+  const no   = s(emp.no);
+  const id   = s(emp.id);
+
+  // Employee code or id always works as password (default)
+  const codeMatch = p === no || norm(p) === norm(no) || p === id || norm(p) === norm(id);
+  // Custom password (only if set and different from code)
+  const custom      = s(emp.password);
+  const customMatch = custom && custom !== no && p === custom;
+
+  if (!codeMatch && !customMatch) {
+    return res.status(401).json({ error: 'كلمة المرور غير صحيحة — كلمة المرور الافتراضية هي كود الموظف' });
+  }
 
   // إرجاع بيانات الموظف بدون كلمة المرور
   const { password: _pw, ...safeEmp } = emp;
