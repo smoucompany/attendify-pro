@@ -150,6 +150,7 @@ const PayrollModule = {
   },
 
   viewPayslip(empId) {
+    const ar      = currentLang === 'ar';
     const emp     = DB.getEmployee(empId);
     const period  = this._getPeriod();
     const payroll = DB.payroll.find(p => p.empId === empId && p.period === period);
@@ -289,6 +290,7 @@ const PayrollModule = {
   },
 
   runPayroll() {
+    const ar = currentLang === 'ar';
     App.openModal(t('payroll.runPayroll'), `
       <div class="info-box info-box-warning">
         <i class="fas fa-triangle-exclamation"></i>
