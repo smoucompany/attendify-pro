@@ -13,12 +13,9 @@ const GratuityModule = {
 
     container.innerHTML = `
       <div class="page-header">
-        <div class="page-header-info">
-          <h1 class="page-title">
-            <i class="fas fa-award" style="color:#f59e0b;margin-left:10px"></i>
-            مكافأة نهاية الخدمة
-          </h1>
-          <p class="page-subtitle">حساب تلقائي وفق نظام العمل السعودي (المادة 84)</p>
+        <div class="page-header-text">
+          <h1><i class="fas fa-award" style="color:#f59e0b;font-size:22px"></i> مكافأة نهاية الخدمة</h1>
+          <p>حساب تلقائي وفق نظام العمل السعودي (المادة 84)</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-secondary" onclick="GratuityModule.exportExcel()">
@@ -30,7 +27,7 @@ const GratuityModule = {
         </div>
       </div>
 
-      <div class="stats-grid stagger-container">
+      <div class="stat-cards">
         <div class="stat-card primary stagger-item">
           <div class="stat-icon gradient-primary"><i class="fas fa-users"></i></div>
           <div class="stat-info">
@@ -124,7 +121,7 @@ const GratuityModule = {
         <tr class="stagger-item">
           <td>
             <div style="display:flex;align-items:center;gap:10px">
-              <div class="emp-avatar" style="width:36px;height:36px;font-size:14px">${(emp.name||'?').charAt(0)}</div>
+              ${App.renderAvatar(emp, 36, 12)}
               <div>
                 <div style="font-weight:600;font-size:14px">${_esc(emp.name)}</div>
                 <div style="color:var(--text-muted);font-size:11px">${_esc(emp.no||'')}</div>
@@ -142,7 +139,7 @@ const GratuityModule = {
           <td style="font-weight:700;color:#10b981">${termCalc.eligible ? App.formatCurrency(termCalc.gratuity) : '<span style="color:var(--text-muted);font-size:12px">غير مستحق</span>'}</td>
           <td style="color:#6366f1;font-weight:700">${resignCalc.eligible ? App.formatCurrency(resignCalc.gratuity) : '<span style="color:var(--text-muted);font-size:12px">غير مستحق</span>'}</td>
           <td>
-            <button class="btn-icon-sm" title="تفاصيل الحساب" onclick="GratuityModule.details('${emp.id}')">
+            <button class="btn btn-icon btn-sm" title="تفاصيل الحساب" onclick="GratuityModule.details('${emp.id}')">
               <i class="fas fa-calculator"></i>
             </button>
           </td>

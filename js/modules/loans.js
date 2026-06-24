@@ -13,12 +13,9 @@ const LoansModule = {
 
     container.innerHTML = `
       <div class="page-header">
-        <div class="page-header-info">
-          <h1 class="page-title">
-            <i class="fas fa-hand-holding-dollar" style="color:#6366f1;margin-left:10px"></i>
-            السلف والقروض
-          </h1>
-          <p class="page-subtitle">إدارة سلف وقروض الموظفين وتتبع الأقساط</p>
+        <div class="page-header-text">
+          <h1><i class="fas fa-hand-holding-dollar" style="color:#6366f1;font-size:22px"></i> السلف والقروض</h1>
+          <p>إدارة سلف وقروض الموظفين وتتبع الأقساط</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" onclick="LoansModule.openAddForm()">
@@ -27,7 +24,7 @@ const LoansModule = {
         </div>
       </div>
 
-      <div class="stats-grid stagger-container">
+      <div class="stat-cards">
         <div class="stat-card primary stagger-item">
           <div class="stat-icon gradient-primary"><i class="fas fa-file-invoice-dollar"></i></div>
           <div class="stat-info">
@@ -120,7 +117,7 @@ const LoansModule = {
         <tr class="stagger-item">
           <td>
             <div style="display:flex;align-items:center;gap:10px">
-              <div class="emp-avatar" style="width:36px;height:36px;font-size:14px">${((emp?.name||'?').charAt(0))}</div>
+              ${App.renderAvatar(emp, 36, 12)}
               <div>
                 <div style="font-weight:600;font-size:14px">${_esc(emp?.name||'—')}</div>
                 <div style="color:var(--text-muted);font-size:11px">${_esc(emp?.no||'')}</div>
@@ -139,14 +136,14 @@ const LoansModule = {
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               ${ln.status==='pending' ? `
-                <button class="btn-icon-sm" style="background:rgba(16,185,129,.12);color:#10b981" title="موافقة" onclick="LoansModule.approve('${ln.id}')"><i class="fas fa-check"></i></button>
-                <button class="btn-icon-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="رفض" onclick="LoansModule.reject('${ln.id}')"><i class="fas fa-times"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981" title="موافقة" onclick="LoansModule.approve('${ln.id}')"><i class="fas fa-check"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="رفض" onclick="LoansModule.reject('${ln.id}')"><i class="fas fa-times"></i></button>
               ` : ''}
               ${ln.status==='approved' ? `
-                <button class="btn-icon-sm" style="background:rgba(99,102,241,.12);color:#6366f1" title="تسجيل دفعة" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(99,102,241,.12);color:#6366f1" title="تسجيل دفعة" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i></button>
               ` : ''}
-              <button class="btn-icon-sm" title="تفاصيل" onclick="LoansModule.viewDetails('${ln.id}')"><i class="fas fa-eye"></i></button>
-              <button class="btn-icon-sm" style="background:rgba(239,68,68,.08);color:#ef4444" title="حذف" onclick="LoansModule.deleteLoan('${ln.id}')"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-icon btn-sm" title="تفاصيل" onclick="LoansModule.viewDetails('${ln.id}')"><i class="fas fa-eye"></i></button>
+              <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444" title="حذف" onclick="LoansModule.deleteLoan('${ln.id}')"><i class="fas fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -195,47 +192,47 @@ const LoansModule = {
       .join('');
 
     App.openModal('إضافة سلفة / قرض', `
-      <div class="form-group">
-        <label class="form-label">الموظف <span style="color:#ef4444">*</span></label>
-        <select class="form-input" id="ln-emp">
+      <div class="app-form-group">
+        <label>الموظف <span style="color:#ef4444">*</span></label>
+        <select class="app-form-input app-form-select" id="ln-emp">
           <option value="">اختر الموظف...</option>
           ${opts}
         </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group">
-          <label class="form-label">النوع</label>
-          <select class="form-input" id="ln-type">
+      <div class="app-form-row">
+        <div class="app-form-group">
+          <label>النوع</label>
+          <select class="app-form-input app-form-select" id="ln-type">
             <option value="advance">سلفة راتب</option>
             <option value="loan">قرض</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">المبلغ الإجمالي <span style="color:#ef4444">*</span></label>
-          <input class="form-input" type="number" id="ln-amount" min="1" placeholder="5000" oninput="LoansModule._calcInst()">
+        <div class="app-form-group">
+          <label>المبلغ الإجمالي <span style="color:#ef4444">*</span></label>
+          <input class="app-form-input" type="number" id="ln-amount" min="1" placeholder="5000" oninput="LoansModule._calcInst()">
         </div>
-        <div class="form-group">
-          <label class="form-label">عدد الأقساط (أشهر)</label>
-          <input class="form-input" type="number" id="ln-months" min="1" max="60" value="1" oninput="LoansModule._calcInst()">
+        <div class="app-form-group">
+          <label>عدد الأقساط (أشهر)</label>
+          <input class="app-form-input" type="number" id="ln-months" min="1" max="60" value="1" oninput="LoansModule._calcInst()">
         </div>
-        <div class="form-group">
-          <label class="form-label">القسط الشهري</label>
-          <input class="form-input" type="text" id="ln-inst" readonly style="background:var(--bg);color:var(--text-muted)" placeholder="يُحسب تلقائياً">
+        <div class="app-form-group">
+          <label>القسط الشهري</label>
+          <input class="app-form-input" type="text" id="ln-inst" readonly placeholder="يُحسب تلقائياً">
         </div>
-        <div class="form-group">
-          <label class="form-label">تاريخ الطلب</label>
-          <input class="form-input" type="date" id="ln-date" value="${new Date().toISOString().split('T')[0]}">
+        <div class="app-form-group">
+          <label>تاريخ الطلب</label>
+          <input class="app-form-input" type="date" id="ln-date" value="${new Date().toISOString().split('T')[0]}">
         </div>
-        <div class="form-group">
-          <label class="form-label">بداية الخصم من الراتب</label>
-          <input class="form-input" type="month" id="ln-start" value="${new Date().toISOString().slice(0,7)}">
+        <div class="app-form-group">
+          <label>بداية الخصم من الراتب</label>
+          <input class="app-form-input" type="month" id="ln-start" value="${new Date().toISOString().slice(0,7)}">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">سبب الطلب</label>
-        <textarea class="form-input" id="ln-reason" rows="2" placeholder="سبب السلفة أو القرض..."></textarea>
+      <div class="app-form-group">
+        <label>سبب الطلب</label>
+        <textarea class="app-form-input" id="ln-reason" rows="2" placeholder="سبب السلفة أو القرض..."></textarea>
       </div>
-      <div style="display:flex;gap:10px;margin-top:20px">
+      <div style="display:flex;gap:10px;margin-top:8px">
         <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
         <button class="btn btn-primary" onclick="LoansModule.save()">
           <i class="fas fa-save"></i> حفظ
@@ -326,15 +323,15 @@ const LoansModule = {
           <div style="font-weight:700;color:#ef4444">${App.formatCurrency(remaining)}</div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">مبلغ الدفعة</label>
-        <input class="form-input" type="number" id="pay-amt" value="${suggested}" min="1" max="${remaining}">
+      <div class="app-form-group">
+        <label>مبلغ الدفعة</label>
+        <input class="app-form-input" type="number" id="pay-amt" value="${suggested}" min="1" max="${remaining}">
       </div>
-      <div class="form-group">
-        <label class="form-label">تاريخ الدفع</label>
-        <input class="form-input" type="date" id="pay-dt" value="${new Date().toISOString().split('T')[0]}">
+      <div class="app-form-group">
+        <label>تاريخ الدفع</label>
+        <input class="app-form-input" type="date" id="pay-dt" value="${new Date().toISOString().split('T')[0]}">
       </div>
-      <div style="display:flex;gap:10px;margin-top:20px">
+      <div style="display:flex;gap:10px;margin-top:8px">
         <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
         <button class="btn btn-primary" onclick="LoansModule._doPayment('${id}')">
           <i class="fas fa-money-bill-wave"></i> تسجيل الدفعة
