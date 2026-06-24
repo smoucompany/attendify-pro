@@ -1069,7 +1069,6 @@ async function empBiometricLogin(type) {
 
 function _loginEmp(emp) {
   currentEmp = emp;
-  currentEmp = emp;
   sessionStorage.setItem('emp-session', JSON.stringify(emp));
   document.getElementById('emp-login').style.display = 'none';
   document.getElementById('emp-app').style.display = 'block';

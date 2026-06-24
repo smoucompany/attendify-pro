@@ -282,7 +282,7 @@ const LoansModule = {
     const emp = DB.getEmployee(empId);
     DB.logAudit('admin', `إضافة ${type==='advance'?'سلفة':'قرض'} — ${emp?.name||''} — ${App.formatCurrency(amount)}`, 'Loans');
     App.toast('✅ تم إضافة الطلب بنجاح', 'success');
-    this.render(document.getElementById('main-content'));
+    this.render(document.getElementById('page-content'));
   },
 
   approve(id) {
@@ -293,7 +293,7 @@ const LoansModule = {
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
     App.toast('✅ تمت الموافقة على الطلب', 'success');
-    this.render(document.getElementById('main-content'));
+    this.render(document.getElementById('page-content'));
   },
 
   reject(id) {
@@ -303,7 +303,7 @@ const LoansModule = {
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
     App.toast('تم رفض الطلب', 'info');
-    this.render(document.getElementById('main-content'));
+    this.render(document.getElementById('page-content'));
   },
 
   recordPayment(id) {
@@ -354,7 +354,7 @@ const LoansModule = {
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
     App.closeModal();
     App.toast(`✅ تم تسجيل دفعة ${App.formatCurrency(amt)}`, 'success');
-    this.render(document.getElementById('main-content'));
+    this.render(document.getElementById('page-content'));
   },
 
   viewDetails(id) {
@@ -412,7 +412,7 @@ const LoansModule = {
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('delete','loans',{id});
     App.toast('تم الحذف','info');
-    this.render(document.getElementById('main-content'));
+    this.render(document.getElementById('page-content'));
   },
 
   // استخدامها في الرواتب — تُعيد إجمالي أقساط السلف لموظف في شهر معين
