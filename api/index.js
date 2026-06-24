@@ -430,4 +430,43 @@ app.post('/api/emp/checkin', _rateLimitLogin, async (req, res) => {
   res.json({ ok: true, id });
 });
 
+// ── Employee Portal: طلب إجازة ──────────────────────────────────
+app.post('/api/emp/leave', _rateLimitLogin, async (req, res) => {
+  const { empId, type, from, to, days, reason, appliedOn } = req.body || {};
+  if (!empId || !from || !to) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const { data: empRow } = await supabaseAdmin
+    .from('employees').select('id').eq('id', empId).maybeSingle();
+  if (!empRow) return res.status(404).json({ error: 'الموظف غير موجود' });
+
+  const id      = `leave-${empId}-${Date.now()}`;
+  const newData = { id, empId, type: type||'annual', from, to, days: days||1,
+                    reason: reason||'', status: 'pending',
+                    appliedOn: appliedOn || new Date().toISOString().split('T')[0] };
+
+  const { error } = await supabaseAdmin.from('leaves').upsert({ id, data: newData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id, leave: newData });
+});
+
+// ── Employee Portal: طلب سلفة / طلب عام ──────────────────────────
+app.post('/api/emp/request', _rateLimitLogin, async (req, res) => {
+  const { empId, type, amount, reason, date } = req.body || {};
+  if (!empId || !type) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const { data: empRow } = await supabaseAdmin
+    .from('employees').select('id,data').eq('id', empId).maybeSingle();
+  if (!empRow) return res.status(404).json({ error: 'الموظف غير موجود' });
+
+  const id      = `req-${empId}-${Date.now()}`;
+  const newData = { id, empId, empName: empRow.data?.name || '',
+                    type, amount: amount||null, reason: reason||'',
+                    status: 'pending',
+                    date: date || new Date().toISOString().split('T')[0] };
+
+  const { error } = await supabaseAdmin.from('requests').upsert({ id, data: newData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id, request: newData });
+});
+
 module.exports = app;
