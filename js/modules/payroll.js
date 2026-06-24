@@ -42,11 +42,11 @@ const PayrollModule = {
       <div class="stat-cards" style="margin-bottom:20px">
         <div class="stat-card primary stagger-item">
           <div class="stat-icon gradient-primary"><i class="fas fa-users"></i></div>
-          <div class="stat-info"><div class="stat-value">${periodPayroll.length}</div><div class="stat-label">${currentLang==='ar'?'موظفون في الكشف':'Employees in Payroll'}</div></div>
+          <div class="stat-info"><div class="stat-value">${periodPayroll.length}</div><div class="stat-label">${t('payroll.employeesInPayroll')}</div></div>
         </div>
         <div class="stat-card success stagger-item">
           <div class="stat-icon gradient-success"><i class="fas fa-money-bill-wave"></i></div>
-          <div class="stat-info"><div class="stat-value">${App.formatCurrency(totalNet)}</div><div class="stat-label">${t('payroll.netSalary')} ${currentLang==='ar'?'الإجمالي':'Total'}</div></div>
+          <div class="stat-info"><div class="stat-value">${App.formatCurrency(totalNet)}</div><div class="stat-label">${t('payroll.totalNetSalary')}</div></div>
         </div>
         <div class="stat-card danger stagger-item">
           <div class="stat-icon gradient-danger"><i class="fas fa-circle-minus"></i></div>
@@ -54,7 +54,7 @@ const PayrollModule = {
         </div>
         <div class="stat-card warning stagger-item">
           <div class="stat-icon gradient-warning"><i class="fas fa-user-xmark"></i></div>
-          <div class="stat-info"><div class="stat-value">${totalAbsent}</div><div class="stat-label">${currentLang==='ar'?'إجمالي أيام الغياب':'Total Absent Days'}</div></div>
+          <div class="stat-info"><div class="stat-value">${totalAbsent}</div><div class="stat-label">${t('payroll.totalAbsentDays')}</div></div>
         </div>
       </div>
 
@@ -89,7 +89,7 @@ const PayrollModule = {
             <thead><tr>
               <th>${t('common.name')}</th>
               <th>${t('payroll.baseSalary')}</th>
-              <th>${ar?'أيام الغياب':'Absent Days'}</th>
+              <th>${t('payroll.absentDaysCol')}</th>
               <th>${t('payroll.deductions')}</th>
               <th>${t('payroll.netSalary')}</th>
               <th>${t('common.actions')}</th>
@@ -138,7 +138,7 @@ const PayrollModule = {
       <!-- Payroll Chart -->
       <div class="card">
         <div class="card-header">
-          <h3><i class="fas fa-chart-bar" style="color:var(--primary)"></i> ${currentLang==='ar'?'توزيع الرواتب':'Salary Distribution'}</h3>
+          <h3><i class="fas fa-chart-bar" style="color:var(--primary)"></i> ${t('payroll.salaryDist')}</h3>
         </div>
         <div class="card-body">
           <div class="chart-container" style="height:220px"><canvas id="payroll-chart"></canvas></div>
@@ -174,7 +174,7 @@ const PayrollModule = {
             <div style="font-size:11px;opacity:.8;margin-top:2px">${_esc(DB.company.address||'')}</div>
           </div>
           <div style="text-align:left">
-            <div style="font-size:13px;font-weight:700;opacity:.8">قسيمة الراتب</div>
+            <div style="font-size:13px;font-weight:700;opacity:.8">${t('payroll.payslip')}</div>
             <div style="font-size:16px;font-weight:800;margin-top:2px">${periodLabel}</div>
           </div>
         </div>
@@ -182,10 +182,10 @@ const PayrollModule = {
         <!-- Employee Info -->
         <div style="background:var(--bg-input,#f8fafc);padding:14px 24px;display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-bottom:1px solid var(--border,#e2e8f0)">
           ${[
-            { label:'اسم الموظف',   val: emp.name },
-            { label:'رقم الموظف',   val: '#'+emp.no },
-            { label:'القسم',         val: dept },
-            { label:'المسمى الوظيفي', val: emp.position||'—' },
+            { label: t('payroll.empName'),        val: emp.name },
+            { label: t('payroll.empNo'),          val: '#'+emp.no },
+            { label: t('common.department'),      val: dept },
+            { label: t('common.position'),        val: emp.position||'—' },
           ].map(f => `
             <div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted,#64748b);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">${f.label}</div>
@@ -200,11 +200,11 @@ const PayrollModule = {
           <!-- Earnings -->
           <div style="padding:16px 20px;border-left:1px solid var(--border,#e2e8f0)">
             <div style="font-size:11px;font-weight:800;color:#10b981;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-              <i class="fas fa-plus-circle"></i> الاستحقاقات
+              <i class="fas fa-plus-circle"></i> ${t('payroll.entitlements')}
             </div>
-            ${this._payslipRow('الراتب الأساسي', payroll.base, '#10b981')}
+            ${this._payslipRow(t('payroll.baseSalary'), payroll.base, '#10b981')}
             <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #10b98140;display:flex;justify-content:space-between;font-weight:800">
-              <span style="font-size:12px;color:var(--text-muted)">إجمالي الراتب</span>
+              <span style="font-size:12px;color:var(--text-muted)">${t('payroll.grossSalary')}</span>
               <span style="color:#10b981">${App.formatCurrency(payroll.base||0)}</span>
             </div>
           </div>
@@ -212,19 +212,19 @@ const PayrollModule = {
           <!-- Deductions -->
           <div style="padding:16px 20px">
             <div style="font-size:11px;font-weight:800;color:#ef4444;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px">
-              <i class="fas fa-minus-circle"></i> الخصومات
+              <i class="fas fa-minus-circle"></i> ${t('payroll.deductions')}
             </div>
-            ${(payroll.base||0) === 0 ? `<div style="color:#f59e0b;font-size:11px;padding:4px 0;display:flex;align-items:center;gap:4px"><i class="fas fa-exclamation-triangle"></i> لم يتم تعيين راتب — تعديل الموظف لإضافة الراتب</div>` : ''}
-            ${(payroll.absentDays||0) > 0 ? this._payslipRow(`خصم الغياب (${payroll.absentDays} أيام)`, payroll.absentDeduction||0, '#ef4444', true) : ''}
-            ${(payroll.lateDeduction||0) > 0 ? this._payslipRow('خصم التأخير', payroll.lateDeduction, '#f59e0b', true) : ''}
+            ${(payroll.base||0) === 0 ? `<div style="color:#f59e0b;font-size:11px;padding:4px 0;display:flex;align-items:center;gap:4px"><i class="fas fa-exclamation-triangle"></i> ${t('payroll.noBaseSalaryWarn')}</div>` : ''}
+            ${(payroll.absentDays||0) > 0 ? this._payslipRow(`${t('payroll.absentDeduction')} (${payroll.absentDays} ${ar?'أيام':'days'})`, payroll.absentDeduction||0, '#ef4444', true) : ''}
+            ${(payroll.lateDeduction||0) > 0 ? this._payslipRow(t('payroll.lateDeductLabel'), payroll.lateDeduction, '#f59e0b', true) : ''}
             ${customDeds.map(d => {
               const tp = DeductionsModule._types[d.type] || DeductionsModule._types.other;
               return this._payslipRow(tp.label + (d.reason ? ` (${d.reason})` : ''), d.amount, '#ef4444', true);
             }).join('')}
-            ${(payroll.loanDeduction||0) > 0 ? this._payslipRow('قسط سلفة / قرض', payroll.loanDeduction, '#8b5cf6', true) : ''}
-            ${deductions === 0 && (payroll.absentDays||0) === 0 ? `<div style="color:var(--text-muted);font-size:12px;padding:6px 0">لا توجد خصومات</div>` : ''}
+            ${(payroll.loanDeduction||0) > 0 ? this._payslipRow(t('payroll.loanInstallment'), payroll.loanDeduction, '#8b5cf6', true) : ''}
+            ${deductions === 0 && (payroll.absentDays||0) === 0 ? `<div style="color:var(--text-muted);font-size:12px;padding:6px 0">${t('payroll.noDeductions')}</div>` : ''}
             <div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #ef444440;display:flex;justify-content:space-between;font-weight:800">
-              <span style="font-size:12px;color:var(--text-muted)">إجمالي الخصومات</span>
+              <span style="font-size:12px;color:var(--text-muted)">${t('payroll.totalDeductions')}</span>
               <span style="color:#ef4444">-${App.formatCurrency(deductions)}</span>
             </div>
           </div>
@@ -233,7 +233,7 @@ const PayrollModule = {
         <!-- Net Salary -->
         <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:18px 24px;border-radius:0 0 14px 14px;display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-size:12px;opacity:.8;font-weight:600">صافي الراتب</div>
+            <div style="font-size:12px;opacity:.8;font-weight:600">${t('payroll.netSalary')}</div>
             <div style="font-size:12px;opacity:.7;margin-top:2px">${_esc(DB.company.name||'')} · ${periodLabel}</div>
           </div>
           <div style="font-size:26px;font-weight:900;font-family:var(--font-en)">${App.formatCurrency(payroll.total)}</div>
@@ -241,21 +241,21 @@ const PayrollModule = {
 
         <!-- Attendance summary -->
         <div style="padding:12px 24px;display:flex;gap:20px;border-top:1px solid var(--border,#e2e8f0);margin-top:1px;background:var(--bg-input,#f8fafc);border-radius:0 0 14px 14px">
-          <div style="font-size:11px;color:var(--text-muted)">أيام العمل: <strong>${payroll.workdays||'—'}</strong></div>
-          <div style="font-size:11px;color:var(--text-muted)">أيام الحضور: <strong style="color:#10b981">${payroll.attendedDays ?? Math.max(0,(payroll.workdays||0)-(payroll.absentDays||0))}</strong></div>
-          <div style="font-size:11px;color:var(--text-muted)">أيام الغياب: <strong style="color:#ef4444">${payroll.absentDays||0}</strong></div>
+          <div style="font-size:11px;color:var(--text-muted)">${t('payroll.workdaysStat')} <strong>${payroll.workdays||'—'}</strong></div>
+          <div style="font-size:11px;color:var(--text-muted)">${t('payroll.presentStat')} <strong style="color:#10b981">${payroll.attendedDays ?? Math.max(0,(payroll.workdays||0)-(payroll.absentDays||0))}</strong></div>
+          <div style="font-size:11px;color:var(--text-muted)">${t('payroll.absentStat')} <strong style="color:#ef4444">${payroll.absentDays||0}</strong></div>
         </div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
         <button class="btn btn-primary" style="flex:1" onclick="DeductionsModule && DeductionsModule.openAdd('${emp.id}')">
-          <i class="fas fa-plus"></i> إضافة خصم
+          <i class="fas fa-plus"></i> ${t('payroll.addDeductionBtn')}
         </button>
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal(); LoansModule.openAddForm('${emp.id}')">
-          <i class="fas fa-hand-holding-dollar"></i> سلفة جديدة
+          <i class="fas fa-hand-holding-dollar"></i> ${t('payroll.newLoanBtn')}
         </button>
         <button class="btn btn-danger" style="flex:1" onclick="PayrollModule._printPayslip()">
-          <i class="fas fa-print"></i> طباعة
+          <i class="fas fa-print"></i> ${t('payroll.printBtn')}
         </button>
         <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.close')}</button>
       </div>
@@ -293,12 +293,12 @@ const PayrollModule = {
       <div class="info-box info-box-warning">
         <i class="fas fa-triangle-exclamation"></i>
         <div>
-          <div style="font-weight:700">${currentLang==='ar'?'تأكيد معالجة الرواتب':'Confirm Payroll Processing'}</div>
-          <div style="font-size:12px">${currentLang==='ar'?'سيتم معالجة رواتب':'Will process salaries for'} ${DB.payroll.length} ${currentLang==='ar'?'موظف':'employees'} ${currentLang==='ar'?'بإجمالي':'with total'} ${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))}</div>
+          <div style="font-weight:700">${t('payroll.confirmTitle')}</div>
+          <div style="font-size:12px">${t('payroll.confirmDesc')} ${DB.payroll.length} ${ar?'موظف':'employees'} ${ar?'بإجمالي':'with total'} ${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))}</div>
         </div>
       </div>
       <div id="payroll-progress" style="display:none;margin-top:16px">
-        <div style="margin-bottom:8px;font-size:13px;color:var(--text-secondary)">${currentLang==='ar'?'جارٍ المعالجة...':'Processing...'}</div>
+        <div style="margin-bottom:8px;font-size:13px;color:var(--text-secondary)">${t('payroll.processing')}</div>
         <div class="progress-bar" style="height:10px"><div class="progress-fill gradient-primary" id="payroll-bar" style="width:0%;transition:width 2s"></div></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px">
@@ -414,7 +414,7 @@ const PayrollModule = {
     const btn  = document.getElementById('run-payroll-btn');
     const prog = document.getElementById('payroll-progress');
     const bar  = document.getElementById('payroll-bar');
-    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${currentLang==='ar'?'جارٍ الحساب...':'Calculating...'}`; }
+    if (btn) { btn.disabled = true; btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('payroll.processing')}`; }
     if (prog) prog.style.display = 'block';
     if (bar) bar.style.width = '30%';
 
@@ -525,9 +525,9 @@ const PayrollModule = {
     DB.save();
     setTimeout(() => {
       App.closeModal();
-      DB.logAudit('admin', currentLang==='ar'?`معالجة رواتب ${period}`:`Payroll processed ${period}`, 'Payroll',
-        `${DB.payroll.length} ${currentLang==='ar'?'موظف':'employees'}`);
-      App.toast(currentLang==='ar'?`تمت معالجة رواتب ${DB.payroll.length} موظف بنجاح ✓`:`Payroll processed for ${DB.payroll.length} employees ✓`, 'success');
+      DB.logAudit('admin', `${ar?'معالجة رواتب':'Payroll processed'} ${period}`, 'Payroll',
+        `${DB.payroll.length} ${ar?'موظف':'employees'}`);
+      App.toast(`${t('payroll.toastSuccess')} (${DB.payroll.length} ${ar?'موظف':'employees'}) ✓`, 'success');
       this.render(document.getElementById('page-content'));
     }, 500);
   },

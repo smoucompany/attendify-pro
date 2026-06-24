@@ -47,7 +47,7 @@ const DepartmentsModule = {
       <div class="page-header">
         <div class="page-header-text">
           <h1>${t('departments.title')}</h1>
-          <p>${t('departments.subtitle')} — ${DB.departments.length} ${currentLang==='ar'?'قسم':'departments'}</p>
+          <p>${t('departments.subtitle')} — ${DB.departments.length} ${currentLang==='ar'?'قسم':t('nav.departments')}</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" onclick="DepartmentsModule.openAdd()"><i class="fas fa-plus"></i> ${t('departments.addDept')}</button>
@@ -77,7 +77,7 @@ const DepartmentsModule = {
               <div class="dept-manager"><i class="fas fa-user-tie"></i> ${d.manager||'—'}</div>
               <div style="margin-bottom:12px">
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:4px">
-                  <span>${currentLang==='ar'?'نسبة الحضور':'Attendance'}</span>
+                  <span>${t('departments.attendanceRate')}</span>
                   <span style="font-weight:700;color:${hex}">${pct}%</span>
                 </div>
                 <div class="progress-bar">
@@ -111,7 +111,7 @@ const DepartmentsModule = {
               <th>${t('common.name')}</th>
               <th>${t('departments.manager')}</th>
               <th>${t('departments.employeeCount')}</th>
-              <th>${currentLang==='ar'?'الفرع':'Branch'}</th>
+              <th>${t('departments.branch')}</th>
               <th>${t('dashboard.presentToday')}</th>
               <th>${t('dashboard.attendanceRate')}</th>
               <th>${t('common.actions')}</th>
@@ -186,7 +186,7 @@ const DepartmentsModule = {
             </div>
             ${App.getStatusBadge(e.status)}
           </div>
-        `).join('') : `<div style="text-align:center;color:var(--text-muted);padding:20px">${currentLang==='ar'?'لا يوجد موظفون في هذا القسم':'No employees in this department'}</div>`}
+        `).join('') : `<div style="text-align:center;color:var(--text-muted);padding:20px">${t('departments.noEmployees')}</div>`}
       </div>
     `);
   },
@@ -195,18 +195,18 @@ const DepartmentsModule = {
     const hex = d ? this._color(d, idx) : this.COLORS[DB.departments.length % this.COLORS.length].hex;
     return `
       <div class="app-form-group">
-        <label>${currentLang==='ar'?'اسم القسم':'Department Name'}</label>
+        <label>${t('departments.deptName')}</label>
         <input class="app-form-input" type="text" name="name" value="${d?.name||''}" required>
       </div>
       <div class="app-form-group">
         <label>${t('departments.manager')}</label>
         <select class="app-form-input app-form-select" name="managerId">
-          <option value="">${currentLang==='ar'?'— اختر مديراً —':'— Select Manager —'}</option>
+          <option value="">${t('departments.selectManager')}</option>
           ${DB.employees.map(e=>`<option value="${e.id}" ${d?.managerId===e.id?'selected':''}>${e.name}</option>`).join('')}
         </select>
       </div>
       <div class="app-form-group">
-        <label>${currentLang==='ar'?'لون القسم':'Department Color'}</label>
+        <label>${t('departments.deptColor')}</label>
         <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
           <div id="dept-color-preview" style="width:40px;height:40px;border-radius:10px;background:${hex};flex-shrink:0;transition:.2s"></div>
           <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -244,7 +244,7 @@ const DepartmentsModule = {
     }
     DB.save();
     App.closeModal();
-    App.toast(currentLang==='ar'?'تم التحديث':'Updated', 'success');
+    App.toast(currentLang==='ar'?'تم التحديث':'Updated', 'success'); // keep simple toast
     this.render(document.getElementById('page-content'));
   },
 

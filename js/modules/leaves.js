@@ -50,7 +50,7 @@ const LeavesModule = {
           <div class="stat-icon gradient-primary"><i class="fas fa-list"></i></div>
           <div class="stat-info">
             <div class="stat-value">${DB.leaves.length}</div>
-            <div class="stat-label">${currentLang==='ar'?'إجمالي الطلبات':'Total Requests'}</div>
+            <div class="stat-label">${t('leaves.totalRequests')}</div>
           </div>
         </div>
       </div>
@@ -100,7 +100,7 @@ const LeavesModule = {
 
           <!-- Leave Types Guide -->
           <div class="card">
-            <div class="card-header"><h3><i class="fas fa-info-circle" style="color:var(--info)"></i> ${currentLang==='ar'?'أنواع الإجازات':'Leave Types'}</h3></div>
+            <div class="card-header"><h3><i class="fas fa-info-circle" style="color:var(--info)"></i> ${t('leaves.leaveTypes')}</h3></div>
             <div class="card-body">
               ${[
                 ['annual','#6366f1',21],['sick','#ef4444',30],

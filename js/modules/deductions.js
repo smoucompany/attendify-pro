@@ -4,15 +4,17 @@
 
 const DeductionsModule = {
 
-  _types: {
-    loan:      { label: 'قرض',           icon: 'fas fa-hand-holding-dollar', color: '#6366f1' },
-    advance:   { label: 'سلفة',          icon: 'fas fa-money-bill-transfer',  color: '#f59e0b' },
-    fine:      { label: 'غرامة',         icon: 'fas fa-gavel',               color: '#ef4444' },
-    admin:     { label: 'جزاء إداري',    icon: 'fas fa-triangle-exclamation', color: '#dc2626' },
-    custody:   { label: 'عهدة',          icon: 'fas fa-box-archive',          color: '#0891b2' },
-    insurance: { label: 'تأمين',         icon: 'fas fa-shield-halved',       color: '#10b981' },
-    tax:       { label: 'ضريبة',         icon: 'fas fa-receipt',             color: '#8b5cf6' },
-    other:     { label: 'أخرى',          icon: 'fas fa-circle-minus',        color: '#64748b' },
+  get _types() {
+    return {
+      loan:      { label: t('deductions.typeLoan'),      icon: 'fas fa-hand-holding-dollar', color: '#6366f1' },
+      advance:   { label: t('deductions.typeAdvance'),   icon: 'fas fa-money-bill-transfer',  color: '#f59e0b' },
+      fine:      { label: t('deductions.typeFine'),      icon: 'fas fa-gavel',               color: '#ef4444' },
+      admin:     { label: t('deductions.typeAdmin'),     icon: 'fas fa-triangle-exclamation', color: '#dc2626' },
+      custody:   { label: t('deductions.typeCustody'),   icon: 'fas fa-box-archive',          color: '#0891b2' },
+      insurance: { label: t('deductions.typeInsurance'), icon: 'fas fa-shield-halved',       color: '#10b981' },
+      tax:       { label: t('deductions.typeTax'),       icon: 'fas fa-receipt',             color: '#8b5cf6' },
+      other:     { label: t('deductions.typeOther'),     icon: 'fas fa-circle-minus',        color: '#64748b' },
+    };
   },
 
   render(container) {
@@ -23,12 +25,12 @@ const DeductionsModule = {
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
-          <h1><i class="fas fa-circle-minus" style="color:var(--danger);font-size:22px"></i> الخصومات</h1>
-          <p>إدارة القروض والسلف والغرامات والخصومات المخصصة</p>
+          <h1><i class="fas fa-circle-minus" style="color:var(--danger);font-size:22px"></i> ${t('deductions.title')}</h1>
+          <p>${t('deductions.subtitle')}</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" onclick="DeductionsModule.openAdd()">
-            <i class="fas fa-plus"></i> إضافة خصم
+            <i class="fas fa-plus"></i> ${t('deductions.addBtn')}
           </button>
         </div>
       </div>
@@ -39,28 +41,28 @@ const DeductionsModule = {
           <div class="stat-icon gradient-primary"><i class="fas fa-list"></i></div>
           <div class="stat-info">
             <div class="stat-value">${DB.deductions.length}</div>
-            <div class="stat-label">إجمالي السجلات</div>
+            <div class="stat-label">${t('deductions.totalRecords')}</div>
           </div>
         </div>
         <div class="stat-card warning stagger-item">
           <div class="stat-icon gradient-warning"><i class="fas fa-clock"></i></div>
           <div class="stat-info">
             <div class="stat-value">${App.formatCurrency(pendingAmount)}</div>
-            <div class="stat-label">معلقة (لم تُطبق)</div>
+            <div class="stat-label">${t('deductions.pendingAmount')}</div>
           </div>
         </div>
         <div class="stat-card danger stagger-item">
           <div class="stat-icon gradient-danger"><i class="fas fa-circle-minus"></i></div>
           <div class="stat-info">
             <div class="stat-value">${App.formatCurrency(appliedAmount)}</div>
-            <div class="stat-label">مطبقة على الراتب</div>
+            <div class="stat-label">${t('deductions.appliedAmount')}</div>
           </div>
         </div>
         <div class="stat-card success stagger-item">
           <div class="stat-icon gradient-success"><i class="fas fa-calculator"></i></div>
           <div class="stat-info">
             <div class="stat-value">${App.formatCurrency(totalAmount)}</div>
-            <div class="stat-label">الإجمالي الكلي</div>
+            <div class="stat-label">${t('deductions.totalAmount')}</div>
           </div>
         </div>
       </div>
@@ -68,8 +70,8 @@ const DeductionsModule = {
       <!-- Filter by type -->
       <div class="card" style="margin-bottom:16px">
         <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <span style="font-size:13px;font-weight:700;color:var(--text-muted)">نوع الخصم:</span>
-          <button class="btn btn-primary btn-sm" onclick="DeductionsModule._filter('all', this)">الكل</button>
+          <span style="font-size:13px;font-weight:700;color:var(--text-muted)">${t('deductions.typeFilter')}</span>
+          <button class="btn btn-primary btn-sm" onclick="DeductionsModule._filter('all', this)">${t('common.all')}</button>
           ${Object.entries(this._types).map(([k,v]) => `
             <button class="btn btn-secondary btn-sm" onclick="DeductionsModule._filter('${k}', this)" style="border-color:${v.color}15">
               <i class="${v.icon}" style="color:${v.color}"></i> ${v.label}
@@ -100,8 +102,8 @@ const DeductionsModule = {
     if (!rows.length) return `
       <div class="empty-state" style="padding:48px">
         <div class="empty-icon"><i class="fas fa-circle-minus"></i></div>
-        <div class="empty-title">لا توجد خصومات</div>
-        <p class="empty-desc">اضغط "إضافة خصم" لإضافة خصم جديد</p>
+        <div class="empty-title">${t('deductions.noDeductions')}</div>
+        <p class="empty-desc">${t('deductions.emptyDesc')}</p>
       </div>`;
 
     return `
@@ -109,13 +111,13 @@ const DeductionsModule = {
         <table class="data-table">
           <thead>
             <tr>
-              <th>الموظف</th>
-              <th>نوع الخصم</th>
-              <th>السبب</th>
-              <th>المبلغ</th>
-              <th>شهر التطبيق</th>
-              <th>الحالة</th>
-              <th>الإجراءات</th>
+              <th>${t('deductions.employee')}</th>
+              <th>${t('deductions.deductionType')}</th>
+              <th>${t('deductions.reason')}</th>
+              <th>${t('deductions.amount')}</th>
+              <th>${t('deductions.period')}</th>
+              <th>${t('common.status')}</th>
+              <th>${t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -123,9 +125,9 @@ const DeductionsModule = {
               const emp  = DB.getEmployee(d.empId);
               const type = this._types[d.type] || this._types.other;
               const statusMap = {
-                pending: { label: 'معلق',   cls: 'badge-warning' },
-                applied: { label: 'مطبق',   cls: 'badge-danger'  },
-                paid:    { label: 'مسدد',   cls: 'badge-success' },
+                pending: { label: t('deductions.statusPending'), cls: 'badge-warning' },
+                applied: { label: t('deductions.statusApplied'), cls: 'badge-danger'  },
+                paid:    { label: t('deductions.statusPaid'),    cls: 'badge-success' },
               };
               const st = statusMap[d.status] || statusMap.pending;
               return `
@@ -151,7 +153,7 @@ const DeductionsModule = {
                   <td>
                     <div style="display:flex;gap:4px">
                       ${d.status === 'pending' ? `
-                        <button class="btn btn-sm btn-danger" onclick="DeductionsModule.apply('${d.id}')" title="تطبيق على الراتب">
+                        <button class="btn btn-sm btn-danger" onclick="DeductionsModule.apply('${d.id}')" title="${t('deductions.applyTitle')}">
                           <i class="fas fa-check"></i>
                         </button>
                       ` : ''}
@@ -180,20 +182,20 @@ const DeductionsModule = {
   _openForm(ded, preEmpId = '') {
     const isEdit = !!ded;
     const curMonth = new Date().toISOString().slice(0, 7);
-    App.openModal(isEdit ? 'تعديل الخصم' : 'إضافة خصم جديد', `
+    App.openModal(isEdit ? t('deductions.editTitle') : t('deductions.addTitle'), `
       <form onsubmit="DeductionsModule.save(event, '${ded?.id||''}')">
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>الموظف <span style="color:var(--danger)">*</span></label>
+            <label>${t('deductions.employee')} <span style="color:var(--danger)">*</span></label>
             <select class="app-form-input app-form-select" name="empId" required>
-              <option value="">— اختر موظفاً —</option>
+              <option value="">${t('deductions.selectEmployee')}</option>
               ${DB.employees.filter(e=>e.status!=='terminated').map(e =>
                 `<option value="${e.id}" ${(ded?.empId||preEmpId)===e.id?'selected':''}>${e.name} (#${e.no})</option>`
               ).join('')}
             </select>
           </div>
           <div class="app-form-group">
-            <label>نوع الخصم <span style="color:var(--danger)">*</span></label>
+            <label>${t('deductions.deductionType')} <span style="color:var(--danger)">*</span></label>
             <select class="app-form-input app-form-select" name="type" required>
               ${Object.entries(this._types).map(([k,v]) =>
                 `<option value="${k}" ${ded?.type===k?'selected':''}>${v.label}</option>`
@@ -203,29 +205,29 @@ const DeductionsModule = {
         </div>
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>المبلغ <span style="color:var(--danger)">*</span></label>
+            <label>${t('deductions.amountLabel')} <span style="color:var(--danger)">*</span></label>
             <input class="app-form-input" type="number" name="amount" min="1" step="0.01"
               value="${ded?.amount||''}" placeholder="0.00" required>
           </div>
           <div class="app-form-group">
-            <label>شهر التطبيق <span style="color:var(--danger)">*</span></label>
+            <label>${t('deductions.periodLabel')} <span style="color:var(--danger)">*</span></label>
             <input class="app-form-input" type="month" name="period" value="${ded?.period||curMonth}" required>
           </div>
         </div>
         <div class="app-form-group">
-          <label>السبب / الملاحظة</label>
-          <textarea class="app-form-input" name="reason" rows="2" placeholder="وصف مختصر...">${_esc(ded?.reason||'')}</textarea>
+          <label>${t('deductions.reasonLabel')}</label>
+          <textarea class="app-form-input" name="reason" rows="2" placeholder="${t('deductions.reasonPlaceholder')}...">${_esc(ded?.reason||'')}</textarea>
         </div>
         <div class="app-form-group">
-          <label>الحالة</label>
+          <label>${t('deductions.statusLabel')}</label>
           <select class="app-form-input app-form-select" name="status">
-            <option value="applied" ${(!ded||ded.status==='applied'||ded.status==='pending')?'selected':''}>مطبق على الراتب</option>
-            <option value="paid"    ${ded?.status==='paid'?'selected':''}>مسدد</option>
+            <option value="applied" ${(!ded||ded.status==='applied'||ded.status==='pending')?'selected':''}>${t('deductions.statusAppliedOption')}</option>
+            <option value="paid"    ${ded?.status==='paid'?'selected':''}>${t('deductions.statusPaidOption')}</option>
           </select>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:20px">
-          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${isEdit?'حفظ التعديلات':'إضافة الخصم'}</button>
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${isEdit ? t('deductions.saveEdit') : t('deductions.saveAdd')}</button>
         </div>
       </form>
     `);
@@ -234,7 +236,7 @@ const DeductionsModule = {
   save(e, id) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    if (!data.empId) { App.toast('يرجى اختيار الموظف', 'error'); return; }
+    if (!data.empId) { App.toast(t('deductions.selectEmpError'), 'error'); return; }
 
     if (id) {
       const d = DB.deductions.find(d => d.id === id);
@@ -253,27 +255,27 @@ const DeductionsModule = {
     }
     DB.save();
     App.closeModal();
-    App.toast(id ? 'تم تحديث الخصم ✓' : 'تم إضافة الخصم ✓', 'success');
+    App.toast(id ? t('deductions.toastUpdated') : t('deductions.toastAdded'), 'success');
     this.render(document.getElementById('page-content'));
   },
 
   apply(id) {
-    App.confirm('هل تريد تطبيق هذا الخصم على الراتب؟', () => {
+    App.confirm(t('deductions.confirmApply'), () => {
       const d = DB.deductions.find(d => d.id === id);
       if (!d) return;
       d.status = 'applied';
       DB.save();
-      App.toast('تم تطبيق الخصم ✓', 'success');
+      App.toast(t('deductions.toastApplied'), 'success');
       this.render(document.getElementById('page-content'));
     });
   },
 
   delete(id) {
-    App.confirm('هل تريد حذف هذا الخصم نهائياً؟', () => {
+    App.confirm(t('deductions.confirmDelete'), () => {
       const i = DB.deductions.findIndex(d => d.id === id);
       if (i !== -1) DB.deductions.splice(i, 1);
       DB.save();
-      App.toast('تم حذف الخصم', 'info');
+      App.toast(t('deductions.toastDeleted'), 'info');
       this.render(document.getElementById('page-content'));
     });
   },

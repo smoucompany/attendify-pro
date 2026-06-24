@@ -24,10 +24,10 @@ const EmployeesModule = {
         </div>
         <div class="page-header-actions">
           <button class="btn btn-secondary" onclick="EmployeesModule.openImportExport()">
-            <i class="fas fa-arrows-up-down"></i> استيراد / تصدير
+            <i class="fas fa-arrows-up-down"></i> ${t('employees.importExport')}
           </button>
-          <button class="btn btn-secondary" onclick="EmployeesModule.migrateEmpNos()" title="تحديث أكواد الموظفين لتصبح: حرف إنجليزي + أرقام">
-            <i class="fas fa-arrow-rotate-right"></i> تحديث الأكواد
+          <button class="btn btn-secondary" onclick="EmployeesModule.migrateEmpNos()" title="${t('employees.migrateBtn')}">
+            <i class="fas fa-arrow-rotate-right"></i> ${t('employees.migrateBtn')}
           </button>
           <button class="btn btn-primary" onclick="EmployeesModule.openAdd()">
             <i class="fas fa-user-plus"></i> ${t('employees.addEmployee')}
@@ -177,8 +177,8 @@ const EmployeesModule = {
         <div class="employee-card-actions">
           <button class="btn btn-outline-primary btn-sm" onclick="EmployeesModule.viewEmployee('${e.id}')"><i class="fas fa-eye"></i></button>
           <button class="btn btn-secondary btn-sm" onclick="EmployeesModule.openEdit('${e.id}')"><i class="fas fa-pencil"></i></button>
-          <button class="btn btn-sm" style="background:var(--warning);color:#fff" title="كلمة المرور" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
-          <button class="btn btn-sm" style="background:#25d366;color:#fff" title="إرسال بيانات الدخول على واتساب" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
+          <button class="btn btn-sm" style="background:var(--warning);color:#fff" title="${t('employees.passwordTitle')}" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
+          <button class="btn btn-sm" style="background:#25d366;color:#fff" title="${t('employees.sendCredentials')}" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
           <button class="btn btn-danger btn-sm" onclick="EmployeesModule.deleteEmployee('${e.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>
@@ -209,8 +209,8 @@ const EmployeesModule = {
           <div style="display:flex;gap:4px">
             <button class="btn-icon btn" title="${t('common.view')}" onclick="EmployeesModule.viewEmployee('${e.id}')"><i class="fas fa-eye"></i></button>
             <button class="btn-icon btn" title="${t('common.edit')}" onclick="EmployeesModule.openEdit('${e.id}')"><i class="fas fa-pencil"></i></button>
-            <button class="btn-icon btn" title="كلمة المرور" style="color:var(--warning)" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
-            <button class="btn-icon btn" title="إرسال بيانات الدخول" style="color:#25d366" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
+            <button class="btn-icon btn" title="${t('employees.passwordTitle')}" style="color:var(--warning)" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
+            <button class="btn-icon btn" title="${t('employees.sendCredentials')}" style="color:#25d366" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
             <button class="btn-icon btn" title="${t('common.delete')}" style="color:var(--danger)" onclick="EmployeesModule.deleteEmployee('${e.id}')"><i class="fas fa-trash"></i></button>
           </div>
         </td>
@@ -249,7 +249,7 @@ const EmployeesModule = {
     if (!preview) return;
     const ch = (firstName || '').trim().charAt(0);
     if (!ch) {
-      preview.textContent = 'سيُولَّد تلقائياً';
+      preview.textContent = t('employees.autoGenerate');
       preview.style.color = 'var(--text-muted)';
       if (hidden) hidden.value = '';
       return;
@@ -294,8 +294,9 @@ const EmployeesModule = {
     const hrRate    = salary > 0 ? (salary / monthDays / workHours).toFixed(2) : null;
     const dayEl = document.getElementById('emp-day-rate');
     const hrEl  = document.getElementById('emp-hr-val');
-    if (dayEl) dayEl.querySelector('span').textContent = dayRate ? dayRate + ' ريال' : '—';
-    if (hrEl)  hrEl.textContent = hrRate ? hrRate + ' ريال' : '—';
+    const curr = currentLang === 'ar' ? ' ريال' : ' SAR';
+    if (dayEl) dayEl.querySelector('span').textContent = dayRate ? dayRate + curr : '—';
+    if (hrEl)  hrEl.textContent = hrRate ? hrRate + curr : '—';
   },
 
   openEdit(id) {
@@ -307,13 +308,13 @@ const EmployeesModule = {
     return `
       <form onsubmit="EmployeesModule.saveEmployee(event, '${emp?.id||''}')">
         <div class="app-form-group">
-          <label>${t('employees.employeeId')} <span style="color:var(--text-muted);font-weight:400;font-size:11px">(كود الدخول لبوابة الموظف)</span></label>
+          <label>${t('employees.employeeId')} <span style="color:var(--text-muted);font-weight:400;font-size:11px">(${t('employees.loginCode')})</span></label>
           <div style="display:flex;align-items:center;gap:10px;background:var(--bg-input,#f8fafc);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px" id="emp-no-display">
             <i class="fas fa-id-badge" style="color:var(--primary)"></i>
             <span id="emp-no-preview" style="font-size:18px;font-weight:800;letter-spacing:3px;color:${emp ? 'var(--text-primary)' : 'var(--text-muted)'}">
-              ${emp ? emp.no : 'سيُولَّد تلقائياً'}
+              ${emp ? emp.no : t('employees.autoGenerate')}
             </span>
-            <span style="font-size:11px;color:var(--text-muted);margin-right:auto">${emp ? 'كود موجود' : 'حرف + أرقام'}</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-right:auto">${emp ? t('employees.existingCode') : t('employees.codeFormat')}</span>
           </div>
           <input type="hidden" name="no" value="${emp ? emp.no : ''}">
         </div>
@@ -368,12 +369,12 @@ const EmployeesModule = {
         </div>
         <div class="app-form-row">
           <div class="app-form-group">
-            <label><i class="fas fa-location-dot" style="color:var(--primary)"></i> مكان العمل</label>
-            <input class="app-form-input" type="text" name="workLocation" value="${emp?.workLocation||''}" placeholder="مثال: المقر الرئيسي، فرع الرياض، عن بُعد...">
+            <label><i class="fas fa-location-dot" style="color:var(--primary)"></i> ${t('employees.workLocation')}</label>
+            <input class="app-form-input" type="text" name="workLocation" value="${emp?.workLocation||''}" placeholder="${t('employees.workLocationPlaceholder')}">
           </div>
           <div class="app-form-group">
-            <label><i class="fas fa-building" style="color:var(--primary)"></i> جهة العمل</label>
-            <input class="app-form-input" type="text" name="workEntity" value="${emp?.workEntity||''}" placeholder="مثال: المقر الرئيسي، فرع جدة...">
+            <label><i class="fas fa-building" style="color:var(--primary)"></i> ${t('employees.workEntity')}</label>
+            <input class="app-form-input" type="text" name="workEntity" value="${emp?.workEntity||''}" placeholder="${t('employees.workEntityPlaceholder')}">
           </div>
         </div>
         ${(() => {
@@ -388,7 +389,7 @@ const EmployeesModule = {
           const [seh, sem] = parseHM(shiftEnd,   '17:00');
           const rawHours   = ((seh*60+sem) - (ssh*60+ssm)) / 60;
           const workHours  = rawHours > 0 ? rawHours : 8;
-          const shiftLabel = empShift ? empShift.name : (currentLang==='ar'?'إعدادات الشركة':'Company default');
+          const shiftLabel = empShift ? empShift.name : t('employees.companyDefault');
           const salary     = Number(emp?.salary||0);
           const dayRate    = salary > 0 ? (salary / monthDays).toFixed(2) : '—';
           const hrRate     = salary > 0 ? (salary / monthDays / workHours).toFixed(2) : '—';
@@ -397,21 +398,21 @@ const EmployeesModule = {
           <div class="app-form-group">
             <label style="display:flex;align-items:center;gap:6px">
               <i class="fas fa-calendar-day" style="color:var(--primary);font-size:12px"></i>
-              احتساب اليوم
+              ${t('employees.dayRate')}
             </label>
             <div id="emp-day-rate" class="app-form-input" style="background:var(--bg-input);color:var(--primary);font-weight:700;cursor:default;display:flex;align-items:center;justify-content:space-between">
-              <span>${dayRate !== '—' ? dayRate + ' ريال' : '—'}</span>
-              <span style="font-size:11px;color:var(--text-muted);font-weight:400">= الراتب ÷ ${Math.round(monthDays)} يوم</span>
+              <span>${dayRate !== '—' ? dayRate + ' ' + (currentLang==='ar'?'ريال':'SAR') : '—'}</span>
+              <span style="font-size:11px;color:var(--text-muted);font-weight:400">= ${currentLang==='ar'?'الراتب ÷':'Salary ÷'} ${Math.round(monthDays)} ${currentLang==='ar'?'يوم':'days'}</span>
             </div>
           </div>
           <div class="app-form-group">
             <label style="display:flex;align-items:center;gap:6px">
               <i class="fas fa-clock" style="color:var(--info);font-size:12px"></i>
-              احتساب الساعة
+              ${t('employees.hourRate')}
             </label>
             <div id="emp-hr-rate" class="app-form-input" style="background:var(--bg-input);color:#06b6d4;font-weight:700;cursor:default;display:flex;align-items:center;justify-content:space-between">
-              <span id="emp-hr-val">${hrRate !== '—' ? hrRate + ' ريال' : '—'}</span>
-              <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-align:end">= اليومية ÷ ${workHours}س<br><span style="color:var(--primary);opacity:.7">(${shiftLabel})</span></span>
+              <span id="emp-hr-val">${hrRate !== '—' ? hrRate + ' ' + (currentLang==='ar'?'ريال':'SAR') : '—'}</span>
+              <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-align:end">= ${currentLang==='ar'?'اليومية ÷':'Daily ÷'} ${workHours}${currentLang==='ar'?'س':'h'}<br><span style="color:var(--primary);opacity:.7">(${shiftLabel})</span></span>
             </div>
           </div>
         </div>`;
@@ -432,8 +433,8 @@ const EmployeesModule = {
         <div class="app-form-group">
           <label style="display:flex;align-items:center;gap:6px">
             <i class="fas fa-user-clock" style="color:var(--primary);font-size:12px"></i>
-            الورديات
-            <span style="font-size:11px;color:var(--text-muted);font-weight:400">(يمكن اختيار أكثر من وردية)</span>
+            ${t('employees.shifts')}
+            <span style="font-size:11px;color:var(--text-muted);font-weight:400">${t('employees.multiShiftHint')}</span>
           </label>
           ${DB.shifts.filter(s => s.name && s.start && s.end).length ? `
           <div id="emp-shifts-picker" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
@@ -460,7 +461,7 @@ const EmployeesModule = {
               </label>`;
             }).join('')}
           </div>` : `<div style="padding:12px;color:var(--text-muted);font-size:13px;text-align:center;background:var(--bg-input);border-radius:var(--radius-md)">
-            <i class="fas fa-circle-info"></i> لا توجد ورديات — أضف من <b>إدارة الورديات</b> أولاً
+            <i class="fas fa-circle-info"></i> ${t('employees.noShiftsHint')}
           </div>`}
         </div>
         <div class="modal-footer" style="padding:0;margin-top:20px">

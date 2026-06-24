@@ -64,10 +64,10 @@ const ShiftsModule = {
               <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
                 <div>
                   <div style="font-size:15px;font-weight:800;color:white;margin-bottom:3px">${s.name}</div>
-                  <div style="font-size:12px;color:rgba(255,255,255,0.8);font-family:var(--font-en)">${s.start} — ${s.end}${isOvernight?' <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px">+يوم</span>':''}</div>
+                  <div style="font-size:12px;color:rgba(255,255,255,0.8);font-family:var(--font-en)">${s.start} — ${s.end}${isOvernight?` <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px">+${currentLang==='ar'?'يوم':'day'}</span>`:''}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-                  ${isOvernight ? `<span style="font-size:10px;background:rgba(255,255,255,0.2);color:white;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ليلي</span>` : ''}
+                  ${isOvernight ? `<span style="font-size:10px;background:rgba(255,255,255,0.2);color:white;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ${t('shifts.overnight')}</span>` : ''}
                   <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')" style="background:rgba(255,255,255,0.15);color:white;border-radius:8px;width:30px;height:30px">
                     <i class="fas fa-pencil" style="font-size:12px"></i>
                   </button>
@@ -79,11 +79,11 @@ const ShiftsModule = {
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
                 <div style="background:var(--bg-input);border-radius:8px;padding:8px 10px;text-align:center">
                   <div style="font-size:18px;font-weight:800;color:${s.color||'#6366f1'}">${hrs}</div>
-                  <div style="font-size:10px;color:var(--text-muted)">${currentLang==='ar'?'مدة الوردية':'Duration'}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">${t('shifts.shiftDuration')}</div>
                 </div>
                 <div style="background:var(--bg-input);border-radius:8px;padding:8px 10px;text-align:center">
                   <div style="font-size:18px;font-weight:800;color:var(--primary)">${assigned}</div>
-                  <div style="font-size:10px;color:var(--text-muted)">${currentLang==='ar'?'موظف':'Employees'}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">${t('shifts.employees')}</div>
                 </div>
               </div>
               <div style="display:flex;gap:4px;flex-wrap:wrap">
@@ -101,7 +101,7 @@ const ShiftsModule = {
           <div style="display:flex;gap:8px;align-items:center">
             <div style="position:relative">
               <i class="fas fa-search" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;pointer-events:none"></i>
-              <input type="text" placeholder="${currentLang==='ar'?'بحث عن موظف…':'Search employee…'}"
+              <input type="text" placeholder="${t('shifts.searchEmployee')}"
                 value="${this._search}"
                 oninput="ShiftsModule._search=this.value;ShiftsModule.render(document.getElementById('page-content'))"
                 style="padding:7px 32px 7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text-primary);width:180px;outline:none;direction:rtl">
@@ -152,7 +152,7 @@ const ShiftsModule = {
                         </td>`;
                     }).join('')}
                     <td style="padding:4px;text-align:center">
-                      <button class="btn-icon btn" style="font-size:11px" title="${currentLang==='ar'?'تعيين ورديات':'Assign shifts'}"
+                      <button class="btn-icon btn" style="font-size:11px" title="${t('shifts.assignShifts')}"
                         onclick="ShiftsModule.openAssign('${emp.id}')">
                         <i class="fas fa-pencil"></i>
                       </button>
@@ -160,13 +160,13 @@ const ShiftsModule = {
                   </tr>`;
               }).join('') : `
                 <tr><td colspan="9" style="padding:40px;text-align:center;color:var(--text-muted)">
-                  ${currentLang==='ar'?'لا يوجد موظفون':'No employees found'}
+                  ${t('shifts.noEmployees')}
                 </td></tr>`}
             </tbody>
           </table>
           ${displayEmps.length < allEmps.length ? `
             <div style="padding:8px 14px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center">
-              عرض ${displayEmps.length} من ${allEmps.length} موظف
+              ${currentLang==='ar'?`عرض ${displayEmps.length} من ${allEmps.length} موظف`:`Showing ${displayEmps.length} of ${allEmps.length} employees`}
             </div>` : ''}
         </div>
       </div>
@@ -174,11 +174,11 @@ const ShiftsModule = {
       <!-- Legend -->
       <div class="card">
         <div class="card-body" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
-          <span style="font-size:13px;font-weight:700;color:var(--text-muted)">${currentLang==='ar'?'المفتاح:':'Legend:'}</span>
+          <span style="font-size:13px;font-weight:700;color:var(--text-muted)">${t('shifts.legend')}</span>
           <span class="shift-cell morning" style="padding:4px 12px">${t('shifts.morning')}</span>
           <span class="shift-cell evening" style="padding:4px 12px">${t('shifts.evening')}</span>
           <span class="shift-cell night"   style="padding:4px 12px">${t('shifts.night')}</span>
-          <span class="shift-cell off"     style="padding:4px 12px">— ${currentLang==='ar'?'(اضغط للتعيين)':'(click to assign)'}</span>
+          <span class="shift-cell off"     style="padding:4px 12px">— ${t('shifts.clickToAssign')}</span>
         </div>
       </div>
     `;
@@ -194,13 +194,13 @@ const ShiftsModule = {
 
     App.openModal(`${emp.name} — ${t('day.'+day)}`, `
       <div style="margin-bottom:16px;font-size:13px;color:var(--text-muted)">
-        ${currentLang==='ar'?'الوردية الحالية:':'Current:'}
+        ${t('shifts.currentShift')}
         <strong>${curSid ? DB.shifts.find(s=>s.id===curSid)?.name || '—' : '—'}</strong>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <button onclick="ShiftsModule._setDayShift('${empId}','${day}',null);App.closeModal()"
           style="padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-input);color:var(--danger);font-size:13px;font-weight:600;cursor:pointer;text-align:right">
-          <i class="fas fa-ban"></i> ${currentLang==='ar'?'إيقاف هذا اليوم (OFF)':'Set as OFF'}
+          <i class="fas fa-ban"></i> ${t('shifts.setOff')}
         </button>
         ${shifts.map(s => `
           <button onclick="ShiftsModule._setDayShift('${empId}','${day}','${s.id}');App.closeModal()"
@@ -260,7 +260,7 @@ const ShiftsModule = {
       const emp = DB.getEmployee(empId);
       if (!emp) return '';
       const ids = ShiftsModule._normalizeShifts(emp);
-      if (!ids.length) return `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${currentLang==='ar'?'لا توجد ورديات مخصصة':'No shifts assigned'}</div>`;
+      if (!ids.length) return `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${t('shifts.noAssigned')}</div>`;
       return ids.map((sid) => {
         const sh = DB.shifts.find(s => s.id === sid);
         if (!sh) return '';
@@ -281,7 +281,7 @@ const ShiftsModule = {
       <div class="app-form-group">
         <label>${t('nav.employees')}</label>
         <select id="assign-emp" class="app-form-input app-form-select" onchange="ShiftsModule._refreshAssignPanel(this.value)">
-          <option value="">${currentLang==='ar'?'— اختر موظفاً —':'— Select employee —'}</option>
+          <option value="">${currentLang==='ar'?'— اختر موظفاً —':'— Select an employee —'}</option>
           ${DB.employees.filter(e=>e.status!=='terminated').map(e =>
             `<option value="${e.id}" ${e.id===preEmpId?'selected':''}>${e.name}</option>`
           ).join('')}
@@ -296,7 +296,7 @@ const ShiftsModule = {
       <!-- إضافة وردية جديدة -->
       <div style="background:var(--bg-secondary);border-radius:10px;padding:12px;border:1.5px solid var(--border)">
         <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px">
-          <i class="fas fa-plus-circle" style="color:var(--primary)"></i> ${currentLang==='ar'?'إضافة وردية جديدة':'Add New Shift'}
+          <i class="fas fa-plus-circle" style="color:var(--primary)"></i> ${t('shifts.addNew')}
         </div>
         <div style="display:flex;gap:8px">
           <select id="assign-shift" class="app-form-input app-form-select" style="padding:8px 12px;flex:1">
@@ -305,7 +305,7 @@ const ShiftsModule = {
           </select>
           <button onclick="ShiftsModule._addAssignment()"
             style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-            <i class="fas fa-plus"></i> ${currentLang==='ar'?'إضافة':'Add'}
+            <i class="fas fa-plus"></i> ${t('common.add')}
           </button>
         </div>
       </div>
@@ -320,7 +320,7 @@ const ShiftsModule = {
     if (!emp) { panel.innerHTML = ''; return; }
     const ids = this._normalizeShifts(emp);
     if (!ids.length) {
-      panel.innerHTML = `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${currentLang==='ar'?'لا توجد ورديات مخصصة':'No shifts assigned'}</div>`;
+      panel.innerHTML = `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${t('shifts.noAssigned')}</div>`;
       return;
     }
     panel.innerHTML = ids.map(sid => {
@@ -343,7 +343,7 @@ const ShiftsModule = {
     const empId   = document.getElementById('assign-emp')?.value;
     const shiftId = document.getElementById('assign-shift')?.value;
 
-    if (!empId)   { App.toast(currentLang==='ar'?'اختر موظفاً أولاً':'Select an employee', 'error'); return; }
+    if (!empId)   { App.toast(currentLang==='ar'?'اختر موظفاً أولاً':'Select an employee first', 'error'); return; }
     if (!shiftId) { App.toast(currentLang==='ar'?'اختر الوردية':'Select a shift', 'error'); return; }
 
     const emp = DB.getEmployee(empId);
@@ -354,7 +354,7 @@ const ShiftsModule = {
     emp.shift  = emp.shifts[0] || null;
 
     if (emp.shifts.includes(shiftId)) {
-      App.toast(currentLang==='ar'?'هذه الوردية مضافة بالفعل':'Already assigned', 'warning');
+      App.toast(t('shifts.alreadyAssigned'), 'warning');
       return;
     }
 
@@ -403,7 +403,7 @@ const ShiftsModule = {
     return `
       <form onsubmit="ShiftsModule.saveShift(event, '${shift?.id||''}')">
         <div class="app-form-group">
-          <label>${currentLang==='ar'?'اسم الوردية':'Shift Name'}</label>
+          <label>${t('shifts.shiftName')}</label>
           <input class="app-form-input" type="text" name="name" value="${shift?.name||''}" required>
         </div>
         <div class="app-form-row">
@@ -417,12 +417,12 @@ const ShiftsModule = {
           </div>
         </div>
         <div class="app-form-group">
-          <label>${t('shifts.breakTime')} (${currentLang==='ar'?'دقيقة':'minutes'})</label>
+          <label>${t('shifts.breakTime')} (${t('shifts.breakMinutes')})</label>
           <input class="app-form-input" type="number" name="break" value="${shift?.break||60}" min="0" step="15">
         </div>
         <div class="app-form-group">
           <label style="display:flex;align-items:center;gap:8px">
-            ${currentLang==='ar'?'لون الوردية':'Shift Color'}
+            ${t('shifts.shiftColor')}
             <span id="shift-color-preview" style="display:inline-block;width:22px;height:22px;border-radius:6px;background:${curColor};border:2px solid rgba(0,0,0,0.1);vertical-align:middle"></span>
           </label>
           <input type="hidden" name="color" id="shift-color-val" value="${curColor}">
@@ -436,7 +436,7 @@ const ShiftsModule = {
               </div>
             `).join('')}
             <!-- Custom color picker -->
-            <label title="${currentLang==='ar'?'لون مخصص':'Custom color'}" style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#f00,#0f0,#00f);cursor:pointer;position:relative;overflow:hidden;flex-shrink:0">
+            <label title="${t('shifts.customColor')}" style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#f00,#0f0,#00f);cursor:pointer;position:relative;overflow:hidden;flex-shrink:0">
               <input type="color" value="${curColor}" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer"
                 oninput="ShiftsModule._pickColor(this.value)">
             </label>
@@ -482,6 +482,7 @@ const ShiftsModule = {
     let diff = (eh*60+em) - (sh*60+sm);
     if (diff <= 0) diff += 24*60;
     const h = Math.floor(diff/60), m = diff%60;
+    if (currentLang === 'en') return m ? `${h}h ${m}m` : `${h}h`;
     return m ? `${h} س ${m} د` : `${h} ساعة`;
   },
 
@@ -506,10 +507,10 @@ const ShiftsModule = {
     if (id) {
       const s = DB.shifts.find(s => s.id === id);
       if (s) Object.assign(s, shObj, { type, color });
-      App.toast(currentLang==='ar'?'تم تحديث الوردية':'Shift updated', 'success');
+      App.toast(currentLang==='ar'?'تم تحديث الوردية':'Shift updated ✓', 'success');
     } else {
       DB.shifts.push({ id: DB.nextId('s'), ...shObj, type, color });
-      App.toast(currentLang==='ar'?'تمت إضافة الوردية':'Shift added', 'success');
+      App.toast(currentLang==='ar'?'تمت إضافة الوردية':'Shift added ✓', 'success');
     }
 
     DB.save();

@@ -14,12 +14,12 @@ const LoansModule = {
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
-          <h1><i class="fas fa-hand-holding-dollar" style="color:#6366f1;font-size:22px"></i> السلف والقروض</h1>
-          <p>إدارة سلف وقروض الموظفين وتتبع الأقساط</p>
+          <h1><i class="fas fa-hand-holding-dollar" style="color:#6366f1;font-size:22px"></i> ${t('loans.title')}</h1>
+          <p>${t('loans.subtitle')}</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" onclick="LoansModule.openAddForm()">
-            <i class="fas fa-plus"></i> إضافة سلفة / قرض
+            <i class="fas fa-plus"></i> ${t('loans.addBtn')}
           </button>
         </div>
       </div>
@@ -29,28 +29,28 @@ const LoansModule = {
           <div class="stat-icon gradient-primary"><i class="fas fa-file-invoice-dollar"></i></div>
           <div class="stat-info">
             <div class="stat-value" data-count="${loans.length}">${loans.length}</div>
-            <div class="stat-label">إجمالي الطلبات</div>
+            <div class="stat-label">${t('loans.totalRequests')}</div>
           </div>
         </div>
         <div class="stat-card warning stagger-item">
           <div class="stat-icon gradient-warning"><i class="fas fa-clock"></i></div>
           <div class="stat-info">
             <div class="stat-value" data-count="${pending.length}">${pending.length}</div>
-            <div class="stat-label">في الانتظار</div>
+            <div class="stat-label">${t('loans.pending')}</div>
           </div>
         </div>
         <div class="stat-card success stagger-item">
           <div class="stat-icon gradient-success"><i class="fas fa-check-circle"></i></div>
           <div class="stat-info">
             <div class="stat-value" data-count="${active.length}">${active.length}</div>
-            <div class="stat-label">نشطة</div>
+            <div class="stat-label">${t('loans.active')}</div>
           </div>
         </div>
         <div class="stat-card danger stagger-item">
           <div class="stat-icon gradient-danger"><i class="fas fa-coins"></i></div>
           <div class="stat-info">
             <div class="stat-value">${App.formatCurrency(activeAmt)}</div>
-            <div class="stat-label">إجمالي المتبقي</div>
+            <div class="stat-label">${t('loans.totalRemaining')}</div>
           </div>
         </div>
       </div>
@@ -58,24 +58,24 @@ const LoansModule = {
       <div class="filter-bar">
         <div class="filter-group">
           <select class="filter-select" id="ln-filter-status" onchange="LoansModule._filter()">
-            <option value="">كل الحالات</option>
-            <option value="pending">في الانتظار</option>
-            <option value="approved">نشطة</option>
-            <option value="rejected">مرفوضة</option>
-            <option value="paid">مسددة</option>
+            <option value="">${t('loans.allStatuses')}</option>
+            <option value="pending">${t('loans.pending')}</option>
+            <option value="approved">${t('loans.active')}</option>
+            <option value="rejected">${t('loans.rejected')}</option>
+            <option value="paid">${t('loans.paid')}</option>
           </select>
         </div>
         <div class="filter-group">
           <select class="filter-select" id="ln-filter-type" onchange="LoansModule._filter()">
-            <option value="">كل الأنواع</option>
-            <option value="advance">سلفة</option>
-            <option value="loan">قرض</option>
+            <option value="">${t('loans.allTypes')}</option>
+            <option value="advance">${t('loans.typeAdvance')}</option>
+            <option value="loan">${t('loans.typeLoan')}</option>
           </select>
         </div>
         <div class="filter-group" style="flex:1">
           <div class="search-box">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" class="search-input" id="ln-search" placeholder="بحث بالاسم..." oninput="LoansModule._filter()">
+            <input type="text" class="search-input" id="ln-search" placeholder="${t('loans.searchPlaceholder')}" oninput="LoansModule._filter()">
           </div>
         </div>
       </div>
@@ -84,14 +84,14 @@ const LoansModule = {
         <table class="data-table">
           <thead>
             <tr>
-              <th>الموظف</th>
-              <th>النوع</th>
-              <th>المبلغ</th>
-              <th>القسط الشهري</th>
-              <th>المتبقي</th>
-              <th>بداية الخصم</th>
-              <th>الحالة</th>
-              <th>إجراءات</th>
+              <th>${t('loans.employee')}</th>
+              <th>${t('loans.type')}</th>
+              <th>${t('loans.amount')}</th>
+              <th>${t('loans.monthlyInstallment')}</th>
+              <th>${t('loans.remaining')}</th>
+              <th>${t('loans.startMonth')}</th>
+              <th>${t('common.status')}</th>
+              <th>${t('common.actions')}</th>
             </tr>
           </thead>
           <tbody id="loans-tbody">
@@ -101,15 +101,15 @@ const LoansModule = {
         ${loans.length === 0 ? `
           <div class="empty-state">
             <div class="empty-icon"><i class="fas fa-hand-holding-dollar"></i></div>
-            <div class="empty-title">لا توجد سلف أو قروض</div>
-            <p class="empty-desc">اضغط "إضافة سلفة / قرض" لإضافة طلب جديد</p>
+            <div class="empty-title">${t('loans.noLoans')}</div>
+            <p class="empty-desc">${t('loans.emptyDesc')}</p>
           </div>` : ''}
       </div>
     `;
   },
 
   _rows(list) {
-    if (!list.length) return `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">لا توجد نتائج</td></tr>`;
+    if (!list.length) return `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">${t('loans.noResults')}</td></tr>`;
     return list.map(ln => {
       const emp = DB.getEmployee(ln.empId);
       const pct = ln.amount > 0 ? Math.round(((ln.amount - (ln.remainingAmount||ln.amount)) / ln.amount) * 100) : 0;
@@ -136,14 +136,14 @@ const LoansModule = {
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               ${ln.status==='pending' ? `
-                <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981" title="موافقة" onclick="LoansModule.approve('${ln.id}')"><i class="fas fa-check"></i></button>
-                <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="رفض" onclick="LoansModule.reject('${ln.id}')"><i class="fas fa-times"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981" title="${t('loans.approve')}" onclick="LoansModule.approve('${ln.id}')"><i class="fas fa-check"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="${t('loans.reject')}" onclick="LoansModule.reject('${ln.id}')"><i class="fas fa-times"></i></button>
               ` : ''}
               ${ln.status==='approved' ? `
-                <button class="btn btn-icon btn-sm" style="background:rgba(99,102,241,.12);color:#6366f1" title="تسجيل دفعة" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(99,102,241,.12);color:#6366f1" title="${t('loans.payInstallment')}" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i></button>
               ` : ''}
-              <button class="btn btn-icon btn-sm" title="تفاصيل" onclick="LoansModule.viewDetails('${ln.id}')"><i class="fas fa-eye"></i></button>
-              <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444" title="حذف" onclick="LoansModule.deleteLoan('${ln.id}')"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-icon btn-sm" title="${t('loans.details')}" onclick="LoansModule.viewDetails('${ln.id}')"><i class="fas fa-eye"></i></button>
+              <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444" title="${t('common.delete')}" onclick="LoansModule.deleteLoan('${ln.id}')"><i class="fas fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -153,19 +153,19 @@ const LoansModule = {
 
   _statusBadge(s) {
     const m = {
-      pending:  ['warning','clock','في الانتظار'],
-      approved: ['success','check-circle','نشطة'],
-      rejected: ['danger','times-circle','مرفوضة'],
-      paid:     ['info','circle-check','مسددة'],
+      pending:  ['warning','clock', t('loans.pending')],
+      approved: ['success','check-circle', t('loans.active')],
+      rejected: ['danger','times-circle', t('loans.rejected')],
+      paid:     ['info','circle-check', t('loans.paid')],
     };
     const [cls, icon, label] = m[s] || ['default','circle',s];
     return `<span class="badge badge-${cls}"><i class="fas fa-${icon}"></i> ${label}</span>`;
   },
 
-  _typeBadge(t) {
-    return t === 'advance'
-      ? `<span class="badge badge-primary"><i class="fas fa-bolt"></i> سلفة</span>`
-      : `<span class="badge" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="fas fa-coins"></i> قرض</span>`;
+  _typeBadge(tp) {
+    return tp === 'advance'
+      ? `<span class="badge badge-primary"><i class="fas fa-bolt"></i> ${t('loans.typeAdvance')}</span>`
+      : `<span class="badge" style="background:rgba(139,92,246,.12);color:#8b5cf6"><i class="fas fa-coins"></i> ${t('loans.typeLoan')}</span>`;
   },
 
   _filter() {
@@ -191,51 +191,51 @@ const LoansModule = {
       .map(e => `<option value="${e.id}" ${e.id===preEmpId?'selected':''}>${_esc(e.name)} (${_esc(e.no||'')})</option>`)
       .join('');
 
-    App.openModal('إضافة سلفة / قرض', `
+    App.openModal(t('loans.addBtn'), `
       <div class="app-form-group">
-        <label>الموظف <span style="color:#ef4444">*</span></label>
+        <label>${t('loans.employee')} <span style="color:#ef4444">*</span></label>
         <select class="app-form-input app-form-select" id="ln-emp">
-          <option value="">اختر الموظف...</option>
+          <option value="">${t('loans.selectEmployee')}</option>
           ${opts}
         </select>
       </div>
       <div class="app-form-row">
         <div class="app-form-group">
-          <label>النوع</label>
+          <label>${t('loans.type')}</label>
           <select class="app-form-input app-form-select" id="ln-type">
-            <option value="advance">سلفة راتب</option>
-            <option value="loan">قرض</option>
+            <option value="advance">${t('loans.typeAdvanceSalary')}</option>
+            <option value="loan">${t('loans.typeLoan')}</option>
           </select>
         </div>
         <div class="app-form-group">
-          <label>المبلغ الإجمالي <span style="color:#ef4444">*</span></label>
+          <label>${t('loans.totalAmount')} <span style="color:#ef4444">*</span></label>
           <input class="app-form-input" type="number" id="ln-amount" min="1" placeholder="5000" oninput="LoansModule._calcInst()">
         </div>
         <div class="app-form-group">
-          <label>عدد الأقساط (أشهر)</label>
+          <label>${t('loans.months')}</label>
           <input class="app-form-input" type="number" id="ln-months" min="1" max="60" value="1" oninput="LoansModule._calcInst()">
         </div>
         <div class="app-form-group">
-          <label>القسط الشهري</label>
-          <input class="app-form-input" type="text" id="ln-inst" readonly placeholder="يُحسب تلقائياً">
+          <label>${t('loans.monthlyInstallment')}</label>
+          <input class="app-form-input" type="text" id="ln-inst" readonly placeholder="${t('loans.calcAuto')}">
         </div>
         <div class="app-form-group">
-          <label>تاريخ الطلب</label>
+          <label>${t('loans.requestDate')}</label>
           <input class="app-form-input" type="date" id="ln-date" value="${new Date().toISOString().split('T')[0]}">
         </div>
         <div class="app-form-group">
-          <label>بداية الخصم من الراتب</label>
+          <label>${t('loans.salaryDeductStart')}</label>
           <input class="app-form-input" type="month" id="ln-start" value="${new Date().toISOString().slice(0,7)}">
         </div>
       </div>
       <div class="app-form-group">
-        <label>سبب الطلب</label>
-        <textarea class="app-form-input" id="ln-reason" rows="2" placeholder="سبب السلفة أو القرض..."></textarea>
+        <label>${t('loans.reason')}</label>
+        <textarea class="app-form-input" id="ln-reason" rows="2" placeholder="${t('loans.reasonPlaceholder')}"></textarea>
       </div>
       <div style="display:flex;gap:10px;margin-top:8px">
-        <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
+        <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
         <button class="btn btn-primary" onclick="LoansModule.save()">
-          <i class="fas fa-save"></i> حفظ
+          <i class="fas fa-save"></i> ${t('common.save')}
         </button>
       </div>
     `);
@@ -257,8 +257,8 @@ const LoansModule = {
     const date   = document.getElementById('ln-date')?.value || new Date().toISOString().split('T')[0];
     const start  = document.getElementById('ln-start')?.value || new Date().toISOString().slice(0,7);
 
-    if (!empId)    { App.toast('اختر الموظف', 'error'); return; }
-    if (amount<=0) { App.toast('أدخل مبلغاً صحيحاً', 'error'); return; }
+    if (!empId)    { App.toast(t('loans.selectEmpError'), 'error'); return; }
+    if (amount<=0) { App.toast(t('loans.invalidAmtError'), 'error'); return; }
 
     const ln = {
       id: DB.nextId('loan'),
@@ -280,8 +280,8 @@ const LoansModule = {
 
     App.closeModal();
     const emp = DB.getEmployee(empId);
-    DB.logAudit('admin', `إضافة ${type==='advance'?'سلفة':'قرض'} — ${emp?.name||''} — ${App.formatCurrency(amount)}`, 'Loans');
-    App.toast('✅ تم إضافة الطلب بنجاح', 'success');
+    DB.logAudit('admin', `${type==='advance'?t('loans.typeAdvance'):t('loans.typeLoan')} — ${emp?.name||''} — ${App.formatCurrency(amount)}`, 'Loans');
+    App.toast('✅ ' + t('loans.toastAdded'), 'success');
     this.render(document.getElementById('page-content'));
   },
 
@@ -292,17 +292,17 @@ const LoansModule = {
     ln.approvedDate = new Date().toISOString().split('T')[0];
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
-    App.toast('✅ تمت الموافقة على الطلب', 'success');
+    App.toast('✅ ' + t('loans.toastApproved'), 'success');
     this.render(document.getElementById('page-content'));
   },
 
   reject(id) {
     const ln = (DB.loans||[]).find(l=>l.id===id);
-    if (!ln || !confirm('هل أنت متأكد من رفض هذا الطلب؟')) return;
+    if (!ln || !confirm(t('loans.rejectConfirm'))) return;
     ln.status = 'rejected';
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
-    App.toast('تم رفض الطلب', 'info');
+    App.toast(t('loans.toastRejected'), 'info');
     this.render(document.getElementById('page-content'));
   },
 
@@ -312,29 +312,29 @@ const LoansModule = {
     const remaining = ln.remainingAmount || 0;
     const suggested = Math.min(ln.installment||0, remaining);
 
-    App.openModal('تسجيل دفعة', `
+    App.openModal(t('loans.recordPayment'), `
       <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">المبلغ الإجمالي</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">${t('loans.totalAmount')}</div>
           <div style="font-weight:700">${App.formatCurrency(ln.amount||0)}</div>
         </div>
         <div>
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">المتبقي</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">${t('loans.remaining')}</div>
           <div style="font-weight:700;color:#ef4444">${App.formatCurrency(remaining)}</div>
         </div>
       </div>
       <div class="app-form-group">
-        <label>مبلغ الدفعة</label>
+        <label>${t('loans.paymentAmount')}</label>
         <input class="app-form-input" type="number" id="pay-amt" value="${suggested}" min="1" max="${remaining}">
       </div>
       <div class="app-form-group">
-        <label>تاريخ الدفع</label>
+        <label>${t('loans.paymentDate')}</label>
         <input class="app-form-input" type="date" id="pay-dt" value="${new Date().toISOString().split('T')[0]}">
       </div>
       <div style="display:flex;gap:10px;margin-top:8px">
-        <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
+        <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
         <button class="btn btn-primary" onclick="LoansModule._doPayment('${id}')">
-          <i class="fas fa-money-bill-wave"></i> تسجيل الدفعة
+          <i class="fas fa-money-bill-wave"></i> ${t('loans.recordPayBtn')}
         </button>
       </div>
     `);
@@ -345,7 +345,7 @@ const LoansModule = {
     if (!ln) return;
     const amt  = parseFloat(document.getElementById('pay-amt')?.value) || 0;
     const date = document.getElementById('pay-dt')?.value || '';
-    if (amt<=0) { App.toast('أدخل مبلغاً صحيحاً','error'); return; }
+    if (amt<=0) { App.toast(t('loans.invalidAmtError'),'error'); return; }
     if (!ln.payments) ln.payments = [];
     ln.payments.push({ amount: amt, date });
     ln.remainingAmount = Math.max(0, (ln.remainingAmount||0) - amt);
@@ -353,7 +353,7 @@ const LoansModule = {
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('upsert','loans',ln);
     App.closeModal();
-    App.toast(`✅ تم تسجيل دفعة ${App.formatCurrency(amt)}`, 'success');
+    App.toast(`✅ ${t('loans.toastPayment')} ${App.formatCurrency(amt)}`, 'success');
     this.render(document.getElementById('page-content'));
   },
 
@@ -365,53 +365,53 @@ const LoansModule = {
     const paid     = payments.reduce((s,p)=>s+(p.amount||0),0);
     const pct      = ln.amount > 0 ? Math.round((paid/ln.amount)*100) : 0;
 
-    App.openModal(`تفاصيل — ${_esc(emp?.name||'')}`, `
+    App.openModal(`${t('loans.detailsTitle')} — ${_esc(emp?.name||'')}`, `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
-        <div class="info-cell"><div class="info-label">الموظف</div><div class="info-val">${_esc(emp?.name||'—')}</div></div>
-        <div class="info-cell"><div class="info-label">النوع</div><div>${LoansModule._typeBadge(ln.type)}</div></div>
-        <div class="info-cell"><div class="info-label">المبلغ الإجمالي</div><div class="info-val" style="color:#6366f1">${App.formatCurrency(ln.amount||0)}</div></div>
-        <div class="info-cell"><div class="info-label">المسدد</div><div class="info-val" style="color:#10b981">${App.formatCurrency(paid)}</div></div>
-        <div class="info-cell"><div class="info-label">المتبقي</div><div class="info-val" style="color:#ef4444">${App.formatCurrency(ln.remainingAmount||0)}</div></div>
-        <div class="info-cell"><div class="info-label">القسط الشهري</div><div class="info-val">${App.formatCurrency(ln.installment||0)}</div></div>
-        <div class="info-cell"><div class="info-label">تاريخ الطلب</div><div>${ln.requestDate||'—'}</div></div>
-        <div class="info-cell"><div class="info-label">بداية الخصم</div><div>${ln.startMonth||'—'}</div></div>
-        ${ln.reason ? `<div class="info-cell" style="grid-column:1/-1"><div class="info-label">السبب</div><div>${_esc(ln.reason)}</div></div>` : ''}
+        <div class="info-cell"><div class="info-label">${t('loans.employee')}</div><div class="info-val">${_esc(emp?.name||'—')}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.type')}</div><div>${LoansModule._typeBadge(ln.type)}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.totalAmount')}</div><div class="info-val" style="color:#6366f1">${App.formatCurrency(ln.amount||0)}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.amountPaid')}</div><div class="info-val" style="color:#10b981">${App.formatCurrency(paid)}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.remaining')}</div><div class="info-val" style="color:#ef4444">${App.formatCurrency(ln.remainingAmount||0)}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.monthlyInstallment')}</div><div class="info-val">${App.formatCurrency(ln.installment||0)}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.requestDate')}</div><div>${ln.requestDate||'—'}</div></div>
+        <div class="info-cell"><div class="info-label">${t('loans.startMonth')}</div><div>${ln.startMonth||'—'}</div></div>
+        ${ln.reason ? `<div class="info-cell" style="grid-column:1/-1"><div class="info-label">${t('loans.reason')}</div><div>${_esc(ln.reason)}</div></div>` : ''}
       </div>
       <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px">
-          <span>نسبة السداد</span><span style="font-weight:700">${pct}%</span>
+          <span>${t('loans.repaymentPct')}</span><span style="font-weight:700">${pct}%</span>
         </div>
         <div style="background:var(--border);border-radius:6px;height:8px">
           <div style="background:linear-gradient(90deg,#6366f1,#8b5cf6);height:8px;border-radius:6px;width:${pct}%;transition:width .4s"></div>
         </div>
       </div>
       ${payments.length > 0 ? `
-        <div style="font-weight:700;margin-bottom:10px;font-size:14px">سجل الدفعات (${payments.length})</div>
+        <div style="font-weight:700;margin-bottom:10px;font-size:14px">${t('loans.paymentHistory')} (${payments.length})</div>
         <div style="max-height:200px;overflow-y:auto">
           <table class="data-table" style="font-size:13px">
-            <thead><tr><th>#</th><th>التاريخ</th><th>المبلغ</th></tr></thead>
+            <thead><tr><th>#</th><th>${t('common.date')}</th><th>${t('loans.amount')}</th></tr></thead>
             <tbody>
               ${payments.map((p,i)=>`<tr><td>${i+1}</td><td>${p.date||'—'}</td><td style="font-weight:600;color:#10b981">${App.formatCurrency(p.amount||0)}</td></tr>`).join('')}
             </tbody>
           </table>
         </div>
-      ` : `<p style="text-align:center;color:var(--text-muted);padding:20px">لا توجد دفعات مسجلة بعد</p>`}
+      ` : `<p style="text-align:center;color:var(--text-muted);padding:20px">${t('loans.noPayments')}</p>`}
       <div style="margin-top:20px;display:flex;gap:10px;justify-content:center">
-        <button class="btn btn-secondary" onclick="App.closeModal()">إغلاق</button>
-        <button class="btn btn-outline-primary" onclick="App.closeModal(); EmployeesModule.viewEmployee('${ln.empId}')"><i class="fas fa-user"></i> ملف الموظف</button>
-        ${ln.status==='approved'?`<button class="btn btn-primary" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i> دفعة</button>`:''}
+        <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.close')}</button>
+        <button class="btn btn-outline-primary" onclick="App.closeModal(); EmployeesModule.viewEmployee('${ln.empId}')"><i class="fas fa-user"></i> ${t('loans.empFile')}</button>
+        ${ln.status==='approved'?`<button class="btn btn-primary" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i> ${t('loans.payInstallment')}</button>`:''}
       </div>
     `);
   },
 
   deleteLoan(id) {
-    if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
+    if (!confirm(t('loans.deleteConfirm'))) return;
     const idx = (DB.loans||[]).findIndex(l=>l.id===id);
     if (idx===-1) return;
     DB.loans.splice(idx,1);
     DB.save();
     if (typeof SupabaseDB !== 'undefined') SupabaseDB._enqueue('delete','loans',{id});
-    App.toast('تم الحذف','info');
+    App.toast(t('loans.toastDeleted'),'info');
     this.render(document.getElementById('page-content'));
   },
 
