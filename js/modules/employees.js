@@ -524,7 +524,7 @@ const EmployeesModule = {
         shift:  [...(e.target).querySelectorAll('input[name="shifts"]:checked')].map(c => c.value)[0] || null,
         avatar: fullName.charAt(0),
         avatarColor: 'gradient-primary',
-        password: Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6),
+        password: '',
       };
       DB.employees.push(newEmp);
       // رصيد الإجازات
@@ -1066,7 +1066,7 @@ const EmployeesModule = {
         notes:     r.notes,
         avatar:    r.name.charAt(0),
         avatarColor: 'gradient-primary',
-        password:  r.password || Math.random().toString(36).slice(2, 10),
+        password:  r.password || '',
       };
       DB.employees.push(newEmp);
       DB.leaveBalances[newEmp.id] = { annual:21, sick:10, emergency:3, remaining:21, taken:0, sickTaken:0, emergencyTaken:0 };

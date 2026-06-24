@@ -15,7 +15,7 @@
       document.documentElement.dataset.theme = theme;
     })();
   </script>
-  <title>Attendify Pro — نظام الحضور والانصراف المؤسسي</title>
+  <title>Attendify Pro — نظام الحضور والانصراف</title>
   <meta name="description" content="نظام متكامل لإدارة الحضور والانصراف للمؤسسات">
   <!-- Content Security Policy — restricts script/style sources to prevent XSS -->
   <meta http-equiv="Content-Security-Policy" content="
@@ -601,6 +601,10 @@
           <button onclick="Supabase.syncFromLocal()" title="مزامنة فورية مع السيرفر" style="display:flex;align-items:center;gap:5px;font-size:11.5px;padding:4px 10px;border-radius:20px;background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-muted);cursor:pointer;white-space:nowrap">
             <i class="fas fa-rotate" style="font-size:12px"></i>
             <span>مزامنة</span>
+          </button>
+          <button onclick="App.resetAllPasswords()" title="إعادة ضبط كلمات مرور الموظفين لكودهم" style="display:flex;align-items:center;gap:5px;font-size:11.5px;padding:4px 10px;border-radius:20px;background:#fef2f2;border:1px solid #fecaca;color:#ef4444;cursor:pointer;white-space:nowrap">
+            <i class="fas fa-key" style="font-size:12px"></i>
+            <span>ضبط كلمات المرور</span>
           </button>
 
           <!-- Notifications Bell -->

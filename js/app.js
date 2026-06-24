@@ -842,6 +842,22 @@ const App = {
     if (modal._onClose) { modal._onClose(); modal._onClose = null; }
   },
 
+  // ─── RESET ALL EMPLOYEE PASSWORDS ────────────────────────
+  async resetAllPasswords() {
+    if (!confirm('سيتم إعادة ضبط كلمة مرور جميع الموظفين لتصبح = كود الموظف.\nهل أنت متأكد؟')) return;
+    App.toast('جارٍ إعادة ضبط كلمات المرور...', 'info');
+    try {
+      const { ok, data } = await Supabase._fetch('/api/emp/reset-passwords', { method: 'POST' });
+      if (ok) {
+        App.toast(`تم إعادة ضبط ${data.updated} موظف ✓ — كلمة المرور الآن = كود الموظف`, 'success', 6000);
+      } else {
+        App.toast('فشل إعادة الضبط: ' + (data?.error || 'خطأ غير معروف'), 'error');
+      }
+    } catch(e) {
+      App.toast('خطأ: ' + e.message, 'error');
+    }
+  },
+
   // ─── TOAST ────────────────────────────────────────────────
   toast(message, type = 'info', duration = 3500) {
     const container = document.getElementById('toast-container');

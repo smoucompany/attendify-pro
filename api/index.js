@@ -121,6 +121,26 @@ app.get('/api/emp/ping', async (req, res) => {
   }
 });
 
+// ── Reset all employee passwords to empty (so login uses employee code) ──
+// POST /api/emp/reset-passwords  — requires admin auth
+app.post('/api/emp/reset-passwords', authenticate, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('employees').select('id, data');
+    if (error) return res.status(500).json({ error: error.message });
+    const rows = data || [];
+    const updates = rows.map(r => ({
+      id: r.id,
+      data: { ...r.data, password: '' },
+    }));
+    const { error: upErr } = await supabaseAdmin.from('employees').upsert(updates);
+    if (upErr) return res.status(500).json({ error: upErr.message });
+    res.json({ ok: true, updated: updates.length });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── First Setup Check (بدون auth — للمستخدم الجديد) ─────────
 app.get('/api/first-setup', async (req, res) => {
   try {
