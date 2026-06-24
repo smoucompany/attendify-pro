@@ -373,7 +373,12 @@ const PayrollModule = {
 
       // الراتب اليومي = الراتب الشهري ÷ أيام الشهر الميلادية (30/31/28/29)
       const dailyRate  = (p.base || 0) / daysInMonth;
-      const hourlyRate = dailyRate / (workMins / 60);
+      // سعر الساعة = من وردية الموظف، أو من ساعات الشركة كاحتياط
+      const empShift   = DB.shifts?.find(s => s.id === emp.shift);
+      const empShiftMins = empShift
+        ? (() => { const [sh,sm]=(empShift.startTime||'08:00').split(':').map(Number); const [eh,em]=(empShift.endTime||'17:00').split(':').map(Number); return Math.max(1,(eh*60+em)-(sh*60+sm)); })()
+        : workMins;
+      const hourlyRate = dailyRate / (empShiftMins / 60);
 
       let lateMins = 0;
       empAtt.forEach(a => {
@@ -402,7 +407,7 @@ const PayrollModule = {
       p.attendedDays    = attended;
       p.absentDays      = absentDays;
       p.absentDeduction = Math.round(absentDays * dailyRate);
-      p.lateDeduction   = Math.round(lateMins * 0.5);
+      p.lateDeduction   = Math.round((lateMins / 60) * hourlyRate);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
       p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
@@ -487,7 +492,12 @@ const PayrollModule = {
 
       // الراتب اليومي = الراتب ÷ أيام الشهر الميلادية (30/31/28/29)
       const dailyRate  = (p.base || 0) / daysInMonth;
-      const hourlyRate = dailyRate / (workMinutesPerDay / 60);
+      // سعر الساعة = من وردية الموظف، أو من ساعات الشركة كاحتياط
+      const empShift2   = DB.shifts?.find(s => s.id === emp.shift);
+      const empShiftMins2 = empShift2
+        ? (() => { const [sh,sm]=(empShift2.startTime||'08:00').split(':').map(Number); const [eh,em]=(empShift2.endTime||'17:00').split(':').map(Number); return Math.max(1,(eh*60+em)-(sh*60+sm)); })()
+        : workMinutesPerDay;
+      const hourlyRate = dailyRate / (empShiftMins2 / 60);
 
       let totalLateMinutes = 0;
       empAtt.forEach(a => {
@@ -515,7 +525,7 @@ const PayrollModule = {
       p.attendedDays    = attendedDays;
       p.absentDays      = absentDays;
       p.absentDeduction = Math.round(absentDays * dailyRate);
-      p.lateDeduction   = Math.round(totalLateMinutes * 0.5);
+      p.lateDeduction   = Math.round((totalLateMinutes / 60) * hourlyRate);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
       p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
