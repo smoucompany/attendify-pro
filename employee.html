@@ -1202,7 +1202,8 @@ function renderHome(container) {
   const stats = getMyStats();
 
   const empInitials = (currentEmp.name||'م').split(' ').map(w=>w[0]).slice(0,2).join('');
-  const shift = currentEmp.shift || 'صباحي 08:00';
+  const shiftObj = DB.shifts?.find(s => s.id === currentEmp.shift);
+  const shift = shiftObj ? `${shiftObj.name} ${shiftObj.startTime||''}–${shiftObj.endTime||''}`.trim() : (currentEmp.shift || '—');
 
   container.innerHTML = `
     <!-- Greeting Card -->
