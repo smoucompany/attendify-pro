@@ -23,6 +23,9 @@ DROP VIEW IF EXISTS v_leaves_detail     CASCADE;
 DROP VIEW IF EXISTS v_monthly_summary   CASCADE;
 DROP VIEW IF EXISTS v_attendance_detail CASCADE;
 
+DROP TABLE IF EXISTS system_backups CASCADE;
+DROP TABLE IF EXISTS deductions    CASCADE;
+DROP TABLE IF EXISTS loans         CASCADE;
 DROP TABLE IF EXISTS audit_logs    CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS payroll       CASCADE;
@@ -142,6 +145,29 @@ CREATE TABLE audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 13. السلف والقروض
+CREATE TABLE loans (
+  id         TEXT        PRIMARY KEY,
+  data       JSONB       NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 14. الخصومات
+CREATE TABLE deductions (
+  id         TEXT        PRIMARY KEY,
+  data       JSONB       NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 15. النسخ الاحتياطية
+CREATE TABLE system_backups (
+  id         TEXT        PRIMARY KEY,
+  data       JSONB       NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 
 -- ════════════════════════════════════════════════════
 --  الفهارس  (على JSONB مباشرة — سريعة وآمنة)
@@ -192,6 +218,21 @@ CREATE INDEX idx_shift_emp   ON shifts ((data->>'empId'));
 -- departments
 CREATE INDEX idx_dept_name   ON departments ((data->>'name'));
 
+-- loans
+CREATE INDEX idx_loans_emp    ON loans ((data->>'empId'));
+CREATE INDEX idx_loans_status ON loans ((data->>'status'));
+CREATE INDEX idx_loans_type   ON loans ((data->>'type'));
+CREATE INDEX idx_loans_start  ON loans ((data->>'startMonth'));
+
+-- deductions
+CREATE INDEX idx_ded_emp    ON deductions ((data->>'empId'));
+CREATE INDEX idx_ded_type   ON deductions ((data->>'type'));
+CREATE INDEX idx_ded_status ON deductions ((data->>'status'));
+CREATE INDEX idx_ded_period ON deductions ((data->>'period'));
+
+-- system_backups
+CREATE INDEX idx_backups_created ON system_backups (created_at DESC);
+
 
 -- ════════════════════════════════════════════════════
 --  Row Level Security
@@ -209,19 +250,25 @@ ALTER TABLE requests      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE loans         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deductions    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE system_backups ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY allow_all ON company       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON departments   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON employees     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON roles         FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON shifts        FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON locations     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON attendance    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON leaves        FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON requests      FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON payroll       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON notifications FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
-CREATE POLICY allow_all ON audit_logs    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON company        FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON departments    FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON employees      FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON roles          FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON shifts         FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON locations      FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON attendance     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON leaves         FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON requests       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON payroll        FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON notifications  FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON audit_logs     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON loans          FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_all ON deductions     FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY allow_authenticated ON system_backups FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 
 -- ════════════════════════════════════════════════════
@@ -245,7 +292,9 @@ CREATE TRIGGER trg_locations_upd  BEFORE UPDATE ON locations   FOR EACH ROW EXEC
 CREATE TRIGGER trg_attendance_upd BEFORE UPDATE ON attendance  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_leaves_upd     BEFORE UPDATE ON leaves      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_requests_upd   BEFORE UPDATE ON requests    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_payroll_upd    BEFORE UPDATE ON payroll     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_payroll_upd      BEFORE UPDATE ON payroll     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_loans_upd        BEFORE UPDATE ON loans       FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+CREATE TRIGGER trg_deductions_upd   BEFORE UPDATE ON deductions  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 
 -- ════════════════════════════════════════════════════
@@ -329,6 +378,45 @@ LEFT JOIN employees   e ON e.id = p.data->>'empId'
 LEFT JOIN departments d ON d.id = e.data->>'dept';
 
 
+-- السلف مع اسم الموظف
+CREATE VIEW v_loans_detail AS
+SELECT
+  l.id,
+  l.data->>'empId'                           AS emp_id,
+  e.data->>'name'                            AS emp_name,
+  d.data->>'name'                            AS dept_name,
+  l.data->>'type'                            AS loan_type,
+  (l.data->>'amount')::numeric               AS amount,
+  (l.data->>'remainingAmount')::numeric      AS remaining,
+  (l.data->>'installment')::numeric          AS installment,
+  (l.data->>'months')::int                   AS months,
+  l.data->>'status'                          AS status,
+  l.data->>'startMonth'                      AS start_month,
+  l.data->>'requestDate'                     AS request_date,
+  l.created_at
+FROM loans l
+LEFT JOIN employees   e ON e.id = l.data->>'empId'
+LEFT JOIN departments d ON d.id = e.data->>'dept';
+
+
+-- الخصومات مع اسم الموظف
+CREATE VIEW v_deductions_detail AS
+SELECT
+  d.id,
+  d.data->>'empId'                  AS emp_id,
+  e.data->>'name'                   AS emp_name,
+  dp.data->>'name'                  AS dept_name,
+  d.data->>'type'                   AS ded_type,
+  (d.data->>'amount')::numeric      AS amount,
+  d.data->>'period'                 AS period,
+  d.data->>'status'                 AS status,
+  d.data->>'reason'                 AS reason,
+  d.created_at
+FROM deductions d
+LEFT JOIN employees   e  ON e.id  = d.data->>'empId'
+LEFT JOIN departments dp ON dp.id = e.data->>'dept';
+
+
 -- إحصائيات الموظفين حسب القسم
 CREATE VIEW v_dept_stats AS
 SELECT
@@ -351,6 +439,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE attendance;
 ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE leaves;
 ALTER PUBLICATION supabase_realtime ADD TABLE requests;
+ALTER PUBLICATION supabase_realtime ADD TABLE loans;
+ALTER PUBLICATION supabase_realtime ADD TABLE deductions;
 
 
 -- ════════════════════════════════════════════════════
@@ -461,6 +551,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- ════════════════════════════════════════════════════
 --  انتهى ✓
---  12 جدول  |  22 فهرس  |  5 views  |  2 functions
---  Triggers updated_at  |  RLS مفعّل  |  Realtime × 4
+--  15 جدول  |  31 فهرس  |  7 views  |  2 functions
+--  Triggers updated_at  |  RLS مفعّل  |  Realtime × 6
 -- ════════════════════════════════════════════════════
