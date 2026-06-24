@@ -16,101 +16,117 @@
   <link rel="stylesheet" href="css/pro-ui.css">
   <style>
     /* ═══════════════════════════════════════════════
-       ATTENDIFY PRO — EMPLOYEE PORTAL — DARK NEON UI
+       ATTENDIFY PRO — EMPLOYEE PORTAL — FINTECH UI
     ═══════════════════════════════════════════════ */
     :root {
-      --bg:        #07070E;
-      --bg-card:   rgba(255,255,255,0.04);
-      --bg-glass:  rgba(15,12,30,0.85);
-      --bg-el:     rgba(255,255,255,0.06);
-      --border:    rgba(255,255,255,0.07);
-      --border-hi: rgba(255,255,255,0.12);
-      --primary:   #7C3AED;
-      --primary-g: linear-gradient(135deg,#7C3AED,#4F46E5);
-      --ok:        #10D9A0;
-      --ok-g:      linear-gradient(135deg,#10D9A0,#059669);
-      --out:       #F43F5E;
-      --out-g:     linear-gradient(135deg,#F43F5E,#BE185D);
-      --warn:      #F59E0B;
-      --t1:        #FFFFFF;
-      --t2:        #9494B8;
-      --t3:        #4A4A6E;
-      --font:      'Cairo', sans-serif;
-      --r:         20px;
-      --r-sm:      14px;
-      --r-xs:      10px;
-      /* legacy aliases used by non-home pages */
-      --brand-1: #7C3AED;
-      --brand-2: #4F46E5;
-      --bg-card2: rgba(255,255,255,0.06);
-      --text-primary: #FFFFFF;
-      --text-secondary: #9494B8;
-      --text-muted: #4A4A6E;
-      --text-inverse: #FFFFFF;
-      --success: #10D9A0;
-      --success-bg: rgba(16,217,160,0.10);
-      --danger: #F43F5E;
-      --danger-bg: rgba(244,63,94,0.10);
-      --warning: #F59E0B;
-      --warning-bg: rgba(245,158,11,0.10);
-      --info: #7C3AED;
-      --info-bg: rgba(124,58,237,0.10);
-      --border-light: rgba(255,255,255,0.06);
-      --radius: 20px;
-      --radius-sm: 14px;
-      --radius-xs: 10px;
-      --radius-pill: 100px;
-      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-      --shadow: 0 4px 20px rgba(0,0,0,0.4);
-      --shadow-md: 0 8px 32px rgba(0,0,0,0.5);
-      --shadow-lg: 0 20px 60px rgba(0,0,0,0.6);
-      --shadow-glow: 0 0 40px rgba(124,58,237,0.30);
-      --shadow-success: 0 8px 32px rgba(16,217,160,0.30);
-      --shadow-primary: 0 8px 32px rgba(124,58,237,0.30);
-      --primary-bg: rgba(124,58,237,0.12);
-      --primary-bg2: rgba(124,58,237,0.22);
+      /* Brand */
+      --brand-1: #6c47ff;
+      --brand-2: #3b82f6;
+      --brand-3: #06d6a0;
+      --brand-4: #ff6b6b;
+      --brand-5: #ffd93d;
+      /* Surfaces */
+      --bg: #f0f2ff;
+      --bg-card: #ffffff;
+      --bg-glass: rgba(255,255,255,0.7);
+      --bg-elevated: #ffffff;
+      --bg-card2: #f7f8ff;
+      /* Text */
+      --text-primary: #0d0d1a;
+      --text-secondary: #4a4a6a;
+      --text-muted: #9090b0;
+      --text-inverse: #ffffff;
+      /* Semantic */
+      --primary: #6c47ff;
       --primary-dark: #5535e0;
       --primary-light: #a78bfa;
+      --primary-bg: rgba(108,71,255,0.08);
+      --primary-bg2: rgba(108,71,255,0.16);
+      --success: #06d6a0;
+      --success-bg: rgba(6,214,160,0.10);
+      --danger: #ff4757;
+      --danger-bg: rgba(255,71,87,0.10);
+      --warning: #ffd93d;
+      --warning-bg: rgba(255,217,61,0.10);
+      --info: #3b82f6;
+      --info-bg: rgba(59,130,246,0.10);
+      /* Layout */
+      --border: rgba(108,71,255,0.12);
+      --border-light: rgba(108,71,255,0.06);
+      --radius: 24px;
+      --radius-sm: 16px;
+      --radius-xs: 10px;
+      --radius-pill: 100px;
+      --shadow-sm: 0 2px 8px rgba(108,71,255,0.06);
+      --shadow: 0 4px 20px rgba(108,71,255,0.10), 0 1px 4px rgba(0,0,0,0.04);
+      --shadow-md: 0 8px 32px rgba(108,71,255,0.15), 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-lg: 0 20px 60px rgba(108,71,255,0.20), 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-glow: 0 0 40px rgba(108,71,255,0.30);
+      --shadow-success: 0 8px 32px rgba(6,214,160,0.30);
+      --shadow-primary: 0 8px 32px rgba(108,71,255,0.30);
+      --font: 'Cairo', sans-serif;
       --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       --transition-bounce: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
+    [data-theme="dark"] {
+      --bg: #080818;
+      --bg-card: #0f1128;
+      --bg-glass: rgba(15,17,40,0.85);
+      --bg-elevated: #141630;
+      --bg-card2: #141630;
+      --text-primary: #f0f0ff;
+      --text-secondary: #9090c0;
+      --text-muted: #5050a0;
+      --border: rgba(108,71,255,0.20);
+      --border-light: rgba(108,71,255,0.10);
+      --shadow: 0 4px 20px rgba(0,0,0,0.40);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.50);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.60);
+      --primary-bg: rgba(108,71,255,0.15);
+      --primary-bg2: rgba(108,71,255,0.25);
+      --success-bg: rgba(6,214,160,0.12);
+      --danger-bg: rgba(255,71,87,0.12);
+      --warning-bg: rgba(255,217,61,0.12);
+      --info-bg: rgba(59,130,246,0.12);
+    }
 
     /* ── KEYFRAMES ── */
-    @keyframes fadeIn      { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes slideUp     { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes scaleIn     { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
-    @keyframes spin        { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-    @keyframes blobFloat   { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(25px,-35px) scale(1.08)} 66%{transform:translate(-20px,25px) scale(0.94)} }
-    @keyframes floatUp     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-    @keyframes colonBlink  { 0%,100%{opacity:1} 50%{opacity:0.15} }
-    @keyframes blink       { 0%,100%{opacity:1} 50%{opacity:.2} }
-    @keyframes gpsPulse    { 0%{inset:-4px;opacity:.6} 100%{inset:-28px;opacity:0} }
-    @keyframes qrScan      { 0%{top:0} 50%{top:calc(100% - 3px)} 100%{top:0} }
-    @keyframes facePulse   { 0%,100%{box-shadow:0 0 0 0 rgba(124,58,237,0.5)} 50%{box-shadow:0 0 0 22px rgba(124,58,237,0)} }
-    @keyframes toastIn     { from{opacity:0;transform:translateY(-20px) scale(.9)} to{opacity:1;transform:translateY(0) scale(1)} }
-    @keyframes logoPulse   { 0%,100%{box-shadow:0 0 40px rgba(124,58,237,0.5),0 0 0 0 rgba(124,58,237,0.3)} 50%{box-shadow:0 0 70px rgba(124,58,237,0.9),0 0 0 22px rgba(124,58,237,0)} }
-    @keyframes okPulse     { 0%{box-shadow:0 0 0 0 rgba(16,217,160,0.5),0 0 40px rgba(16,217,160,0.2)} 70%{box-shadow:0 0 0 18px rgba(16,217,160,0),0 0 40px rgba(16,217,160,0.2)} 100%{box-shadow:0 0 0 0 rgba(16,217,160,0),0 0 40px rgba(16,217,160,0.2)} }
-    @keyframes outPulse    { 0%{box-shadow:0 0 0 0 rgba(244,63,94,0.5)} 70%{box-shadow:0 0 0 18px rgba(244,63,94,0)} 100%{box-shadow:0 0 0 0 rgba(244,63,94,0)} }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes scaleIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
+    @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(0.95)} }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes blobFloat { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(25px,-35px) scale(1.08)} 66%{transform:translate(-20px,25px) scale(0.94)} }
+    @keyframes ringPulse { 0%{box-shadow:0 0 0 0 rgba(108,71,255,0.4)} 70%{box-shadow:0 0 0 20px rgba(108,71,255,0)} 100%{box-shadow:0 0 0 0 rgba(108,71,255,0)} }
+    @keyframes floatUp { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
     @keyframes gradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    @keyframes shimmer     { 0%{background-position:-200% center} 100%{background-position:200% center} }
-    @keyframes heroGlow    { 0%,100%{opacity:.6} 50%{opacity:1} }
+    @keyframes colonBlink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    @keyframes checkIn { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+    @keyframes successPop { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+    @keyframes gpsPulse { 0%{inset:-4px;opacity:.6} 100%{inset:-28px;opacity:0} }
+    @keyframes qrScan { 0%{top:0} 50%{top:calc(100% - 3px)} 100%{top:0} }
+    @keyframes facePulse { 0%,100%{box-shadow:0 0 0 0 rgba(108,71,255,0.4)} 50%{box-shadow:0 0 0 20px rgba(108,71,255,0)} }
+    @keyframes toastIn { from{opacity:0;transform:translateY(-20px) scale(.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+    @keyframes logoPulse { 0%,100%{box-shadow:0 0 40px rgba(108,71,255,0.5),0 0 0 0 rgba(108,71,255,0.3)} 50%{box-shadow:0 0 60px rgba(108,71,255,0.8),0 0 0 20px rgba(108,71,255,0)} }
 
     /* ── BASE ── */
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-    html { background:#07070E; }
     body {
       font-family:var(--font);
-      background:#07070E;
-      color:#FFFFFF;
+      background:var(--bg);
+      color:var(--text-primary);
       min-height:100vh;
       -webkit-font-smoothing:antialiased;
+      transition:background .3s,color .3s;
       overscroll-behavior:none;
     }
     button { cursor:pointer; border:none; background:none; font-family:var(--font); -webkit-tap-highlight-color:transparent; }
     input, select, textarea { font-family:var(--font); }
     ::-webkit-scrollbar { width:4px; }
     ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:rgba(124,58,237,0.3); border-radius:4px; }
+    ::-webkit-scrollbar-thumb { background:var(--primary-bg); border-radius:4px; }
 
     /* ══════════════════════════════════════
        LOGIN PAGE
@@ -301,100 +317,108 @@
     /* ══════════════════════════════════════
        APP SHELL
     ══════════════════════════════════════ */
-    #emp-app { display:none; background:#07070E; min-height:100vh; }
+    #emp-app { display:none; }
 
-    /* ── HEADER ── */
+    /* Header */
     .emp-header {
-      position:fixed; top:0; left:0; right:0; z-index:200;
-      height:60px; padding:0 18px;
+      background:linear-gradient(135deg, var(--brand-1) 0%, #4f46e5 50%, var(--brand-2) 100%);
+      background-size:200% 200%;
+      animation:gradientShift 8s ease infinite;
+      padding:0 18px; height:64px;
       display:flex; align-items:center; justify-content:space-between;
-      background:rgba(7,7,14,0.75);
-      backdrop-filter:blur(20px) saturate(180%);
-      -webkit-backdrop-filter:blur(20px) saturate(180%);
-      border-bottom:1px solid rgba(255,255,255,0.06);
+      position:sticky; top:0; z-index:100;
+      box-shadow:0 4px 32px rgba(108,71,255,0.35);
     }
-    .hdr-brand { display:flex; align-items:center; gap:9px; }
-    .hdr-brand-icon {
-      width:34px; height:34px; border-radius:10px;
-      background:linear-gradient(135deg,#7C3AED,#4F46E5);
+    .emp-header::after {
+      content:''; position:absolute;
+      bottom:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+    }
+    .emp-header-left { display:flex; align-items:center; gap:12px; }
+    .emp-header-logo { display:flex; align-items:center; gap:10px; font-size:16px; font-weight:800; color:white; }
+    .emp-header-logo i { font-size:20px; }
+    .emp-header-logo-icon {
+      width:40px; height:40px; border-radius:13px;
+      background:rgba(255,255,255,0.18);
+      border:1.5px solid rgba(255,255,255,0.30);
       display:flex; align-items:center; justify-content:center;
-      font-size:16px; color:white; font-weight:900; flex-shrink:0;
-      box-shadow:0 0 16px rgba(124,58,237,0.4);
+      font-size:18px; color:white; flex-shrink:0;
+      backdrop-filter:blur(8px);
+      box-shadow:0 2px 12px rgba(0,0,0,0.15);
     }
-    .hdr-brand-name {
-      font-size:14px; font-weight:800; color:#fff;
-      letter-spacing:-.2px;
-    }
-    .hdr-actions { display:flex; align-items:center; gap:8px; }
-    .hdr-icon-btn {
-      width:36px; height:36px; border-radius:10px;
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(255,255,255,0.08);
-      color:rgba(255,255,255,0.6);
+    .emp-header-brand { display:flex; flex-direction:column; }
+    .emp-header-brand-name { font-size:15px; font-weight:900; color:white; line-height:1.2; letter-spacing:-.2px; }
+    .emp-header-brand-sub { font-size:10px; color:rgba(255,255,255,0.75); font-weight:600; letter-spacing:.2px; }
+    .emp-header-actions { display:flex; align-items:center; gap:8px; }
+    .hdr-btn {
+      width:38px; height:38px; border-radius:12px;
+      color:rgba(255,255,255,0.90);
+      background:rgba(255,255,255,0.14);
       display:flex; align-items:center; justify-content:center;
-      font-size:14px; transition:all .2s; cursor:pointer;
+      font-size:15px; transition:var(--transition);
+      border:1px solid rgba(255,255,255,0.20);
     }
-    .hdr-icon-btn:hover { background:rgba(255,255,255,0.12); color:#fff; }
-    .hdr-avatar {
-      width:36px; height:36px; border-radius:10px;
-      background:linear-gradient(135deg,#7C3AED,#4F46E5);
-      border:2px solid rgba(124,58,237,0.5);
-      color:#fff; font-weight:900; font-size:14px;
+    .hdr-btn:hover { background:rgba(255,255,255,0.25); color:white; transform:scale(1.05); }
+    .emp-avatar-btn {
+      width:40px; height:40px; border-radius:13px;
+      background:rgba(255,255,255,0.22);
+      border:2px solid rgba(255,255,255,0.40);
+      color:white;
       display:flex; align-items:center; justify-content:center;
-      cursor:pointer; box-shadow:0 0 14px rgba(124,58,237,0.35);
+      font-weight:900; font-size:15px;
+      box-shadow:0 0 0 0 rgba(255,255,255,0.3), 0 2px 10px rgba(0,0,0,0.15);
+      cursor:pointer;
+      transition:var(--transition);
+      animation:ringPulse 3s ease-out infinite;
     }
-    /* legacy compat */
-    .emp-header-left,.emp-header-actions { display:contents; }
-    .hdr-btn { display:none; }
-    .emp-avatar-btn { display:none; }
-    #hdr-company-name { display:none; }
+    .emp-avatar-btn:hover { transform:scale(1.05); }
 
-    /* ── BOTTOM NAV (floating pill) ── */
+    /* Bottom nav */
     .bottom-nav {
-      position:fixed; bottom:16px; left:14px; right:14px;
-      height:64px; border-radius:22px;
-      background:rgba(14,10,28,0.88);
+      position:fixed; bottom:0; left:0; right:0;
+      height:auto;
+      background:var(--bg-glass);
       backdrop-filter:blur(24px) saturate(160%);
       -webkit-backdrop-filter:blur(24px) saturate(160%);
-      border:1px solid rgba(255,255,255,0.09);
+      border-top:1px solid var(--border-light);
       display:flex; align-items:center;
-      z-index:100; padding:0 8px;
-      box-shadow:0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
+      z-index:100; padding:8px 12px;
+      padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px));
+      box-shadow:0 -8px 40px rgba(108,71,255,0.10);
     }
     .bnav-item {
       flex:1; display:flex; flex-direction:column;
       align-items:center; justify-content:center;
-      gap:2px; padding:6px 2px;
-      color:var(--t3); font-size:9.5px; font-weight:700;
-      transition:all .3s cubic-bezier(.34,1.56,.64,1); cursor:pointer;
-      border-radius:16px;
+      gap:3px; padding:6px 4px;
+      color:var(--text-muted); font-size:10px; font-weight:700;
+      transition:var(--transition-bounce); position:relative;
+      border-radius:var(--radius-sm); cursor:pointer;
     }
-    .bnav-item.active { color:#fff; }
+    .bnav-item.active { color:var(--primary); }
     .bnav-icon {
-      width:44px; height:28px; border-radius:10px;
+      width:46px; height:30px; border-radius:var(--radius-xs);
       display:flex; align-items:center; justify-content:center;
-      font-size:16px; transition:all .3s cubic-bezier(.34,1.56,.64,1);
+      font-size:17px; transition:var(--transition-bounce);
     }
     .bnav-item.active .bnav-icon {
-      background:linear-gradient(135deg,#7C3AED,#4F46E5);
-      color:#fff; width:48px; height:30px;
-      box-shadow:0 4px 18px rgba(124,58,237,0.5);
-      transform:translateY(-3px);
+      background:linear-gradient(135deg, var(--brand-1), var(--brand-2));
+      color:white;
+      box-shadow:0 4px 16px rgba(108,71,255,0.35);
+      transform:translateY(-2px);
     }
     .bnav-badge {
-      position:absolute; top:4px;
-      background:var(--out); color:white;
-      font-size:8px; font-weight:800;
-      min-width:14px; height:14px; border-radius:7px;
-      display:flex; align-items:center; justify-content:center; padding:0 3px;
+      position:absolute; top:2px;
+      background:var(--danger); color:white;
+      font-size:9px; font-weight:800;
+      min-width:16px; height:16px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      padding:0 4px; inset-inline-start:calc(50% + 10px);
     }
 
     /* Page content */
     .emp-content {
-      padding-top:76px;
-      padding-bottom:100px;
-      max-width:520px; margin:0 auto;
-      overflow-x:hidden;
+      padding:16px 16px 100px;
+      max-width:580px; margin:0 auto;
     }
 
     /* ══════════════════════════════════════
@@ -502,6 +526,10 @@
     .stat-mini.s-yellow::before { background:linear-gradient(90deg, var(--warning), #ffb347); }
     .stat-mini.s-blue::before { background:linear-gradient(90deg, var(--primary), var(--brand-2)); }
     .stat-mini-icon { font-size:20px; margin-bottom:6px; display:block; }
+    .stat-mini-icon-fa { font-size:20px; margin-bottom:7px; display:block; }
+    .s-green .stat-mini-icon-fa { color:var(--success); filter:drop-shadow(0 0 6px rgba(6,214,160,0.4)); }
+    .s-yellow .stat-mini-icon-fa { color:var(--warning); filter:drop-shadow(0 0 6px rgba(255,174,0,0.4)); }
+    .s-blue .stat-mini-icon-fa { color:var(--primary); filter:drop-shadow(0 0 6px rgba(108,71,255,0.4)); }
     .stat-mini-val { font-size:24px; font-weight:900; line-height:1; margin-bottom:4px; }
     .stat-mini-label { font-size:10px; color:var(--text-muted); font-weight:700; }
 
@@ -592,30 +620,32 @@
       color:var(--primary); box-shadow:0 0 0 3px var(--primary-bg2);
     }
     .btn-checkin {
-      width:100%; padding:16px; border-radius:var(--radius-sm);
-      background:linear-gradient(135deg, #06d6a0, #00b894);
-      color:white; font-size:15px; font-weight:900; font-family:var(--font);
-      transition:var(--transition); box-shadow:var(--shadow-success);
+      width:100%; padding:17px; border-radius:var(--radius-sm);
+      background:linear-gradient(135deg, #06d6a0 0%, #00c48c 100%);
+      color:white; font-size:16px; font-weight:900; font-family:var(--font);
+      transition:var(--transition); box-shadow:0 8px 28px rgba(6,214,160,0.40);
       display:flex; align-items:center; justify-content:center; gap:10px;
-      letter-spacing:.2px;
+      letter-spacing:.2px; border:none; cursor:pointer;
     }
     .btn-checkin.checkout {
-      background:linear-gradient(135deg, var(--brand-1), var(--brand-2));
-      box-shadow:var(--shadow-primary);
+      background:linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
+      box-shadow:0 8px 28px rgba(108,71,255,0.40);
     }
-    .btn-checkin:hover { transform:translateY(-2px); filter:brightness(1.05); }
-    .btn-checkin:active { transform:translateY(0); }
+    .btn-checkin:hover { transform:translateY(-2px); filter:brightness(1.06); }
+    .btn-checkin:active { transform:translateY(1px); filter:brightness(.97); }
     .biometric-checkin-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
     .btn-bio-checkin {
-      padding:11px 8px; border-radius:var(--radius-xs);
+      padding:12px 8px; border-radius:var(--radius-xs);
       background:var(--bg); border:1.5px solid var(--border);
       color:var(--text-secondary);
       font-family:var(--font); font-size:12px; font-weight:700;
-      display:flex; align-items:center; justify-content:center; gap:7px;
+      display:flex; align-items:center; justify-content:center; gap:8px;
       cursor:pointer; transition:var(--transition);
     }
-    .btn-bio-checkin i { font-size:15px; }
-    .btn-bio-checkin:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); }
+    .btn-bio-checkin i { font-size:16px; }
+    .btn-bio-checkin:first-child i { color:#6c47ff; }
+    .btn-bio-checkin:last-child i { color:#06d6a0; }
+    .btn-bio-checkin:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-bg); transform:translateY(-1px); }
 
     /* ── TODAY GRID ── */
     .today-grid {
@@ -693,13 +723,14 @@
     }
     .quick-action-btn:hover {
       transform:translateY(-3px); box-shadow:var(--shadow-md);
-      border-color:var(--border);
+      border-color:rgba(108,71,255,0.25);
     }
     .quick-action-btn:active { transform:translateY(0); }
     .quick-action-icon {
-      width:44px; height:44px; border-radius:14px;
+      width:46px; height:46px; border-radius:14px;
       display:flex; align-items:center; justify-content:center;
-      font-size:20px; flex-shrink:0;
+      font-size:21px; flex-shrink:0;
+      box-shadow:0 2px 10px rgba(0,0,0,0.08);
     }
     .quick-action-label { font-size:13px; font-weight:800; color:var(--text-primary); line-height:1.3; }
     .quick-action-sub { font-size:10px; color:var(--text-muted); font-weight:600; margin-top:2px; }
@@ -1085,13 +1116,18 @@
 
   <!-- Header -->
   <header class="emp-header">
-    <div class="hdr-brand">
-      <div class="hdr-brand-icon">◉</div>
-      <span class="hdr-brand-name" id="hdr-company-name">Attendify Pro</span>
+    <div class="emp-header-left">
+      <div class="emp-header-logo-icon"><i class="fas fa-fingerprint"></i></div>
+      <div class="emp-header-brand">
+        <div class="emp-header-brand-name">Attendify Pro</div>
+        <div class="emp-header-brand-sub" id="hdr-company-name">بوابة الموظف</div>
+      </div>
     </div>
-    <div class="hdr-actions">
-      <button class="hdr-icon-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="theme-icon"></i></button>
-      <div class="hdr-avatar" id="hdr-avatar" onclick="goPage('profile',document.querySelector('[data-page=profile]'))">م</div>
+    <div class="emp-header-actions">
+      <button class="hdr-btn" onclick="toggleTheme()" title="تغيير المظهر">
+        <i class="fas fa-moon" id="theme-icon"></i>
+      </button>
+      <div class="emp-avatar-btn" id="hdr-avatar" onclick="goPage('profile', document.querySelector('[data-page=profile]'))">م</div>
     </div>
   </header>
 
@@ -1106,7 +1142,7 @@
     </button>
     <button class="bnav-item" data-page="history" onclick="goPage('history',this)">
       <div class="bnav-icon"><i class="fas fa-clock-rotate-left"></i></div>
-      <span>الحضور</span>
+      <span>سجل الحضور</span>
     </button>
     <button class="bnav-item" data-page="leaves" onclick="goPage('leaves',this)">
       <div class="bnav-icon"><i class="fas fa-calendar-minus"></i></div>
@@ -1335,243 +1371,142 @@ function goPage(page, btn) {
    PAGE: HOME
 ───────────────────────────────────────── */
 function renderHome(container) {
-  const now      = new Date();
-  const hr       = now.getHours();
-  const greeting = hr < 5 ? 'طابت ليلتك' : hr < 12 ? 'صباح الخير' : hr < 17 ? 'مساء الخير' : 'مساء النور';
-  const stats    = getMyStats();
-  const initials = (currentEmp.name||'م').split(' ').map(w=>w[0]).slice(0,2).join('');
+  const now = new Date();
+  const greetHour = now.getHours();
+  const greeting  = greetHour < 12 ? 'صباح الخير' : greetHour < 17 ? 'مساء الخير' : 'مساء النور';
+  const stats = getMyStats();
+  const empInitials = (currentEmp.name||'م').split(' ').map(w=>w[0]).slice(0,2).join('');
   const shiftObj = DB.shifts?.find(s => s.id === currentEmp.shift);
-  const shiftTxt = shiftObj ? `${shiftObj.startTime||''}–${shiftObj.endTime||''}` : '—';
-  const isOut    = checkedIn;   // true = in office
-  const prog     = getProgressPercent();
+  const shift = shiftObj ? `${shiftObj.name} ${shiftObj.startTime||''}–${shiftObj.endTime||''}`.trim() : (currentEmp.shift || '—');
 
   container.innerHTML = `
-
-  <!-- ── HERO BANNER ── -->
-  <div style="
-    position:relative; overflow:hidden; border-radius:0 0 32px 32px;
-    background:linear-gradient(160deg,#1a0b3b 0%,#100d2a 55%,#07070E 100%);
-    padding:22px 20px 28px; margin:-0px -0px 0;
-  ">
-    <!-- decorative glows -->
-    <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;
-      border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,0.35),transparent 70%);
-      pointer-events:none;animation:heroGlow 4s ease-in-out infinite"></div>
-    <div style="position:absolute;bottom:-60px;left:-30px;width:180px;height:180px;
-      border-radius:50%;background:radial-gradient(circle,rgba(16,217,160,0.18),transparent 70%);
-      pointer-events:none;animation:heroGlow 5s ease-in-out infinite reverse"></div>
-
-    <!-- top row: greeting + clock -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:1;margin-bottom:18px">
-      <div>
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px">
-          ${greeting} 👋
-        </div>
-        <div style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.1">
-          ${currentEmp.name}
-        </div>
-        <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;
-          background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);
-          border-radius:20px;padding:4px 12px;font-size:10px;font-weight:700;color:rgba(255,255,255,0.55)">
-          <i class="fas fa-business-time" style="font-size:9px"></i> ${shiftTxt}
-        </div>
-      </div>
-      <div style="text-align:end">
-        <div id="emp-clock" style="font-size:30px;font-weight:900;color:#fff;letter-spacing:-1px;
-          font-variant-numeric:tabular-nums;line-height:1">${formatTime(now)}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px;font-weight:600">
-          ${formatDateAr(now)}
-        </div>
-      </div>
-    </div>
-
-    <!-- status bar -->
-    <div style="position:relative;z-index:1;display:flex;align-items:center;gap:8px">
-      <div style="display:inline-flex;align-items:center;gap:7px;
-        background:${isOut ? 'rgba(16,217,160,0.15)' : 'rgba(255,255,255,0.07)'};
-        border:1px solid ${isOut ? 'rgba(16,217,160,0.3)' : 'rgba(255,255,255,0.1)'};
-        border-radius:20px;padding:6px 14px;font-size:11px;font-weight:700;
-        color:${isOut ? '#10D9A0' : 'rgba(255,255,255,0.5)'}">
-        <div style="width:6px;height:6px;border-radius:50%;background:${isOut ? '#10D9A0' : 'rgba(255,255,255,0.3)'};
-          ${isOut ? 'animation:blink 1.5s ease-in-out infinite;box-shadow:0 0 6px #10D9A0' : ''}"></div>
-        ${isOut ? `حاضر منذ ${formatTime12(checkInTime)}` : 'لم تسجّل حضورك بعد'}
-      </div>
-    </div>
-  </div>
-
-  <!-- ── STATS STRIP ── -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:18px 16px 0">
-    ${[
-      {n:stats.present, lbl:'أيام الحضور', ico:'fa-circle-check', c:'#10D9A0', bg:'rgba(16,217,160,0.12)', b:'rgba(16,217,160,0.25)'},
-      {n:stats.late,    lbl:'تأخيرات',     ico:'fa-clock',        c:'#F59E0B', bg:'rgba(245,158,11,0.12)', b:'rgba(245,158,11,0.25)'},
-      {n:stats.leaveBalance, lbl:'رصيد إجازة', ico:'fa-umbrella-beach', c:'#7C3AED', bg:'rgba(124,58,237,0.12)', b:'rgba(124,58,237,0.25)'},
-    ].map(s=>`
-      <div style="background:${s.bg};border:1px solid ${s.b};border-radius:18px;
-        padding:16px 10px;text-align:center;position:relative;overflow:hidden">
-        <div style="font-size:22px;margin-bottom:6px"><i class="fas ${s.ico}" style="color:${s.c};filter:drop-shadow(0 0 6px ${s.c}60)"></i></div>
-        <div style="font-size:26px;font-weight:900;color:#fff;line-height:1;margin-bottom:4px">${s.n}</div>
-        <div style="font-size:9.5px;font-weight:700;color:${s.c};opacity:.8">${s.lbl}</div>
-      </div>
-    `).join('')}
-  </div>
-
-  <!-- ── CHECK-IN CARD ── -->
-  <div style="margin:16px 16px 0;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
-    border-radius:28px;overflow:hidden;padding:24px 20px">
-
-    <!-- title row -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-      <div style="font-size:12px;font-weight:800;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.8px">
-        <i class="fas fa-fingerprint" style="color:#7C3AED;margin-left:6px"></i>تسجيل الحضور
-      </div>
-      ${isOut ? `<div style="display:flex;align-items:center;gap:5px;background:rgba(16,217,160,0.12);
-        border:1px solid rgba(16,217,160,0.25);border-radius:20px;padding:4px 12px;
-        font-size:10px;font-weight:800;color:#10D9A0">
-        <div style="width:5px;height:5px;border-radius:50%;background:#10D9A0;animation:blink 1.5s infinite"></div>نشط
-      </div>` : ''}
-    </div>
-
-    <!-- ring -->
-    <div style="display:flex;justify-content:center;margin-bottom:24px">
-      <div id="ring" class="${isOut ? 'checked-out' : ''}"
-        style="position:relative;width:170px;height:170px;cursor:pointer;flex-shrink:0"
-        onclick="handleCheckin()">
-        <!-- outer glow ring -->
-        <div style="position:absolute;inset:-8px;border-radius:50%;
-          background:${isOut
-            ? 'conic-gradient(#10D9A0 '+prog+'%, rgba(255,255,255,0.05) 0%)'
-            : 'conic-gradient(#7C3AED '+prog+'%, rgba(255,255,255,0.05) 0%)'};
-          ${isOut ? 'filter:drop-shadow(0 0 12px rgba(16,217,160,0.5))' : 'filter:drop-shadow(0 0 10px rgba(124,58,237,0.4))'}">
-        </div>
-        <!-- track -->
-        <div class="ring-bg" style="position:absolute;inset:0;border-radius:50%;
-          background:conic-gradient(${isOut?'#10D9A0':'#7C3AED'} ${prog}%, rgba(255,255,255,0.05) 0%);
-          ${isOut?'filter:drop-shadow(0 0 8px rgba(16,217,160,0.4))':'filter:drop-shadow(0 0 8px rgba(124,58,237,0.4))'}">
-        </div>
-        <div class="ring-bg-track" style="position:absolute;inset:10px;border-radius:50%;background:#07070E"></div>
-        <!-- inner -->
-        <div class="ring-inner" style="position:absolute;inset:14px;border-radius:50%;
-          background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
-          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-          ${isOut?'animation:okPulse 2.5s ease-in-out infinite':''}">
-          <div style="width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;
-            background:${isOut?'rgba(16,217,160,0.15)':'rgba(124,58,237,0.15)'};
-            color:${isOut?'#10D9A0':'#A78BFA'};
-            box-shadow:${isOut?'0 0 20px rgba(16,217,160,0.3)':'0 0 20px rgba(124,58,237,0.3)'}">
-            <i class="fas ${isOut?'fa-right-from-bracket':'fa-right-to-bracket'}"></i>
+    <!-- Greeting Card -->
+    <div class="greeting-card">
+      <div class="greeting-top">
+        <div class="greeting-emp">
+          <div class="greeting-avatar">${empInitials}</div>
+          <div>
+            <div class="greeting-sub">${greeting} 👋</div>
+            <div class="greeting-name">${currentEmp.name}</div>
           </div>
-          <div class="ring-label" style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.5)">${isOut?'انصراف':'حضور'}</div>
-          <div id="ring-sub" style="font-size:10px;color:rgba(255,255,255,0.3);font-weight:600">${isOut?getElapsedHours():'اضغط'}</div>
+        </div>
+        <div class="greeting-right">
+          <div class="greeting-clock" id="emp-clock">${formatTime(now)}</div>
+          <div class="greeting-date">${formatDateAr(now)}</div>
+        </div>
+      </div>
+      <div class="greeting-bottom">
+        <div class="greeting-status">
+          <div class="status-dot ${checkedIn ? '' : 'inactive'}"></div>
+          ${checkedIn ? `حاضر منذ ${formatTime12(checkInTime)}` : 'لم تسجّل حضورك بعد'}
+        </div>
+        <div class="greeting-shift-badge">
+          <i class="fas fa-business-time"></i> ${shift}
         </div>
       </div>
     </div>
 
-    <!-- method pills -->
-    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px">
-      ${[['face','fa-face-smile','وجه'],['qr','fa-qrcode','QR'],['gps','fa-map-pin','GPS']].map(([m,ic,lb])=>`
-        <button class="method-btn ${selectedMethod===m?'active':''}" onclick="selectMethod('${m}',this)"
-          style="flex:1;max-width:85px;padding:10px 4px;border-radius:14px;
-            border:1.5px solid ${selectedMethod===m?'#7C3AED':'rgba(255,255,255,0.08)'};
-            background:${selectedMethod===m?'rgba(124,58,237,0.18)':'rgba(255,255,255,0.04)'};
-            color:${selectedMethod===m?'#A78BFA':'rgba(255,255,255,0.35)'};
-            font-size:10px;font-weight:700;font-family:var(--font);
-            display:flex;flex-direction:column;align-items:center;gap:5px;
-            ${selectedMethod===m?'box-shadow:0 0 14px rgba(124,58,237,0.25)':''}">
-          <i class="fas ${ic}" style="font-size:17px"></i>${lb}
-        </button>
-      `).join('')}
-    </div>
-
-    <!-- main action button -->
-    <button class="btn-checkin ${isOut?'checkout':''}" onclick="handleCheckin()"
-      style="width:100%;padding:17px;border-radius:16px;font-size:16px;font-weight:900;
-        font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:10px;
-        color:#fff;border:none;cursor:pointer;transition:all .2s;
-        background:${isOut
-          ? 'linear-gradient(135deg,#F43F5E,#BE185D)'
-          : 'linear-gradient(135deg,#10D9A0,#059669)'};
-        box-shadow:${isOut
-          ? '0 8px 32px rgba(244,63,94,0.45)'
-          : '0 8px 32px rgba(16,217,160,0.45)'}">
-      <i class="fas ${isOut?'fa-right-from-bracket':'fa-right-to-bracket'}" style="font-size:18px"></i>
-      ${isOut ? 'تسجيل الانصراف' : 'تسجيل الحضور الآن'}
-    </button>
-
-    <!-- biometric buttons -->
-    ${!isOut ? `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
-      <button class="btn-bio-checkin" onclick="handleBiometricCheckin('fingerprint')"
-        style="padding:12px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.08);
-          background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);
-          font-family:var(--font);font-size:11px;font-weight:700;
-          display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer">
-        <i class="fas fa-fingerprint" style="font-size:16px;color:#7C3AED"></i> بصمة الإصبع
-      </button>
-      <button class="btn-bio-checkin" onclick="handleBiometricCheckin('face')"
-        style="padding:12px;border-radius:14px;border:1.5px solid rgba(255,255,255,0.08);
-          background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);
-          font-family:var(--font);font-size:11px;font-weight:700;
-          display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer">
-        <i class="fas fa-face-smile" style="font-size:16px;color:#10D9A0"></i> بصمة الوجه
-      </button>
-    </div>` : ''}
-  </div>
-
-  <!-- ── LIVE TIMER (when checked in) ── -->
-  ${isOut ? `
-  <div style="margin:14px 16px 0;padding:16px 18px;border-radius:20px;
-    background:linear-gradient(135deg,rgba(16,217,160,0.15),rgba(5,150,105,0.1));
-    border:1px solid rgba(16,217,160,0.25);display:flex;align-items:center;gap:14px">
-    <div style="width:46px;height:46px;border-radius:14px;background:rgba(16,217,160,0.2);
-      display:flex;align-items:center;justify-content:center;font-size:20px;color:#10D9A0;
-      box-shadow:0 0 16px rgba(16,217,160,0.3);flex-shrink:0">
-      <i class="fas fa-stopwatch"></i>
-    </div>
-    <div style="flex:1">
-      <div style="font-size:10px;font-weight:700;color:rgba(16,217,160,0.7);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">مدة الدوام</div>
-      <div id="live-timer-display" style="font-size:26px;font-weight:900;color:#fff;letter-spacing:2px;line-height:1;font-variant-numeric:tabular-nums">
-        00<span class="timer-colon" style="animation:colonBlink 1s step-end infinite;color:rgba(255,255,255,0.4)">:</span>00<span class="timer-colon" style="animation:colonBlink 1s step-end infinite;color:rgba(255,255,255,0.4)">:</span>00
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-mini s-green">
+        <i class="fas fa-calendar-check stat-mini-icon-fa"></i>
+        <div class="stat-mini-val" style="color:var(--success)">${stats.present}</div>
+        <div class="stat-mini-label">أيام الحضور</div>
       </div>
-      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px">منذ ${formatTime12(checkInTime)}</div>
+      <div class="stat-mini s-yellow">
+        <i class="fas fa-clock stat-mini-icon-fa"></i>
+        <div class="stat-mini-val" style="color:var(--warning)">${stats.late}</div>
+        <div class="stat-mini-label">تأخيرات</div>
+      </div>
+      <div class="stat-mini s-blue">
+        <i class="fas fa-umbrella-beach stat-mini-icon-fa"></i>
+        <div class="stat-mini-val" style="color:var(--primary)">${stats.leaveBalance}</div>
+        <div class="stat-mini-label">رصيد إجازة</div>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:5px;background:rgba(16,217,160,0.15);
-      border:1px solid rgba(16,217,160,0.3);border-radius:20px;padding:6px 12px;
-      font-size:10px;font-weight:800;color:#10D9A0">
-      <div class="live-timer-badge-dot" style="width:5px;height:5px;border-radius:50%;background:#10D9A0;
-        animation:blink 1.5s ease-in-out infinite;box-shadow:0 0 5px #10D9A0"></div>نشط
-    </div>
-  </div>` : ''}
 
-  <!-- ── QUICK ACTIONS ── -->
-  <div style="padding:20px 16px 0">
-    <div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.25);text-transform:uppercase;
-      letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:6px">
-      <i class="fas fa-bolt" style="color:#7C3AED"></i> إجراءات سريعة
+    <!-- Check-in Widget -->
+    <div class="checkin-card">
+      <div class="checkin-header">
+        <span class="checkin-title"><i class="fas fa-fingerprint" style="margin-left:6px;color:var(--primary)"></i>تسجيل الحضور</span>
+        ${checkedIn ? `<div class="checkin-live"><div class="checkin-live-dot"></div> نشط</div>` : ''}
+      </div>
+      <div class="checkin-widget">
+        <div class="checkin-ring ${checkedIn ? 'checked-out' : ''}" id="ring"
+          style="--progress:${getProgressPercent()}%"
+          onclick="handleCheckin()">
+          <div class="ring-bg"></div>
+          <div class="ring-bg-track"></div>
+          <div class="ring-inner">
+            <div class="ring-icon"><i class="fas ${checkedIn ? 'fa-right-from-bracket' : 'fa-right-to-bracket'}"></i></div>
+            <div class="ring-label">${checkedIn ? 'انصراف' : 'حضور'}</div>
+            <div class="ring-sublabel" id="ring-sub">${checkedIn ? getElapsedHours() : 'اضغط'}</div>
+          </div>
+        </div>
+
+        <div class="checkin-methods">
+          <button class="method-btn ${selectedMethod==='face'?'active':''}" onclick="selectMethod('face',this)">
+            <i class="fas fa-face-smile"></i>وجه
+          </button>
+          <button class="method-btn ${selectedMethod==='qr'?'active':''}" onclick="selectMethod('qr',this)">
+            <i class="fas fa-qrcode"></i>QR
+          </button>
+          <button class="method-btn ${selectedMethod==='gps'?'active':''}" onclick="selectMethod('gps',this)">
+            <i class="fas fa-location-dot"></i>GPS
+          </button>
+        </div>
+
+        <button class="btn-checkin ${checkedIn ? 'checkout' : ''}" onclick="handleCheckin()">
+          <i class="fas ${checkedIn ? 'fa-right-from-bracket' : 'fa-right-to-bracket'}"></i>
+          ${checkedIn ? 'تسجيل الانصراف' : 'تسجيل الحضور الآن'}
+        </button>
+
+        ${!checkedIn ? `
+        <div class="biometric-checkin-row">
+          <button class="btn-bio-checkin" onclick="handleBiometricCheckin('fingerprint')">
+            <i class="fas fa-fingerprint"></i> بصمة الإصبع
+          </button>
+          <button class="btn-bio-checkin" onclick="handleBiometricCheckin('face')">
+            <i class="fas fa-scan-face"></i> بصمة الوجه
+          </button>
+        </div>` : ''}
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+
+    <!-- Live Timer (when checked in) -->
+    ${checkedIn ? `
+    <div class="live-timer-card">
+      <div class="live-timer-icon"><i class="fas fa-stopwatch"></i></div>
+      <div class="live-timer-body">
+        <div class="live-timer-label">مدة الدوام</div>
+        <div class="live-timer-display" id="live-timer-display">00<span class="timer-colon">:</span>00<span class="timer-colon">:</span>00</div>
+        <div class="live-timer-since">منذ ${formatTime12(checkInTime)}</div>
+      </div>
+      <div class="live-timer-badge">
+        <div class="live-timer-badge-dot"></div> نشط
+      </div>
+    </div>` : ''}
+
+    <!-- Quick Actions -->
+    <div class="section-title"><i class="fas fa-grid-2"></i> إجراءات سريعة</div>
+    <div class="quick-actions-grid">
       ${[
-        {ico:'fa-calendar-plus', lbl:'طلب إجازة',    sub:'إضافة طلب', c:'#7C3AED', bg:'rgba(124,58,237,0.12)', b:'rgba(124,58,237,0.2)', page:'leaves'},
-        {ico:'fa-clock-rotate-left',lbl:'سجل الحضور', sub:'عرض التاريخ', c:'#10D9A0',bg:'rgba(16,217,160,0.12)',b:'rgba(16,217,160,0.2)',page:'history'},
-        {ico:'fa-hand-holding-dollar',lbl:'سلفتي',   sub:'متابعة الأقساط',c:'#06B6D4',bg:'rgba(6,182,212,0.12)',b:'rgba(6,182,212,0.2)',page:'myloans'},
-        {ico:'fa-user-pen',  lbl:'ملفي الشخصي',      sub:'تحديث البيانات',c:'#F59E0B',bg:'rgba(245,158,11,0.12)',b:'rgba(245,158,11,0.2)',page:'profile'},
+        {icon:'fa-calendar-plus',         label:'طلب إجازة',    sub:'إضافة طلب جديد',   color:'#6366f1', bg:'rgba(99,102,241,0.1)',  page:'leaves'},
+        {icon:'fa-clock-rotate-left',      label:'سجل الحضور',   sub:'عرض التاريخ',       color:'#10b981', bg:'rgba(16,185,129,0.1)',  page:'history'},
+        {icon:'fa-hand-holding-dollar',    label:'سلفتي',         sub:'متابعة الأقساط',    color:'#06b6d4', bg:'rgba(6,182,212,0.1)',   page:'myloans'},
+        {icon:'fa-circle-user',            label:'ملفي الشخصي',   sub:'تحديث المعلومات',   color:'#f59e0b', bg:'rgba(245,158,11,0.1)',  page:'profile'},
       ].map(a=>`
-        <button onclick="goPage('${a.page}',document.querySelector('[data-page=${a.page}]'))"
-          style="background:${a.bg};border:1px solid ${a.b};border-radius:18px;
-            padding:16px 14px;display:flex;align-items:center;gap:12px;text-align:start;
-            cursor:pointer;font-family:var(--font);transition:all .2s">
-          <div style="width:40px;height:40px;border-radius:12px;background:${a.bg};border:1px solid ${a.b};
-            display:flex;align-items:center;justify-content:center;font-size:18px;color:${a.c};
-            box-shadow:0 0 12px ${a.c}30;flex-shrink:0">
-            <i class="fas ${a.ico}"></i>
+        <button class="quick-action-btn" onclick="goPage('${a.page}', document.querySelector('[data-page=${a.page}]'))">
+          <div class="quick-action-icon" style="background:${a.bg};color:${a.color}">
+            <i class="fas ${a.icon}"></i>
           </div>
           <div>
-            <div style="font-size:12px;font-weight:800;color:#fff;line-height:1.2">${a.lbl}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:600;margin-top:2px">${a.sub}</div>
+            <div class="quick-action-label">${a.label}</div>
+            <div class="quick-action-sub">${a.sub}</div>
           </div>
         </button>
       `).join('')}
     </div>
-  </div>
   `;
 
   startEmpClock();
