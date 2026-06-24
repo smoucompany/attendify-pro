@@ -558,6 +558,44 @@
     .today-cell-label { font-size:10px; font-weight:700; color:var(--text-muted); margin-bottom:2px; }
     .today-cell-val { font-size:15px; font-weight:900; color:var(--text-primary); }
 
+    /* LIVE TIMER */
+    .live-timer-card {
+      background: var(--bg-card); border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light); box-shadow: var(--shadow);
+      padding: 18px 16px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .live-timer-icon {
+      width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+      background: linear-gradient(135deg,rgba(99,102,241,.15),rgba(6,182,212,.15));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--primary);
+    }
+    .live-timer-body { flex: 1; }
+    .live-timer-label { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    .live-timer-display {
+      font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 28px; font-weight: 900; letter-spacing: 2px;
+      background: linear-gradient(135deg,var(--primary),#06b6d4);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; line-height: 1;
+    }
+    .live-timer-display .timer-colon {
+      animation: colonBlink 1s step-end infinite;
+      -webkit-text-fill-color: var(--primary);
+    }
+    @keyframes colonBlink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .live-timer-since { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+    .live-timer-badge {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 700; color: var(--success);
+      background: var(--success-bg); border-radius: 20px; padding: 5px 10px;
+    }
+    .live-timer-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--success);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
     /* QUICK ACTIONS */
     .quick-actions-grid {
       display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;
@@ -1296,18 +1334,17 @@ function renderHome(container) {
       </div>
     </div>
 
-    <!-- Today Info (when checked in) -->
+    <!-- Live Timer (when checked in) -->
     ${checkedIn ? `
-    <div class="today-grid">
-      <div class="today-cell">
-        <div class="today-cell-icon" style="background:var(--success-bg);color:var(--success)"><i class="fas fa-right-to-bracket"></i></div>
-        <div class="today-cell-label">وقت الحضور</div>
-        <div class="today-cell-val">${formatTime12(checkInTime)}</div>
+    <div class="live-timer-card">
+      <div class="live-timer-icon"><i class="fas fa-stopwatch"></i></div>
+      <div class="live-timer-body">
+        <div class="live-timer-label">مدة الدوام</div>
+        <div class="live-timer-display" id="live-timer-display">00<span class="timer-colon">:</span>00<span class="timer-colon">:</span>00</div>
+        <div class="live-timer-since">منذ ${formatTime12(checkInTime)}</div>
       </div>
-      <div class="today-cell">
-        <div class="today-cell-icon" style="background:var(--info-bg);color:var(--info)"><i class="fas fa-hourglass-half"></i></div>
-        <div class="today-cell-label">ساعات العمل</div>
-        <div class="today-cell-val" id="today-hours">${getElapsedHours()}</div>
+      <div class="live-timer-badge">
+        <div class="live-timer-badge-dot"></div> نشط
       </div>
     </div>` : ''}
 
@@ -1800,15 +1837,34 @@ function formatDateShort(str) {
   return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short'});
 }
 
+function getElapsedTimer() {
+  if (!checkInTime) return '00:00:00';
+  const [h, m] = checkInTime.split(':').map(Number);
+  const now = new Date();
+  const start = new Date(); start.setHours(h, m, 0, 0);
+  let diff = Math.max(0, Math.floor((now - start) / 1000));
+  const hh = Math.floor(diff / 3600);
+  const mm = Math.floor((diff % 3600) / 60);
+  const ss = diff % 60;
+  return [hh, mm, ss].map(n => String(n).padStart(2, '0'));
+}
+
 let clockInterval;
 function startEmpClock() {
   clearInterval(clockInterval);
   clockInterval = setInterval(() => {
     const el = document.getElementById('emp-clock');
     if (el) el.textContent = formatTime(new Date());
-    else clearInterval(clockInterval);
-    const sub = document.getElementById('ring-sub');
-    if (sub && checkedIn) sub.textContent = getElapsedHours();
+    else { clearInterval(clockInterval); return; }
+
+    if (checkedIn) {
+      const [hh, mm, ss] = getElapsedTimer();
+      const sub = document.getElementById('ring-sub');
+      if (sub) sub.textContent = `${hh}:${mm}:${ss}`;
+      const timerEl = document.getElementById('live-timer-display');
+      if (timerEl) timerEl.innerHTML =
+        `${hh}<span class="timer-colon">:</span>${mm}<span class="timer-colon">:</span>${ss}`;
+    }
   }, 1000);
 }
 
