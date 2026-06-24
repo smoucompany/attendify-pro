@@ -102,6 +102,25 @@ const ALLOWED = new Set([
 // ── Health ───────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// ── Employee Login Diagnostics (no auth — safe, returns counts only) ──
+app.get('/api/emp/ping', async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('employees').select('id, data').order('created_at', { ascending: true });
+    if (error) return res.json({ ok: false, error: error.message, supabase: 'error' });
+    const rows = data || [];
+    const sample = rows.slice(0, 3).map(r => ({
+      id: r.id,
+      no: r.data?.no,
+      name: r.data?.name?.split(' ')[0] || '—',
+      hasPass: !!(r.data?.password),
+    }));
+    res.json({ ok: true, count: rows.length, sample });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ── First Setup Check (بدون auth — للمستخدم الجديد) ─────────
 app.get('/api/first-setup', async (req, res) => {
   try {
@@ -271,21 +290,37 @@ app.post('/api/emp/login', _rateLimitLogin, async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from('employees').select('id, data').order('created_at', { ascending: true });
-  if (error) return res.status(500).json({ error: 'خطأ في الخادم' });
+  if (error) {
+    console.error('[emp/login] supabase error:', error.message);
+    return res.status(500).json({ error: 'خطأ في الخادم — تعذّر الوصول إلى قاعدة البيانات' });
+  }
 
   const rows = data || [];
   let empRow;
   if (email) {
-    empRow = rows.find(r => r.data?.email?.toLowerCase() === email.trim().toLowerCase());
+    const emailLow = email.trim().toLowerCase();
+    empRow = rows.find(r => r.data?.email?.toLowerCase() === emailLow);
   } else {
-    const code = String(empNo).trim();
-    empRow = rows.find(r => r.data?.no === code || r.data?.no === code.padStart(3, '0'));
+    const code    = String(empNo).trim();
+    const codeLow = code.toLowerCase();
+    const codeNum = code.replace(/\D/g, '').replace(/^0+/, '');  // "M001" → "1"
+    empRow = rows.find(r => {
+      const no = String(r.data?.no || '');
+      return (
+        no === code ||
+        no.toLowerCase() === codeLow ||
+        no === code.padStart(3, '0') ||
+        no.padStart(3, '0') === code.padStart(3, '0') ||
+        (codeNum && no.replace(/\D/g, '').replace(/^0+/, '') === codeNum)
+      );
+    });
   }
 
-  // رسالة خطأ موحدة — لا تكشف هل الكود موجود أم لا
-  const emp = empRow?.data || {};
+  if (!empRow) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+
+  const emp = empRow.data || {};
   const validPass = emp.password || emp.no;
-  if (!empRow || password !== validPass) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
+  if (password !== validPass) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
 
   // إرجاع بيانات الموظف بدون كلمة المرور
   const { password: _pw, ...safeEmp } = emp;

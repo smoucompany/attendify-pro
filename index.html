@@ -312,10 +312,6 @@
                   </button>
                 </div>
               </div>
-              <div style="font-size:11px;color:var(--text-muted,#94a3b8);margin:-4px 0 10px;display:flex;align-items:center;gap:5px">
-                <i class="fas fa-circle-info" style="color:var(--primary,#6366f1)"></i>
-                كلمة المرور الافتراضية = كود الموظف (مثال: <b style="font-family:monospace">001</b>)
-              </div>
               <button type="submit" class="btn-login-submit btn-login-emp" id="emp-login-btn-main">
                 <span>دخول بوابة الموظف</span>
                 <i class="fas fa-arrow-left btn-arrow"></i>
@@ -745,29 +741,55 @@
         return false;
       },
 
-      empLogin(e) {
+      async empLogin(e) {
         e.preventDefault();
         const code = (document.getElementById('main-emp-code')?.value || '').trim();
         const pass = (document.getElementById('main-emp-pass')?.value || '').trim();
-        const btn = document.getElementById('emp-login-btn-main');
+        const btn  = document.getElementById('emp-login-btn-main');
 
         if (!code) { App.toast('أدخل كود الموظف', 'error'); return; }
         if (!pass) { App.toast('أدخل كلمة المرور', 'error'); return; }
 
-        const emp = this._findEmp(code);
-        if (!emp) { App.toast('كود الموظف غير موجود', 'error'); return; }
-
-        if (!this._passOk(emp, pass)) {
-          App.toast(`كلمة المرور غير صحيحة — جرّب كودك كمبدئي: ${emp.no}`, 'error');
-          return;
-        }
-
         btn.disabled = true;
         btn.innerHTML = '<span class="loading-spinner" style="width:18px;height:18px;border-width:2px;margin-left:8px"></span> <span>جارٍ التحقق...</span>';
+        const restore = () => {
+          btn.disabled = false;
+          btn.innerHTML = '<span>دخول بوابة الموظف</span><i class="fas fa-arrow-left btn-arrow"></i>';
+        };
 
-        setTimeout(() => {
-          LoginSwitch._afterEmpAuth(emp);
-        }, 700);
+        // 1️⃣ Try backend API (works on any device)
+        try {
+          const res  = await fetch('/api/emp/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ empNo: code, password: pass }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (res.ok && json.ok) {
+            LoginSwitch._afterEmpAuth(json.emp);
+            return;
+          }
+          // Server responded with error (401/400/500)
+          restore();
+          App.toast(json.error || 'بيانات الدخول غير صحيحة', 'error');
+          return;
+        } catch (_) {
+          // Network error → fall through to localStorage
+        }
+
+        // 2️⃣ Offline fallback: localStorage (same device only)
+        const emp = this._findEmp(code);
+        if (!emp) {
+          restore();
+          App.toast('لا يوجد اتصال بالإنترنت — تحقق من الشبكة', 'error');
+          return;
+        }
+        if (!this._passOk(emp, pass)) {
+          restore();
+          App.toast(`كلمة المرور غير صحيحة — جرّب كود الموظف كمبدئي: ${emp.no}`, 'error');
+          return;
+        }
+        LoginSwitch._afterEmpAuth(emp);
       },
 
       _afterEmpAuth(emp) {
