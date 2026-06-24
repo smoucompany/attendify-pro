@@ -617,7 +617,7 @@ const App = {
           settings:      () => SettingsModule.render(content),
           profile:       () => ProfileModule.render(content),
           roles:         () => { SettingsModule._section = 'roles';  SettingsModule.render(content); },
-          backup:        () => typeof BackupModule !== 'undefined' ? BackupModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-database"></i></div><div class="empty-title">النسخ الاحتياطي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
+          backup:        () => { SettingsModule._section = 'backup'; SettingsModule.render(content); },
         };
 
         if (modules[page]) {
