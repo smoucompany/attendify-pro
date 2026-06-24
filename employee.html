@@ -1524,7 +1524,8 @@ function renderProfile(container) {
         ${[
           {icon:'fa-id-badge',    label:'كود الموظف',    val: emp.no},
           {icon:'fa-briefcase',   label:'المنصب',        val: emp.position},
-          {icon:'fa-location-dot',label:'مكان العمل',    val: emp.workLocation||'—'},
+          {icon:'fa-building',    label:'جهة العمل',     val: emp.workEntity},
+          {icon:'fa-location-dot',label:'مكان العمل',    val: emp.workLocation},
           {icon:'fa-envelope',    label:'البريد الإلكتروني', val: emp.email},
           {icon:'fa-phone',       label:'الهاتف',        val: emp.phone},
           {icon:'fa-calendar',    label:'تاريخ التعيين', val: emp.hireDate},
