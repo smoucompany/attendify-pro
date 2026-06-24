@@ -321,4 +321,43 @@ app.get('/api/emp/data/:empId', _rateLimitEmpData, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── Employee Portal: تسجيل الحضور والانصراف ──────────────────
+// endpoint عام محمي بـ rate limit — يحفظ سجل الحضور في Supabase
+app.post('/api/emp/checkin', _rateLimitLogin, async (req, res) => {
+  const { empId, date, checkIn, checkOut, method, status, lateMin, overtime } = req.body || {};
+  if (!empId || !date) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  // التحقق أن الموظف موجود فعلاً
+  const { data: empRow, error: empErr } = await supabaseAdmin
+    .from('employees').select('id').eq('id', empId).maybeSingle();
+  if (empErr || !empRow) return res.status(404).json({ error: 'الموظف غير موجود' });
+
+  // البحث عن سجل اليوم الحالي
+  const { data: existing } = await supabaseAdmin
+    .from('attendance').select('id, data').eq('id', `att-${empId}-${date}`).maybeSingle();
+
+  const id = existing?.id || `att-${empId}-${date}`;
+
+  let newData;
+  if (checkOut && existing) {
+    // تحديث وقت الانصراف فقط
+    newData = { ...existing.data, checkOut, overtime: overtime || null };
+  } else {
+    // سجل حضور جديد
+    newData = {
+      id, empId, date,
+      checkIn:  checkIn  || null,
+      checkOut: checkOut || null,
+      method:   method   || 'manual',
+      status:   status   || 'present',
+      lateMin:  lateMin  || null,
+      overtime: overtime || null,
+    };
+  }
+
+  const { error } = await supabaseAdmin.from('attendance').upsert({ id, data: newData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id });
+});
+
 module.exports = app;

@@ -1536,18 +1536,33 @@ function _doCheckin(method) {
       });
     }
     showToast('✅ تم تسجيل حضورك — ' + formatTime12(nowStr), 'success');
+    // مزامنة مع Supabase
+    _syncAttendance({ empId: currentEmp.id, date: today, checkIn: nowStr, method,
+      status: DB.attendance.find(a=>a.empId===currentEmp.id&&a.date===today)?.status || 'present',
+      lateMin: DB.attendance.find(a=>a.empId===currentEmp.id&&a.date===today)?.lateMin || null });
   } else {
     checkedIn = false;
     const dur = calcDuration(checkInTime, nowStr);
 
-    // Update checkOut
+    // Update checkOut locally
     const rec = DB.attendance.find(a => a.empId === currentEmp.id && a.date === today);
     if (rec) rec.checkOut = nowStr;
 
     showToast(`👋 تم تسجيل انصرافك — مدة العمل ${dur}`, 'success');
+    // مزامنة مع Supabase
+    _syncAttendance({ empId: currentEmp.id, date: today, checkOut: nowStr });
     checkInTime = null;
   }
   goPage('home');
+}
+
+/* ── SYNC ATTENDANCE TO SUPABASE ── */
+function _syncAttendance(payload) {
+  fetch('/api/emp/checkin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch(() => {}); // لا نوقف المستخدم إذا فشل الاتصال
 }
 
 /* ── FACE MODAL (Real camera via Biometrics) ── */
