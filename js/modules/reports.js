@@ -852,24 +852,32 @@ const ReportsModule = {
     const rangeStr  = `${from} — ${to}`;
 
     // ── بناء بيانات الجدول من نفس المصدر المعروض على الشاشة ──
-    let headers = [], rows = [], footerRow = null;
+    let headers = [], rows = [], footerRow = null, rowMeta = [];
+    // rowMeta: [{deptId, deptName, deptColor}] — موازٍ لـ rows لتجميع الجدول حسب القسم
+
+    const _deptMeta = (empId) => {
+      const e = DB.getEmployee(empId);
+      const d = DB.getDepartment(e?.dept);
+      return { deptId: e?.dept || 'none', deptName: d?.name || (ar ? 'بدون قسم' : 'No Department'), deptColor: d?.hex || '#6366f1' };
+    };
 
     if (type === 'attendance') {
       // استخدام _buildFullRecords لنفس بيانات الشاشة
       const recs = (this._cache.type === 'attendance' && this._cache.records)
         ? this._cache.records
         : this._buildFullRecords(from, to, 'all');
-      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'دخول':'In', ar?'خروج':'Out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'];
+      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'دخول':'In', ar?'خروج':'Out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'];
       rows = recs.map(a => {
         const e   = DB.getEmployee(a.empId);
         const hrs = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
-        return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', hrs, a.status];
+        return [e?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', hrs, a.status];
       });
+      rowMeta = recs.map(a => _deptMeta(a.empId));
 
     } else if (type === 'late') {
       const lates = (this._cache.type === 'late' && this._cache.records) ? this._cache.records
         : DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
-      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)'];
+      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)'];
       rows = lates.map(a => {
         const e   = DB.getEmployee(a.empId);
         const sh  = e?.shift ? DB.shifts.find(s => s.id === e.shift) : null;
@@ -877,8 +885,9 @@ const ReportsModule = {
         const [sh2,sm2] = ws.split(':').map(Number);
         const [ch,cm]   = (a.checkIn||ws).split(':').map(Number);
         const min = Math.max(0, (ch*60+cm)-(sh2*60+sm2));
-        return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, a.checkIn||'—', min+' '+(ar?'د':'m')];
+        return [e?.name||'—', a.date, a.checkIn||'—', min+' '+(ar?'د':'m')];
       });
+      rowMeta = lates.map(a => _deptMeta(a.empId));
 
     } else if (type === 'payroll') {
       // استخدام الصفوف المحسوبة من _payrollReport مباشرة
@@ -900,6 +909,7 @@ const ReportsModule = {
           ...(hasOT ? [r.overtimeBonus > 0 ? `+${App.formatCurrency(r.overtimeBonus)}` : '—'] : []),
           App.formatCurrency(r.net),
         ]);
+        rowMeta = cachedRows.map(r => { const d=DB.getDepartment(r.emp?.dept); return {deptId:r.emp?.dept||'none',deptName:d?.name||(ar?'بدون قسم':'No Department'),deptColor:d?.hex||'#6366f1'}; });
         footerRow = [ar?'الإجمالي':'Total', App.formatCurrency(this._cache.totalBase),
           ...(hasAllow ? [App.formatCurrency(this._cache.totalAllow)] : []),
           '—', `-${App.formatCurrency(this._cache.totalDed)}`,
@@ -913,11 +923,13 @@ const ReportsModule = {
     } else if (type === 'leave') {
       headers = [ar?'الموظف':'Employee', ar?'النوع':'Type', ar?'من':'From', ar?'إلى':'To', ar?'الأيام':'Days', ar?'الحالة':'Status'];
       rows = DB.leaves.map(l => { const e=DB.getEmployee(l.empId); return [e?.name||'—', l.type, l.from||'—', l.to||'—', l.days||'—', l.status]; });
+      rowMeta = DB.leaves.map(l => _deptMeta(l.empId));
 
     } else if (type === 'overtime') {
       const ots = DB.attendance.filter(a => a.overtime && a.date >= from && a.date <= to);
-      headers = [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'الساعات الإضافية':'OT (min)'];
-      rows = ots.map(a => { const e=DB.getEmployee(a.empId); return [e?.name||'—', DB.getDepartment(e?.dept)?.name||'—', a.date, `${Math.floor(a.overtime/60)}:${String(a.overtime%60).padStart(2,'0')}`]; });
+      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الساعات الإضافية':'OT (hrs)'];
+      rows = ots.map(a => { const e=DB.getEmployee(a.empId); return [e?.name||'—', a.date, `${Math.floor((parseInt(a.overtime)||0)/60)}:${String((parseInt(a.overtime)||0)%60).padStart(2,'0')}`]; });
+      rowMeta = ots.map(a => _deptMeta(a.empId));
 
     } else {
       const s = DB.getAttendanceStats();
@@ -1194,6 +1206,25 @@ body{font-family:'F','Cairo',Arial,sans-serif;font-size:11px;direction:${ar?'rtl
 [data-tpl="exec"] .ftr-stripe{height:3px;background:linear-gradient(90deg,var(--PA),var(--PB),var(--PA))}
 
 /* ══════════════════════════════════════════════════════════════
+   DEPARTMENT GROUP HEADERS
+══════════════════════════════════════════════════════════════ */
+.dept-grp-hdr td{
+  padding:8px 12px!important;
+  background:linear-gradient(${ar?'to left':'to right'},rgba(13,75,110,.11) 0%,rgba(13,75,110,.04) 100%)!important;
+  border-top:2px solid var(--PA)!important;
+  border-bottom:1px solid var(--BD)!important;
+  font-size:10.5px!important;
+  font-weight:800!important;
+  color:var(--P)!important;
+  letter-spacing:.2px;
+}
+[data-tpl="gov"] .dept-grp-hdr td{background:linear-gradient(${ar?'to left':'to right'},rgba(12,35,64,.12) 0%,rgba(12,35,64,.04) 100%)!important;border-top-color:var(--PA)!important}
+[data-tpl="exec"] .dept-grp-hdr td{background:linear-gradient(${ar?'to left':'to right'},rgba(201,168,76,.12) 0%,rgba(201,168,76,.03) 100%)!important;border-top-color:var(--PA)!important}
+.dept-grp-hdr .dept-dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;margin-${ar?'left':'right'}:7px;flex-shrink:0}
+.dept-grp-hdr .dept-count{font-weight:400;opacity:.65;font-size:9px;margin-${ar?'right':'left'}:8px}
+.dept-grp-subtotal td{background:rgba(13,75,110,.05)!important;font-weight:700!important;border-top:1px dashed var(--BD)!important;border-bottom:1px solid var(--BD)!important;font-size:10px!important;color:var(--P)!important}
+
+/* ══════════════════════════════════════════════════════════════
    STATUS BADGES (all templates)
 ══════════════════════════════════════════════════════════════ */
 .bs{display:inline-flex;align-items:center;padding:2px 8px;font-size:9px;font-weight:700;white-space:nowrap}
@@ -1401,7 +1432,7 @@ body{font-family:'F','Cairo',Arial,sans-serif;font-size:11px;direction:${ar?'rtl
 <div class="meta-strip">
   <div class="ms-cell"><div class="ms-lbl">${ar?'نوع التقرير':'Report Type'}</div><div class="ms-val">${t('reports.'+type)}</div></div>
   <div class="ms-cell"><div class="ms-lbl">${ar?'الفترة':'Period'}</div><div class="ms-val" style="font-size:10px">${from} — ${to}</div></div>
-  <div class="ms-cell"><div class="ms-lbl">${ar?'عدد السجلات':'Records'}</div><div class="ms-val">${rows.length}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${ar?'عدد السجلات':'Records'}</div><div class="ms-val">${rows.length} ${rowMeta.length ? `<span style="font-size:9px;font-weight:400;opacity:.7">| ${new Set(rowMeta.map(m=>m.deptId)).size} ${ar?'قسم':'dept.'}</span>` : ''}</div></div>
   <div class="ms-cell"><div class="ms-lbl">${ar?'أعدّه':'Prepared By'}</div><div class="ms-val" style="font-size:10px">${_esc(adminName)}</div></div>
 </div>
 
@@ -1416,11 +1447,35 @@ body{font-family:'F','Cairo',Arial,sans-serif;font-size:11px;direction:${ar?'rtl
     <div class="kpi-card"><div class="kpi-n">${sStats.present}</div><div class="kpi-l">${ar?'حاضرون اليوم':'Present Today'}</div></div>
   </div>`:''}
 
-  <!-- Data Table -->
+  <!-- Data Table — مجمّعة حسب القسم -->
   <div class="tbl-out">
     <table class="dt" style="width:100%;border-collapse:collapse">
       <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(r=>`<tr>${r.map(cell=>{const sv=String(cell);const cl=statusMap2[sv];return`<td>${cl?`<span class="bs ${cl}">${sv}</span>`:sv}</td>`}).join('')}</tr>`).join('')}</tbody>
+      <tbody>${(()=>{
+        const renderCell = cell => { const sv=String(cell); const cl=statusMap2[sv]; return `<td>${cl?`<span class="bs ${cl}">${sv}</span>`:sv}</td>`; };
+        if (!rowMeta.length) return rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
+
+        // تجميع الصفوف حسب القسم
+        const groups = {};
+        const order  = [];
+        rows.forEach((row, i) => {
+          const m = rowMeta[i] || { deptId:'none', deptName: ar?'بدون قسم':'No Department', deptColor:'#6366f1' };
+          if (!groups[m.deptId]) { groups[m.deptId] = { ...m, rows:[] }; order.push(m.deptId); }
+          groups[m.deptId].rows.push(row);
+        });
+
+        const colCount = headers.length;
+        return order.map(did => {
+          const g = groups[did];
+          const deptHdr = `<tr class="dept-grp-hdr"><td colspan="${colCount}">
+            <span class="dept-dot" style="background:${g.deptColor}"></span>
+            <strong>${g.deptName}</strong>
+            <span class="dept-count">(${g.rows.length} ${ar?'موظف':'emp.'})</span>
+          </td></tr>`;
+          const dataRows = g.rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
+          return deptHdr + dataRows;
+        }).join('');
+      })()}</tbody>
       ${footerRow?`<tfoot><tr>${footerRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>`:''}
     </table>
   </div>
