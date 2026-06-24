@@ -197,7 +197,18 @@ const ProfileModule = {
       sessionStorage.setItem('app-user', JSON.stringify(user));
       App._updateUserUI();
     }
-    DB.saveCompany();
+    if (DB.adminCredentials) DB.adminCredentials.avatarColor = colorId;
+
+    // Update profile snapshot
+    try {
+      const sp = JSON.parse(localStorage.getItem('attendify-user-profile') || '{}');
+      sp.avatarColor = colorId;
+      sp.savedAt = Date.now();
+      localStorage.setItem('attendify-user-profile', JSON.stringify(sp));
+      DB._saveToLocal();
+      localStorage.setItem('attendify-sync-ts', String(Date.now()));
+    } catch(_) {}
+
     App.toast('تم تحديث لون الأفاتار ✓', 'success');
   },
 
@@ -211,16 +222,14 @@ const ProfileModule = {
     const user = App.state.user;
     if (user) {
       user.name     = name;
-      user.avatar   = name.charAt(0);
+      user.avatar   = name.charAt(0).toUpperCase();
       user.position = position || user.position;
-      sessionStorage.setItem('app-user', JSON.stringify(user));
-      App._updateUserUI();
     }
 
-    // Update admin credentials name
+    // Update admin credentials
     if (DB.adminCredentials) {
-      DB.adminCredentials.name = name;
-      DB.saveCompany();
+      DB.adminCredentials.name     = name;
+      DB.adminCredentials.position = position;
     }
 
     // Update employee record if exists
@@ -228,10 +237,35 @@ const ProfileModule = {
     if (empRec) {
       empRec.name  = name;
       empRec.phone = phone;
-      DB.save();
     }
 
-    // Update display
+    // Save complete profile snapshot (includes all fields needed to restore state.user)
+    const profileSnap = {
+      id:          user?.id || 'admin',
+      name,
+      avatar:      name.charAt(0).toUpperCase(),
+      position,
+      phone,
+      email:       user?.email || DB.adminCredentials?.email,
+      avatarColor: user?.avatarColor || 'gradient-primary',
+      savedAt:     Date.now(),
+    };
+    try {
+      localStorage.setItem('attendify-user-profile', JSON.stringify(profileSnap));
+      DB._saveToLocal();
+      // Stamp sync-ts to NOW so loadAll() knows local is up-to-date
+      localStorage.setItem('attendify-sync-ts', String(Date.now()));
+    } catch(_) {}
+
+    // Keep session in sync
+    if (user) sessionStorage.setItem('app-user', JSON.stringify(user));
+
+    // Update Supabase user metadata if connected
+    if (typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected && SupabaseDB._client) {
+      SupabaseDB._client.auth.updateUser({ data: { name, position } }).catch(() => {});
+    }
+
+    App._updateUserUI();
     const nameDisp = document.getElementById('prof-name-display');
     if (nameDisp) nameDisp.textContent = name;
 

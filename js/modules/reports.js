@@ -272,7 +272,7 @@ const ReportsModule = {
           const emp  = DB.getEmployee(a.empId);
           const hrs  = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
+            `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
             a.checkIn ? `<span style="color:var(--success);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>` : '<span style="color:var(--text-muted)">—</span>',
             a.checkOut ? `<span style="color:var(--danger);font-family:var(--font-en)">${a.checkOut}</span>` : '<span style="color:var(--text-muted)">—</span>',
@@ -344,7 +344,7 @@ const ReportsModule = {
               ${Object.entries(empMap).sort((a,b)=>b[1].totalMin-a[1].totalMin).map(([eid, d]) => {
                 const emp = DB.getEmployee(eid);
                 return `<tr>
-                  <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-warning'}" style="width:28px;height:28px;font-size:10px">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div></td>
+                  <td><div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600">${emp?.name||'—'}</span></div></td>
                   <td><span class="badge badge-warning">${d.count} ${ar?'مرة':'times'}</span></td>
                   <td><span style="color:var(--warning);font-weight:700">${d.totalMin} ${ar?'د':'m'}</span></td>
                   <td><span style="color:var(--danger);font-weight:700">${App.formatCurrency(d.totalDed)}</span></td>
@@ -363,7 +363,7 @@ const ReportsModule = {
           const min  = _lateMin(a);
           const ded  = Math.round(_dailyRate(a.empId) * (min / 60));
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-warning'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
+            `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
             `<span style="font-size:12px;color:var(--text-muted)">${DB.getDepartment(emp?.dept)?.name||'—'}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
             `<span style="color:var(--warning);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>`,
@@ -397,7 +397,7 @@ const ReportsModule = {
           const rate = Math.round((DB.payroll.find(p=>p.empId===a.empId)?.base||10000)/30/8);
           const cost = Math.round(rate*hrs*1.5);
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-success'}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div>`,
+            `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 30, 8)}<span style="font-weight:600">${emp?.name||'—'}</span></div>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted)">${a.date}</span>`,
             `<span class="badge" style="background:rgba(16,185,129,0.12);color:var(--success);border-radius:8px;font-weight:700">${a.overtime}</span>`,
             `<span style="color:var(--text-muted)">${App.formatCurrency(rate)}/h × 1.5</span>`,
@@ -429,7 +429,7 @@ const ReportsModule = {
           const emp  = DB.getEmployee(l.empId);
           const type = App.getLeaveTypeLabel(l.type);
           return [
-            `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:30px;height:30px;font-size:11px;flex-shrink:0">${emp?.avatar||'?'}</div><span style="font-weight:600">${emp?.name||'—'}</span></div>`,
+            `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 30, 8)}<span style="font-weight:600">${emp?.name||'—'}</span></div>`,
             `<span style="color:${type.color};font-weight:600">${type.label}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted)">${App.formatDate(l.from)}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted)">${App.formatDate(l.to)}</span>`,
@@ -542,7 +542,7 @@ const ReportsModule = {
          ar?'أيام الغياب':'Absent', ar?'التأخر':'Late', ar?'الخصومات':'Deductions',
          ar?'إضافي':'Overtime', ar?'الصافي':'Net'],
         rows.map(r => [
-          `<div style="display:flex;align-items:center;gap:8px"><div class="avatar ${r.emp.avatarColor||'gradient-primary'}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${r.emp.avatar||'?'}</div><span style="font-weight:600;font-size:13px">${r.emp.name||'—'}</span></div>`,
+          `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(r.emp, 28, 8)}<span style="font-weight:600;font-size:13px">${r.emp.name||'—'}</span></div>`,
           `<span style="font-weight:600">${App.formatCurrency(r.base)}</span>`,
           `<span style="color:var(--success)">${App.formatCurrency(r.allow)}</span>`,
           r.absentDays > 0

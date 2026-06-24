@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#6366f1"/>
+  <g fill="white" opacity="0.15">
+    <circle cx="256" cy="256" r="240" fill="none" stroke="white" stroke-width="8"/>
+  </g>
+  <!-- Fingerprint paths -->
+  <g fill="none" stroke="white" stroke-width="18" stroke-linecap="round">
+    <path d="M200 370 C200 370 160 330 160 256 C160 185 202 140 256 140 C310 140 352 185 352 256 C352 290 340 316 320 334"/>
+    <path d="M224 370 C218 350 210 310 210 256 C210 208 228 178 256 178 C284 178 302 208 302 256 C302 296 292 330 278 355"/>
+    <path d="M248 362 C246 342 244 306 244 256 C244 230 250 214 256 214 C262 214 268 230 268 256 C268 298 264 338 260 360"/>
+    <path d="M176 290 C172 278 170 268 170 256 C170 178 206 128 256 120 C306 112 346 158 350 220"/>
+    <path d="M334 374 C350 354 364 310 364 256 C364 178 316 128 256 128"/>
+  </g>
+  <circle cx="256" cy="256" r="18" fill="white"/>
+</svg>

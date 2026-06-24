@@ -143,7 +143,7 @@ const RequestsModule = {
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'موافقة طلب', 'الطلبات', `${emp?.name} — ${App.getRequestTypeLabel(req.type)}`);
-      if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestApproved(emp, req);
+      if (emp && typeof WhatsApp !== 'undefined' && WhatsApp.config?.enabled) WhatsApp.notifyRequestApproved(emp, req);
     });
   },
 
@@ -159,7 +159,7 @@ const RequestsModule = {
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'رفض طلب', 'الطلبات', `${emp?.name} — ${App.getRequestTypeLabel(req.type)}`);
-      if (emp && WhatsApp.config.enabled) WhatsApp.notifyRequestRejected(emp, req);
+      if (emp && typeof WhatsApp !== 'undefined' && WhatsApp.config?.enabled) WhatsApp.notifyRequestRejected(emp, req);
     });
   },
 
@@ -169,7 +169,7 @@ const RequestsModule = {
     App.openModal(App.getRequestTypeLabel(req?.type), `
       <div style="background:var(--bg-input);border-radius:10px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-          <div class="avatar ${emp?.avatarColor}" style="width:40px;height:40px;font-size:15px">${emp?.avatar}</div>
+          ${App.renderAvatar(emp, 40, 11)}
           <div>
             <div style="font-weight:700;color:var(--text-primary)">${emp?.name}</div>
             <div style="font-size:12px;color:var(--text-muted)">${emp?.position}</div>

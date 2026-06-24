@@ -70,6 +70,7 @@ const DepartmentsModule = {
                 <div style="display:flex;gap:4px">
                   <button class="btn-icon btn" onclick="DepartmentsModule.viewDept('${d.id}')"><i class="fas fa-eye"></i></button>
                   <button class="btn-icon btn" onclick="DepartmentsModule.editDept('${d.id}')"><i class="fas fa-pencil"></i></button>
+                  <button class="btn-icon btn" style="color:var(--danger)" onclick="DepartmentsModule.deleteDept('${d.id}')"><i class="fas fa-trash"></i></button>
                 </div>
               </div>
               <div class="dept-name">${d.name}</div>
@@ -149,6 +150,7 @@ const DepartmentsModule = {
                     <div style="display:flex;gap:4px">
                       <button class="btn-icon btn" onclick="DepartmentsModule.viewDept('${d.id}')"><i class="fas fa-eye"></i></button>
                       <button class="btn-icon btn" onclick="DepartmentsModule.editDept('${d.id}')"><i class="fas fa-pencil"></i></button>
+                      <button class="btn-icon btn" style="color:var(--danger)" onclick="DepartmentsModule.deleteDept('${d.id}')"><i class="fas fa-trash"></i></button>
                     </div>
                   </td>
                 </tr>
@@ -177,7 +179,7 @@ const DepartmentsModule = {
       <div style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto">
         ${emps.length ? emps.map(e => `
           <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;background:var(--bg-input)">
-            <div class="avatar ${e.avatarColor}" style="width:30px;height:30px;font-size:11px">${e.avatar}</div>
+            ${App.renderAvatar(e, 30, 8)}
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">${e.name}</div>
               <div style="font-size:11px;color:var(--text-muted)">${e.position}</div>
@@ -244,6 +246,31 @@ const DepartmentsModule = {
     App.closeModal();
     App.toast(currentLang==='ar'?'تم التحديث':'Updated', 'success');
     this.render(document.getElementById('page-content'));
+  },
+
+  deleteDept(id) {
+    const dept = DB.getDepartment(id);
+    if (!dept) return;
+    const empCount = DB.getEmployeesByDept(id).length;
+    const msg = empCount > 0
+      ? (currentLang === 'ar'
+          ? `القسم "${dept.name}" يحتوي على ${empCount} موظف — سيتم إلغاء تعيين القسم عنهم. هل تريد المتابعة؟`
+          : `Department "${dept.name}" has ${empCount} employees — they will be unassigned. Continue?`)
+      : (currentLang === 'ar'
+          ? `هل تريد حذف قسم "${dept.name}"؟`
+          : `Delete department "${dept.name}"?`);
+
+    App.confirm(msg, () => {
+      // إلغاء تعيين القسم عن موظفيه
+      DB.employees.forEach(e => { if (e.dept === id) e.dept = ''; });
+      // حذف القسم
+      const i = DB.departments.findIndex(d => d.id === id);
+      if (i !== -1) DB.departments.splice(i, 1);
+      DB.save();
+      DB.logAudit('admin', currentLang==='ar'?'حذف قسم':'Delete Department', 'Departments', dept.name);
+      App.toast(currentLang==='ar'?`تم حذف قسم "${dept.name}"`:`Department "${dept.name}" deleted`, 'success');
+      this.render(document.getElementById('page-content'));
+    });
   },
 
   openAdd() {

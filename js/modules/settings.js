@@ -18,7 +18,8 @@ const SettingsModule = {
     { key:'integrations', icon:'fas fa-plug',              label:'التكاملات',          labelEn:'Integrations' },
     { key:'security',     icon:'fas fa-shield-halved',     label:'الأمان',             labelEn:'Security' },
     { key:'appearance',   icon:'fas fa-palette',           label:'المظهر',             labelEn:'Appearance' },
-    { key:'backup',       icon:'fas fa-database',          label:'النسخ الاحتياطي',    labelEn:'Backup & Data' },
+    { key:'backup',       icon:'fas fa-cloud-arrow-up',    label:'النسخ الاحتياطي',    labelEn:'Backup & Data' },
+    { key:'roles',        icon:'fas fa-user-shield',       label:'الأدوار والصلاحيات', labelEn:'Roles & Permissions' },
   ],
 
   render(container) {
@@ -63,6 +64,19 @@ const SettingsModule = {
   _renderSection() {
     const el = document.getElementById('settings-content');
     if (!el) return;
+
+    // Modules with their own render() — delegate directly (guard against missing modules)
+    if (this._section === 'backup') {
+      if (typeof BackupModule !== 'undefined') { BackupModule.render(el); }
+      else { el.innerHTML = '<div class="empty-state"><p>وحدة النسخ الاحتياطي غير متاحة</p></div>'; }
+      return;
+    }
+    if (this._section === 'roles') {
+      if (typeof RolesModule !== 'undefined') { RolesModule.render(el); }
+      else { el.innerHTML = '<div class="empty-state"><p>وحدة الصلاحيات غير متاحة</p></div>'; }
+      return;
+    }
+
     const map = {
       company:       () => this._company(),
       hours:         () => this._hours(),
@@ -75,7 +89,6 @@ const SettingsModule = {
       integrations:  () => this._integrations(),
       security:      () => this._security(),
       appearance:    () => this._appearance(),
-      backup:        () => this._backup(),
     };
     el.innerHTML = map[this._section]?.() || '';
   },
@@ -852,30 +865,13 @@ const SettingsModule = {
         </div>
       `)}
 
-      ${this._group('إعدادات GPS','تكوين نطاق السياج الجغرافي لتسجيل الحضور',`
-        <div class="app-form-row">
-          <div class="app-form-group">
-            <label>خط العرض (Latitude)</label>
-            <input class="app-form-input" type="number" id="gps-lat" step="0.000001"
-              value="${DB.company.gpsLat||''}" placeholder="مثال: 24.7136">
-          </div>
-          <div class="app-form-group">
-            <label>خط الطول (Longitude)</label>
-            <input class="app-form-input" type="number" id="gps-lon" step="0.000001"
-              value="${DB.company.gpsLon||''}" placeholder="مثال: 46.6753">
-          </div>
-          <div class="app-form-group">
-            <label>نطاق السياج (متر)</label>
-            <input class="app-form-input" type="number" id="gps-radius"
-              value="${DB.company.gpsRadius||200}" min="30" max="5000">
-          </div>
+      ${this._group('مناطق GPS','إضافة وإدارة نطاقات السياج الجغرافي لتسجيل الحضور',`
+        <div id="gps-zones-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+          ${SettingsModule._renderGpsZones()}
         </div>
-        <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule.detectCompanyGPS()">
-          <i class="fas fa-crosshairs"></i> تحديد موقع الشركة من موقعي الحالي
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule.addGpsZone()">
+          <i class="fas fa-plus"></i> إضافة منطقة GPS جديدة
         </button>
-        <div id="gps-status" style="margin-top:10px;font-size:12px;color:var(--text-muted)">
-          ${DB.company.gpsLat ? `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> تم تحديد الموقع: ${DB.company.gpsLat?.toFixed(4)}, ${DB.company.gpsLon?.toFixed(4)} — نطاق ${DB.company.gpsRadius||200}م</span>` : 'لم يتم تحديد موقع الشركة بعد'}
-        </div>
         ${this._row('تحقق مزدوج (GPS + Face)','يتطلب التحقق من الموقع والوجه معاً',this._toggle('dual-verify',false))}
       `)}
 
@@ -883,16 +879,148 @@ const SettingsModule = {
     `;
   },
 
-  saveAttendanceSettings() {
-    const lat    = parseFloat(document.getElementById('gps-lat')?.value);
-    const lon    = parseFloat(document.getElementById('gps-lon')?.value);
-    const radius = parseInt(document.getElementById('gps-radius')?.value) || 200;
-    if (!isNaN(lat) && !isNaN(lon)) {
-      DB.company.gpsLat    = lat;
-      DB.company.gpsLon    = lon;
-      DB.company.gpsRadius = radius;
+  _renderGpsZones() {
+    if (!DB.locations.length) {
+      return `<div style="text-align:center;padding:24px;background:var(--bg-input);border-radius:12px;color:var(--text-muted);font-size:13px">
+        <i class="fas fa-map-pin" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>
+        لا توجد مناطق GPS — أضف منطقة للبدء
+      </div>`;
     }
+    return DB.locations.map((loc, i) => `
+      <div class="gps-zone-card" id="gzone-${loc.id}" style="border:1.5px solid var(--border);border-radius:14px;padding:16px;background:var(--bg-input);position:relative">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0">
+            <i class="fas fa-map-pin"></i>
+          </div>
+          <input class="app-form-input" type="text" placeholder="اسم المنطقة (مثال: المقر الرئيسي)"
+            value="${loc.name||''}" onchange="SettingsModule._updateZoneField('${loc.id}','name',this.value)"
+            style="flex:1;min-width:160px;font-weight:700">
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+            <label style="font-size:11px;color:var(--text-muted)">مفعّل</label>
+            <div class="toggle-switch ${loc.active!==false?'active':''}" onclick="SettingsModule._toggleZoneActive('${loc.id}',this)"
+              style="width:36px;height:20px;border-radius:10px;cursor:pointer;transition:.2s;background:${loc.active!==false?'var(--primary)':'var(--border)'}">
+              <div style="width:16px;height:16px;border-radius:50%;background:#fff;margin-top:2px;transition:.2s;margin-inline-start:${loc.active!==false?'18px':'2px'}"></div>
+            </div>
+          </div>
+          <button onclick="SettingsModule._deleteZone('${loc.id}')" title="حذف"
+            style="width:30px;height:30px;border-radius:8px;border:none;background:var(--danger-bg,#fee2e2);color:var(--danger,#ef4444);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">خط العرض (Lat)</label>
+            <input class="app-form-input" type="number" step="0.000001" placeholder="24.7136"
+              value="${loc.lat||''}" onchange="SettingsModule._updateZoneField('${loc.id}','lat',parseFloat(this.value))"
+              style="font-size:13px;padding:8px 10px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">خط الطول (Lng)</label>
+            <input class="app-form-input" type="number" step="0.000001" placeholder="46.6753"
+              value="${loc.lng||''}" onchange="SettingsModule._updateZoneField('${loc.id}','lng',parseFloat(this.value))"
+              style="font-size:13px;padding:8px 10px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">النطاق (متر)</label>
+            <input class="app-form-input" type="number" min="30" max="5000" placeholder="200"
+              value="${loc.radius||200}" onchange="SettingsModule._updateZoneField('${loc.id}','radius',parseInt(this.value))"
+              style="font-size:13px;padding:8px 10px">
+          </div>
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule._detectZoneGPS('${loc.id}')">
+          <i class="fas fa-crosshairs"></i> تحديد من موقعي الحالي
+        </button>
+        <span id="gzone-status-${loc.id}" style="font-size:11px;color:var(--text-muted);margin-inline-start:10px">
+          ${loc.lat && loc.lng ? `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}</span>` : ''}
+        </span>
+      </div>
+    `).join('');
+  },
+
+  addGpsZone() {
+    const newZone = {
+      id:     DB.nextId('loc'),
+      name:   '',
+      lat:    null,
+      lng:    null,
+      radius: 200,
+      active: true,
+    };
+    DB.locations.push(newZone);
+    DB.save();
+    const list = document.getElementById('gps-zones-list');
+    if (list) {
+      list.innerHTML = this._renderGpsZones();
+    }
+    // Focus the name input of the new card
+    setTimeout(() => {
+      const card = document.getElementById(`gzone-${newZone.id}`);
+      card?.querySelector('input[type="text"]')?.focus();
+    }, 50);
+  },
+
+  _updateZoneField(id, field, value) {
+    const loc = DB.locations.find(l => l.id === id);
+    if (!loc) return;
+    loc[field] = value;
+    DB.save();
+  },
+
+  _toggleZoneActive(id, btn) {
+    const loc = DB.locations.find(l => l.id === id);
+    if (!loc) return;
+    loc.active = !loc.active;
+    DB.save();
+    btn.style.background = loc.active ? 'var(--primary)' : 'var(--border)';
+    const dot = btn.querySelector('div');
+    if (dot) dot.style.marginInlineStart = loc.active ? '18px' : '2px';
+    btn.classList.toggle('active', loc.active);
+  },
+
+  _deleteZone(id) {
+    if (!confirm('حذف هذه المنطقة؟')) return;
+    const idx = DB.locations.findIndex(l => l.id === id);
+    if (idx !== -1) DB.locations.splice(idx, 1);
+    DB.save();
+    const list = document.getElementById('gps-zones-list');
+    if (list) list.innerHTML = this._renderGpsZones();
+    App.toast('تم حذف المنطقة', 'success');
+  },
+
+  _detectZoneGPS(id) {
+    const status = document.getElementById(`gzone-status-${id}`);
+    if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ التحديد...';
+    if (!navigator.geolocation) {
+      if (status) status.innerHTML = '<span style="color:var(--danger)">المتصفح لا يدعم GPS</span>';
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const loc = DB.locations.find(l => l.id === id);
+        if (loc) { loc.lat = lat; loc.lng = lng; DB.save(); }
+        // Update inputs in the card
+        const card = document.getElementById(`gzone-${id}`);
+        if (card) {
+          const inputs = card.querySelectorAll('input[type="number"]');
+          if (inputs[0]) inputs[0].value = lat.toFixed(6);
+          if (inputs[1]) inputs[1].value = lng.toFixed(6);
+        }
+        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${lat.toFixed(4)}, ${lng.toFixed(4)} — دقة ±${Math.round(pos.coords.accuracy)}م</span>`;
+        App.toast(`تم تحديد موقع المنطقة ✓`, 'success');
+      },
+      (err) => {
+        const msgs = { 1:'رُفض إذن الموقع', 2:'تعذّر التحديد', 3:'انتهت المهلة' };
+        if (status) status.innerHTML = `<span style="color:var(--danger)"><i class="fas fa-triangle-exclamation"></i> ${msgs[err.code]||err.message}</span>`;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  },
+
+  saveAttendanceSettings() {
     DB.saveCompany();
+    DB.save();
     App.toast('تم حفظ إعدادات الحضور والـ GPS بنجاح', 'success');
   },
 
@@ -1010,20 +1138,20 @@ const SettingsModule = {
         <div class="app-form-row">
           <div class="app-form-group">
             <label>دورة الرواتب</label>
-            ${this._select('pay-cycle',[{v:'monthly',l:'شهري'},{v:'biweekly',l:'نصف شهري'},{v:'weekly',l:'أسبوعي'}],'monthly')}
+            ${this._select('pay-cycle',[{v:'monthly',l:'شهري'},{v:'biweekly',l:'نصف شهري'},{v:'weekly',l:'أسبوعي'}], DB.company.payrollCycle || 'monthly')}
           </div>
           <div class="app-form-group">
             <label>يوم الصرف (من الشهر)</label>
-            <input class="app-form-input" type="number" value="28" min="1" max="31">
+            <input class="app-form-input" id="pay-day" type="number" value="${DB.company.salaryDay ?? 28}" min="1" max="31">
           </div>
           <div class="app-form-group">
             <label>العملة الافتراضية</label>
-            ${this._select('pay-curr',[{v:'SAR',l:'SAR — ريال'},{v:'USD',l:'USD — دولار'},{v:'AED',l:'AED — درهم'}],'SAR')}
+            ${this._select('pay-curr',[{v:'SAR',l:'SAR — ريال'},{v:'USD',l:'USD — دولار'},{v:'AED',l:'AED — درهم'}], DB.company.payrollCurrency || 'SAR')}
           </div>
         </div>
-        ${this._row('معالجة الرواتب تلقائياً','صرف الرواتب تلقائياً في الموعد',this._toggle('auto-payroll',false))}
-        ${this._row('بدل التأخر من الراتب','خصم قيمة التأخرات تلقائياً',this._toggle('late-deduct',true))}
-        ${this._row('إضافة الأوفر تايم تلقائياً','احتساب الوقت الإضافي في الراتب',this._toggle('auto-ot-pay',true))}
+        ${this._row('معالجة الرواتب تلقائياً','صرف الرواتب تلقائياً في الموعد',this._toggle('auto-payroll', !!DB.company.autoPayroll))}
+        ${this._row('بدل التأخر من الراتب','خصم قيمة التأخرات تلقائياً',this._toggle('late-deduct', DB.company.lateDeduct !== false))}
+        ${this._row('إضافة الأوفر تايم تلقائياً','احتساب الوقت الإضافي في الراتب',this._toggle('auto-ot-pay', DB.company.autoOtPay !== false))}
       `)}
 
       ${this._group('مكونات الراتب','تفعيل وتعطيل بنود الراتب',`
@@ -1054,17 +1182,28 @@ const SettingsModule = {
   },
 
   savePayrollSettings() {
+    // Payroll cycle fields
+    const cycleEl = document.getElementById('pay-cycle');
+    const dayEl   = document.getElementById('pay-day');
+    const currEl  = document.getElementById('pay-curr');
+    if (cycleEl) DB.company.payrollCycle    = cycleEl.value;
+    if (dayEl)   DB.company.salaryDay       = parseInt(dayEl.value) || 28;
+    if (currEl)  DB.company.payrollCurrency = currEl.value;
+
+    // Toggle switches
+    const togEl = id => document.getElementById(id)?.classList.contains('on');
+    DB.company.autoPayroll = !!togEl('auto-payroll');
+    DB.company.lateDeduct  = !!togEl('late-deduct');
+    DB.company.autoOtPay   = !!togEl('auto-ot-pay');
+
+    // Payroll components toggles
     if (!DB.company.payrollComponents) DB.company.payrollComponents = {};
     const pc = DB.company.payrollComponents;
     ['housing','transport','phone','special','annualBonus','performanceBonus'].forEach(k => {
       const el = document.getElementById('pc-' + k);
       if (el) pc[k] = el.classList.contains('on');
     });
-    // Also save payroll cycle settings
-    const cycleEl  = document.getElementById('pay-cycle');
-    const currEl   = document.getElementById('pay-curr');
-    if (cycleEl) DB.company.payrollCycle    = cycleEl.value;
-    if (currEl)  DB.company.payrollCurrency = currEl.value;
+
     DB.saveCompany();
     App.toast('تم حفظ إعدادات الرواتب بنجاح ✓', 'success');
   },
@@ -1562,7 +1701,7 @@ const SettingsModule = {
             <div class="settings-item">
               <div class="settings-item-info">
                 <div style="display:flex;align-items:center;gap:8px">
-                  <div class="avatar ${user?.avatarColor||'gradient-primary'}" style="width:28px;height:28px;font-size:10px">${user?.avatar||'?'}</div>
+                  ${App.renderAvatar(user, 28, 8)}
                   <div>
                     <div class="settings-item-label">${user?.name||a.userId}</div>
                     <div class="settings-item-desc">${a.ip} — ${App.timeAgo(a.time)}</div>
@@ -1747,7 +1886,51 @@ const SettingsModule = {
               <div class="settings-item-info">
                 <div class="settings-item-label">مكان التخزين</div>
               </div>
-              ${this._select('backup-loc',[{v:'local',l:'خادم محلي'},{v:'s3',l:'Amazon S3'},{v:'drive',l:'Google Drive'},{v:'azure',l:'Azure Blob'}], bs.loc||'local')}
+              <select class="app-form-input app-form-select" id="backup-loc" style="min-width:200px"
+                onchange="SettingsModule._onBackupLocChange(this.value)">
+                ${[{v:'local',l:'خادم محلي'},{v:'s3',l:'Amazon S3'},{v:'drive',l:'Google Drive'},{v:'azure',l:'Azure Blob'}]
+                  .map(o=>`<option value="${o.v}" ${o.v==(bs.loc||'local')?'selected':''}>${o.l}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- Google Drive config -->
+            <div id="backup-drive-cfg" style="display:${(bs.loc||'local')==='drive'?'block':'none'}">
+              <div class="app-form-group">
+                <label><i class="fab fa-google-drive" style="color:#4285f4"></i> بريد Google الإلكتروني</label>
+                <input class="app-form-input" id="backup-drive-email" type="email"
+                  placeholder="example@gmail.com" value="${bs.driveEmail||''}" dir="ltr">
+              </div>
+              <div class="app-form-group">
+                <label>معرّف المجلد (اختياري)</label>
+                <input class="app-form-input" id="backup-drive-folder" type="text"
+                  placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" value="${bs.driveFolderId||''}" dir="ltr">
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px">يمكنك تركه فارغاً — سيُحفظ في المجلد الجذر</div>
+              </div>
+            </div>
+
+            <!-- Amazon S3 config -->
+            <div id="backup-s3-cfg" style="display:${(bs.loc||'local')==='s3'?'block':'none'}">
+              <div class="app-form-row">
+                <div class="app-form-group">
+                  <label>اسم الـ Bucket</label>
+                  <input class="app-form-input" id="backup-s3-bucket" type="text"
+                    placeholder="my-company-backups" value="${bs.s3Bucket||''}" dir="ltr">
+                </div>
+                <div class="app-form-group">
+                  <label>المنطقة (Region)</label>
+                  <input class="app-form-input" id="backup-s3-region" type="text"
+                    placeholder="us-east-1" value="${bs.s3Region||''}" dir="ltr">
+                </div>
+              </div>
+            </div>
+
+            <!-- Azure Blob config -->
+            <div id="backup-azure-cfg" style="display:${(bs.loc||'local')==='azure'?'block':'none'}">
+              <div class="app-form-group">
+                <label>اسم الـ Container</label>
+                <input class="app-form-input" id="backup-azure-container" type="text"
+                  placeholder="attendify-backups" value="${bs.azureContainer||''}" dir="ltr">
+              </div>
             </div>
           `;
         })()}
@@ -1806,6 +1989,13 @@ const SettingsModule = {
     `;
   },
 
+  _onBackupLocChange(val) {
+    ['drive','s3','azure'].forEach(k => {
+      const el = document.getElementById(`backup-${k}-cfg`);
+      if (el) el.style.display = val === k ? 'block' : 'none';
+    });
+  },
+
   saveBackupSettings() {
     if (!DB.company.backupSettings) DB.company.backupSettings = {};
     const bs = DB.company.backupSettings;
@@ -1819,6 +2009,26 @@ const SettingsModule = {
     if (timeEl)  bs.time      = timeEl.value;
     if (retEl)   bs.retention = parseInt(retEl.value) || 30;
     if (locEl)   bs.loc       = locEl.value;
+
+    // Google Drive
+    const driveEmail = document.getElementById('backup-drive-email')?.value?.trim();
+    if (bs.loc === 'drive') {
+      if (!driveEmail || !driveEmail.includes('@')) {
+        App.toast('أدخل بريد Google الإلكتروني أولاً', 'warning'); return;
+      }
+      bs.driveEmail    = driveEmail;
+      bs.driveFolderId = document.getElementById('backup-drive-folder')?.value?.trim() || '';
+    }
+    // Amazon S3
+    if (bs.loc === 's3') {
+      bs.s3Bucket = document.getElementById('backup-s3-bucket')?.value?.trim() || '';
+      bs.s3Region = document.getElementById('backup-s3-region')?.value?.trim() || '';
+    }
+    // Azure
+    if (bs.loc === 'azure') {
+      bs.azureContainer = document.getElementById('backup-azure-container')?.value?.trim() || '';
+    }
+
     DB.saveCompany();
     App.toast('تم حفظ إعدادات النسخ الاحتياطي بنجاح ✓', 'success');
   },

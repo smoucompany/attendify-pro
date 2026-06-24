@@ -88,6 +88,9 @@ const DB = {
   // ─── GPS LOCATIONS ────────────────────────────────────────
   locations: [],
 
+  // ─── LOANS / ADVANCES ────────────────────────────────────
+  loans: [],
+
   // ─── AUDIT LOGS ───────────────────────────────────────────
   audit: [],
 
@@ -213,16 +216,52 @@ const DB = {
     };
   },
 
+  _idSeq: 0,
   nextId(prefix) {
-    return `${prefix}-${Date.now()}`;
+    return `${prefix}-${Date.now()}-${++this._idSeq}`;
   },
 
-  nextEmpNo() {
+  nextEmpNo(firstName = '') {
+    // خريطة تحويل الحروف العربية لمقابلها الإنجليزي (مع الحروف المركبة)
+    const _ar = {
+      'ا':'A', 'أ':'A', 'إ':'E', 'آ':'A', 'ء':'A', 'ئ':'Y',
+      'ب':'B',
+      'ت':'T', 'ث':'TH',
+      'ج':'J',
+      'ح':'H', 'خ':'KH',
+      'د':'D', 'ذ':'DH',
+      'ر':'R',
+      'ز':'Z',
+      'س':'S', 'ش':'SH', 'ص':'S', 'ض':'D',
+      'ط':'T', 'ظ':'Z',
+      'ع':'O', 'غ':'GH',
+      'ف':'F',
+      'ق':'Q', 'ك':'K',
+      'ل':'L',
+      'م':'M',
+      'ن':'N',
+      'ه':'H', 'ة':'H',
+      'و':'W',
+      'ي':'Y', 'ى':'Y',
+    };
+    const name = (firstName || '').trim();
+    const ch   = name.charAt(0);
+    let pre;
+    if (ch === 'ع') {
+      // ع ليس له مقابل ثابت — يُحدَّد بالحرف التالي
+      const next = name.charAt(1);
+      if (next === 'م' || next === 'ث')            pre = 'O'; // عمر، عثمان → O
+      else if (next === 'ي')                        pre = 'I'; // عيسى → I
+      else                                          pre = 'A'; // عبدالله، علي، عادل → A
+    } else {
+      pre = ch ? (_ar[ch] || (/[a-z]/i.test(ch) ? ch.toUpperCase() : 'E')) : 'E';
+    }
+    // رقم متسلسل عالمي — يُستخرج من الجزء الرقمي لكل الأكواد الموجودة
     const nums = this.employees
-      .map(e => parseInt(e.no))
-      .filter(n => !isNaN(n));
-    const max = nums.length ? Math.max(...nums) : 0;
-    return String(max + 1).padStart(3, '0');
+      .map(e => parseInt((e.no || '').replace(/^[^\d]+/, ''), 10))
+      .filter(n => !isNaN(n) && n > 0);
+    const seq = (nums.length ? Math.max(...nums) : 0) + 1;
+    return pre + String(seq).padStart(3, '0');
   },
 
   // تسجيل حدث في سجل المراجعة
@@ -261,7 +300,7 @@ const DB = {
   // حفظ مؤجّل (debounced) لتجنب حفظ متكرر
   _scheduleSave() {
     clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => this._saveToLocal(), 600);
+    this._saveTimer = setTimeout(() => this._saveToLocal(), 200);
   },
 
   _saveToLocal() {
@@ -280,6 +319,7 @@ const DB = {
         notifications: Array.from(this.notifications),
         payroll:       Array.from(this.payroll),
         deductions:    Array.from(this.deductions),
+        loans:         Array.from(this.loans),
         locations:     Array.from(this.locations),
         roles:         Array.from(this.roles),
         audit:         Array.from(this.audit).slice(0, 300),
@@ -302,10 +342,10 @@ const DB = {
       if (!snap?.v) return false;
 
       if (snap.company)    Object.assign(this.company, snap.company);
-      if (snap.adminCreds?.email) Object.assign(this.adminCredentials, snap.adminCreds);
+      if (snap.adminCreds) Object.assign(this.adminCredentials, snap.adminCreds);
 
       const arrays = ['departments','employees','shifts','attendance','leaves',
-                      'requests','notifications','payroll','deductions','locations','roles','audit'];
+                      'requests','notifications','payroll','deductions','loans','locations','roles','audit'];
       arrays.forEach(k => {
         if (Array.isArray(snap[k]) && snap[k].length) {
           this[k].length = 0;
@@ -315,6 +355,18 @@ const DB = {
       if (snap.leaveBalances && typeof snap.leaveBalances === 'object') {
         Object.assign(this.leaveBalances, snap.leaveBalances);
       }
+
+      // إصلاح الـ IDs المتكررة في المصفوفات (ناتجة عن استخدام Date.now() في forEach)
+      ['employees','departments','attendance','leaves','requests'].forEach(key => {
+        const seen = new Set();
+        this[key].forEach(r => {
+          if (r.id && seen.has(r.id)) {
+            r.id = `${r.id.split('-')[0]}-${Date.now()}-${++this._idSeq}`;
+          }
+          if (r.id) seen.add(r.id);
+        });
+      });
+
       console.log('[DB] Loaded from localStorage ✓', snap.ts ? new Date(snap.ts).toLocaleTimeString() : '');
       return true;
     } catch(e) {
@@ -326,7 +378,10 @@ const DB = {
   // يُستدعى من كل الوحدات بعد أي تعديل
   save() {
     this._scheduleSave();
-    // Supabase sync handled by Proxy automatically
+    // Trigger server sync for property mutations (not caught by proxy)
+    if (typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected) {
+      SupabaseDB._scheduleServerSync();
+    }
   },
 
   // ─── تغليف المصفوفات بـ Proxy للحفظ التلقائي ────────────

@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Attendify Pro — بوابة الموظف</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/assets/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -913,7 +919,10 @@
     <button class="bnav-item" data-page="leaves" onclick="goPage('leaves',this)">
       <div class="bnav-icon"><i class="fas fa-calendar-minus"></i></div>
       <span>الإجازات</span>
-      <span class="bnav-badge">2</span>
+    </button>
+    <button class="bnav-item" data-page="myloans" onclick="goPage('myloans',this)">
+      <div class="bnav-icon"><i class="fas fa-hand-holding-dollar"></i></div>
+      <span>سلفتي</span>
     </button>
     <button class="bnav-item" data-page="profile" onclick="goPage('profile',this)">
       <div class="bnav-icon"><i class="fas fa-user"></i></div>
@@ -976,46 +985,57 @@ function switchLoginTab(type, btn) {
 }
 
 /* ── LOGIN ── */
-function empLogin(e) {
+async function empLogin(e) {
   e.preventDefault();
   const pass = document.getElementById('emp-pass').value;
   if (!pass) return showToast('أدخل كلمة المرور', 'error');
 
-  const emailInput = document.getElementById('emp-email').value;
+  const emailInput = document.getElementById('emp-email').value.trim();
+  const code       = document.getElementById('emp-code').value.trim();
+
+  if (!emailInput && !code) return showToast('أدخل كود الموظف', 'error');
+
+  const btn = document.querySelector('#emp-login-form .btn-login');
+  if (btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق...'; }
+
+  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = 'دخول'; } };
+
+  // 1️⃣ Try backend (works across all devices)
+  try {
+    const body = emailInput ? { email: emailInput, password: pass } : { empNo: code, password: pass };
+    const res  = await fetch('/api/emp/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (res.ok && json.ok) {
+      restore();
+      return _loginEmp(json.emp);
+    }
+    // Backend returned auth error (wrong code/password)
+    if (res.status === 401 || res.status === 400) {
+      restore();
+      return showToast(json.error || 'بيانات الدخول غير صحيحة', 'error');
+    }
+  } catch(_) {
+    // Network error → fall through to localStorage fallback
+  }
+
+  // 2️⃣ Fallback: localStorage (same device as admin)
   let emp;
   if (emailInput) {
-    emp = DB.employees.find(x => x.email === emailInput.trim().toLowerCase());
-    if (!emp) return showToast('البريد الإلكتروني غير موجود', 'error');
+    emp = DB.employees.find(x => x.email === emailInput.toLowerCase());
+    if (!emp) { restore(); return showToast('البريد الإلكتروني غير موجود', 'error'); }
   } else {
-    const code = document.getElementById('emp-code').value.trim();
-    if (!code) return showToast('أدخل كود الموظف', 'error');
     emp = DB.employees.find(x => x.no === code || x.no === code.padStart(3,'0'));
-    if (!emp) return showToast('كود الموظف غير صحيح', 'error');
+    if (!emp) { restore(); return showToast('كود الموظف غير صحيح — تحقق من الاتصال بالإنترنت', 'error'); }
   }
-
-  // Validate password: uses emp.password if set, otherwise defaults to employee code
   const validPass = emp.password || emp.no;
-  if (pass !== validPass) return showToast('كلمة المرور غير صحيحة', 'error');
+  if (pass !== validPass) { restore(); return showToast('كلمة المرور غير صحيحة', 'error'); }
 
-  currentEmp = emp;
-  sessionStorage.setItem('emp-session', JSON.stringify(emp));
-
-  document.getElementById('emp-login').style.display = 'none';
-  document.getElementById('emp-app').style.display = 'block';
-  document.getElementById('hdr-avatar').textContent = emp.avatar;
-
-  // Detect if already checked in today
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayRec = DB.attendance.find(a =>
-    a.empId === emp.id && a.date === todayStr
-  );
-  if (todayRec && todayRec.checkIn && !todayRec.checkOut) {
-    checkedIn = true;
-    checkInTime = todayRec.checkIn;
-  }
-
-  goPage('home');
-  showToast(`أهلاً ${emp.name} 👋`, 'success');
+  restore();
+  _loginEmp(emp);
 }
 
 /* ── BIOMETRIC LOGIN ── */
@@ -1049,15 +1069,46 @@ async function empBiometricLogin(type) {
 
 function _loginEmp(emp) {
   currentEmp = emp;
+  currentEmp = emp;
   sessionStorage.setItem('emp-session', JSON.stringify(emp));
   document.getElementById('emp-login').style.display = 'none';
   document.getElementById('emp-app').style.display = 'block';
-  document.getElementById('hdr-avatar').textContent = emp.avatar;
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayRec = DB.attendance.find(a => a.empId === emp.id && a.date === todayStr);
-  if (todayRec && todayRec.checkIn && !todayRec.checkOut) { checkedIn = true; checkInTime = todayRec.checkIn; }
+  document.getElementById('hdr-avatar').textContent = emp.avatar || emp.name?.charAt(0) || '?';
+
   goPage('home');
   showToast(`أهلاً ${emp.name} 👋`, 'success');
+
+  // جلب بيانات الموظف الحديثة من السيرفر (حضور، ورديات، إجازات)
+  fetch(`/api/emp/data/${emp.id}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(json => {
+      if (!json?.ok) return;
+      // حفظ الحضور في DB المحلي حتى تعمل صفحة الحضور بشكل صحيح
+      if (json.attendance?.length) {
+        json.attendance.forEach(rec => {
+          if (!DB.attendance.find(a => a.empId === rec.empId && a.date === rec.date))
+            DB.attendance.push(rec);
+        });
+      }
+      if (json.shifts?.length)      { DB.shifts.length = 0;      json.shifts.forEach(r => DB.shifts.push(r)); }
+      if (json.departments?.length) { DB.departments.length = 0; json.departments.forEach(r => DB.departments.push(r)); }
+      if (json.leaves?.length) {
+        json.leaves.forEach(rec => {
+          if (!DB.leaves.find(l => l.id === rec.id)) DB.leaves.push(rec);
+        });
+      }
+      // تحديث حالة الحضور اليوم
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayRec = DB.attendance.find(a => a.empId === emp.id && a.date === todayStr);
+      if (todayRec?.checkIn && !todayRec.checkOut) { checkedIn = true; checkInTime = todayRec.checkIn; }
+      goPage('home'); // إعادة رسم الصفحة بالبيانات المحدّثة
+    })
+    .catch(() => {
+      // لا يوجد اتصال — استخدم ما هو محلي
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayRec = DB.attendance.find(a => a.empId === emp.id && a.date === todayStr);
+      if (todayRec?.checkIn && !todayRec.checkOut) { checkedIn = true; checkInTime = todayRec.checkIn; }
+    });
 }
 
 /* ── LOGOUT ── */
@@ -1077,7 +1128,7 @@ function goPage(page, btn) {
   else document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
 
   const content = document.getElementById('emp-content');
-  const pages = { home: renderHome, history: renderHistory, leaves: renderLeaves, profile: renderProfile };
+  const pages = { home: renderHome, history: renderHistory, leaves: renderLeaves, myloans: renderMyLoans, profile: renderProfile };
   (pages[page] || renderHome)(content);
   content.scrollTop = 0;
 }
@@ -1199,7 +1250,7 @@ function renderHome(container) {
       ${[
         {icon:'fa-calendar-plus',label:'طلب إجازة',color:'--primary',page:'leaves'},
         {icon:'fa-file-lines',label:'سجل الحضور',color:'--success',page:'history'},
-        {icon:'fa-envelope',label:'مراسلة الإدارة',color:'--info',action:'contact'},
+        {icon:'fa-hand-holding-dollar',label:'سلفتي',color:'--info',page:'myloans'},
         {icon:'fa-user-pen',label:'تحديث ملفي',color:'--warning',page:'profile'},
       ].map(a=>`
         <button onclick="${a.page?`goPage('${a.page}')`:`quickAction('${a.action}')`}"
@@ -1375,12 +1426,14 @@ function renderProfile(container) {
       </div>
       <div class="card-body">
         ${[
-          {icon:'fa-id-badge', label:'كود الموظف', val: emp.no},
-          {icon:'fa-building',  label:'القسم',      val: DB.getDepartment(emp.dept)?.name||emp.dept},
-          {icon:'fa-briefcase', label:'المنصب',     val: emp.position},
-          {icon:'fa-envelope',  label:'البريد',     val: emp.email},
-          {icon:'fa-phone',     label:'الهاتف',     val: emp.phone},
-          {icon:'fa-calendar',  label:'تاريخ التعيين', val: emp.hireDate},
+          {icon:'fa-id-badge',    label:'كود الموظف',    val: emp.no},
+          {icon:'fa-building',    label:'القسم',         val: DB.getDepartment(emp.dept)?.name||'—'},
+          {icon:'fa-briefcase',   label:'المنصب',        val: emp.position},
+          {icon:'fa-location-dot',label:'مكان العمل',    val: emp.workLocation||'—'},
+          {icon:'fa-building',    label:'جهة العمل',    val: emp.workEntity||'—'},
+          {icon:'fa-envelope',    label:'البريد',        val: emp.email},
+          {icon:'fa-phone',       label:'الهاتف',        val: emp.phone},
+          {icon:'fa-calendar',    label:'تاريخ التعيين', val: emp.hireDate},
         ].map(r=>`
           <div class="info-row">
             <div class="info-icon"><i class="fas ${r.icon}"></i></div>
@@ -1390,6 +1443,52 @@ function renderProfile(container) {
             </div>
           </div>
         `).join('')}
+        <!-- End of Service Preview -->
+        ${(() => {
+          const t = calcEmpGratuity(emp, 'termination');
+          const r = calcEmpGratuity(emp, 'resign');
+          if (!emp.hireDate) return '';
+          const yrs = t.years < 1 ? `${Math.round(t.years*12)} شهر` : `${Math.floor(t.years)} سنة ${Math.round((t.years%1)*12)} شهر`;
+          return `
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="section-title"><i class="fas fa-award" style="color:#f59e0b"></i> مكافأة نهاية الخدمة</div>
+          <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px;margin-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span style="font-size:12px;color:var(--text-muted)">مدة الخدمة</span>
+              <span style="font-weight:700">${yrs}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div style="background:rgba(16,185,129,.08);border-radius:10px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:#10b981;font-weight:700;margin-bottom:4px">عند إنهاء الخدمة</div>
+                <div style="font-weight:900;font-size:16px;color:#10b981">${t.eligible ? (t.gratuity).toLocaleString('ar') : '—'} ${t.eligible ? 'ر.س' : ''}</div>
+              </div>
+              <div style="background:rgba(99,102,241,.08);border-radius:10px;padding:10px;text-align:center">
+                <div style="font-size:10px;color:#6366f1;font-weight:700;margin-bottom:4px">عند الاستقالة</div>
+                <div style="font-weight:900;font-size:16px;color:#6366f1">${r.eligible ? (r.gratuity).toLocaleString('ar') : '—'} ${r.eligible ? 'ر.س' : ''}</div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:8px;text-align:center">تقديري وفق نظام العمل السعودي — المادة 84</div>
+          </div>
+        </div>`;
+        })()}
+
+        <!-- Self-service: change password -->
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="section-title"><i class="fas fa-shield-halved"></i> الأمان والبصمة</div>
+
+          <button onclick="empChangePassword()" style="width:100%;padding:11px;border-radius:11px;background:var(--primary-bg);color:var(--primary);border:1.5px solid var(--primary);font-size:13px;font-weight:700;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;cursor:pointer;transition:all .2s">
+            <i class="fas fa-key"></i> تغيير كلمة المرور
+          </button>
+
+          <button onclick="empRegisterFace()" id="emp-face-btn" style="width:100%;padding:11px;border-radius:11px;background:var(--success-bg);color:var(--success);border:1.5px solid var(--success);font-size:13px;font-weight:700;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;cursor:pointer;transition:all .2s">
+            <i class="fas fa-face-smile"></i> <span id="emp-face-lbl">${Biometrics && typeof Biometrics !== 'undefined' && Biometrics.hasStoredFace(emp.id) ? 'إعادة تسجيل بصمة الوجه' : 'تسجيل بصمة الوجه'}</span>
+          </button>
+
+          <button onclick="empRegisterFingerprint()" id="emp-fp-btn" style="width:100%;padding:11px;border-radius:11px;background:var(--warning-bg);color:var(--warning);border:1.5px solid var(--warning);font-size:13px;font-weight:700;font-family:var(--font);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;cursor:pointer;transition:all .2s">
+            <i class="fas fa-fingerprint"></i> <span id="emp-fp-lbl">${Biometrics && typeof Biometrics !== 'undefined' && Biometrics.hasFingerprint(emp.id) ? 'إعادة تسجيل بصمة الإصبع' : 'تسجيل بصمة الإصبع'}</span>
+          </button>
+        </div>
+
         <button class="btn-logout-emp" onclick="empLogout()">
           <i class="fas fa-right-from-bracket"></i> تسجيل الخروج
         </button>
@@ -1480,26 +1579,17 @@ function _doCheckin(method) {
   goPage('home');
 }
 
-/* ── FACE MODAL (Simulated — legacy) ── */
+/* ── FACE MODAL (Real camera via Biometrics) ── */
 function openFaceModal() {
-  openModal(`
-    <div class="modal-title"><i class="fas fa-face-smile"></i> التعرف على الوجه</div>
-    <div style="text-align:center;padding:20px 0">
-      <div class="face-circle">😊</div>
-      <div class="verify-status">جارٍ التعرف على وجهك...</div>
-      <div class="verify-sub">ثبّت نظرتك أمام الكاميرا</div>
-    </div>
-    <div style="background:var(--success-bg);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <i class="fas fa-circle-check" style="color:var(--success);font-size:20px"></i>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--success)">تم التعرف بنجاح</div>
-        <div style="font-size:12px;color:var(--text-muted)">${currentEmp.name} — ${new Date().toLocaleTimeString('ar-EG')}</div>
-      </div>
-    </div>
-    <button class="btn-submit" onclick="confirmCheckin()">
-      <i class="fas fa-check"></i> تأكيد ${checkedIn?'الانصراف':'الحضور'}
-    </button>
-  `);
+  if (typeof Biometrics === 'undefined' || !Biometrics.canCamera()) {
+    showToast('الكاميرا غير متاحة في هذا المتصفح', 'error');
+    return;
+  }
+  Biometrics.openFaceVerify({
+    empId: currentEmp.id,
+    onSuccess: () => confirmCheckin(),
+    onFail:    () => showToast('لم يتم التعرف على الوجه — حاول مرة أخرى في ضوء أفضل', 'error'),
+  });
 }
 
 /* ── QR MODAL ── */
@@ -1642,6 +1732,160 @@ function quickAction(type) {
   if (type === 'contact') showToast('سيتم إطلاق المراسلة قريباً', 'info');
 }
 
+/* ── SELF-SERVICE: CHANGE PASSWORD ── */
+function empChangePassword() {
+  openModal(`
+    <div class="modal-title"><i class="fas fa-key"></i> تغيير كلمة المرور</div>
+    <div class="form-group">
+      <label>كلمة المرور الحالية</label>
+      <input class="form-input" type="password" id="cur-pass" placeholder="أدخل كلمة المرور الحالية">
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور الجديدة</label>
+      <input class="form-input" type="password" id="new-pass" placeholder="6 أحرف على الأقل">
+    </div>
+    <div class="form-group">
+      <label>تأكيد كلمة المرور</label>
+      <input class="form-input" type="password" id="confirm-pass" placeholder="أعد إدخال كلمة المرور">
+    </div>
+    <button class="btn-submit" onclick="empSavePassword()">
+      <i class="fas fa-save"></i> حفظ كلمة المرور
+    </button>
+  `);
+}
+
+function empSavePassword() {
+  const cur     = document.getElementById('cur-pass')?.value || '';
+  const newP    = document.getElementById('new-pass')?.value || '';
+  const confirm = document.getElementById('confirm-pass')?.value || '';
+  const validCur = currentEmp.password || currentEmp.no;
+
+  if (cur !== validCur) { showToast('كلمة المرور الحالية غير صحيحة', 'error'); return; }
+  if (newP.length < 6)  { showToast('كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
+  if (newP !== confirm) { showToast('كلمة المرور غير متطابقة', 'error'); return; }
+
+  const emp = DB.employees.find(e => e.id === currentEmp.id);
+  if (emp) { emp.password = newP; DB.save(); currentEmp = emp; sessionStorage.setItem('emp-session', JSON.stringify(emp)); }
+  closeModal();
+  showToast('✅ تم تغيير كلمة المرور بنجاح', 'success');
+}
+
+/* ── SELF-SERVICE: REGISTER FACE ── */
+async function empRegisterFace() {
+  if (!Biometrics || !Biometrics.canCamera()) { showToast('الكاميرا غير متاحة على هذا الجهاز', 'error'); return; }
+  showToast('جارٍ فتح الكاميرا...', 'info', 2000);
+  await Biometrics.openFaceRegister(currentEmp.id);
+  // Update button label
+  const lbl = document.getElementById('emp-face-lbl');
+  if (lbl) lbl.textContent = Biometrics.hasStoredFace(currentEmp.id) ? 'إعادة تسجيل بصمة الوجه' : 'تسجيل بصمة الوجه';
+  showToast('✅ تم تسجيل بصمة الوجه — يمكنك الآن الدخول ببصمة الوجه', 'success');
+}
+
+/* ── SELF-SERVICE: REGISTER FINGERPRINT ── */
+async function empRegisterFingerprint() {
+  if (!Biometrics || !Biometrics.canWebAuthn()) { showToast('جهازك لا يدعم البصمة البيومترية', 'error'); return; }
+  showToast('ابدأ التحقق البيومتري على جهازك...', 'info', 3000);
+  const res = await Biometrics.registerFingerprint(currentEmp);
+  if (res.ok) {
+    const lbl = document.getElementById('emp-fp-lbl');
+    if (lbl) lbl.textContent = 'إعادة تسجيل بصمة الإصبع';
+    showToast('✅ تم تسجيل البصمة — يمكنك الآن الدخول ببصمة الإصبع', 'success');
+  } else {
+    showToast(`فشل التسجيل: ${res.error}`, 'error');
+  }
+}
+
+/* ── PAGE: MY LOANS ── */
+function renderMyLoans(container) {
+  const emp    = currentEmp;
+  const loans  = (DB.loans || []).filter(l => l.empId === emp.id);
+  const active = loans.filter(l => l.status === 'approved');
+  const totalRemaining = active.reduce((s,l) => s + (l.remainingAmount||0), 0);
+
+  const statusLabel = { pending:'في الانتظار', approved:'نشطة', rejected:'مرفوضة', paid:'مسددة' };
+  const statusColor = { pending:'#f59e0b', approved:'#10b981', rejected:'#ef4444', paid:'#06b6d4' };
+
+  container.innerHTML = `
+    <div style="padding:0 0 80px">
+      <div style="padding:16px">
+        <div style="font-size:20px;font-weight:800;margin-bottom:4px">سلفي وقروضي</div>
+        <div style="font-size:13px;color:var(--text-secondary)">تتبع سلفك وأقساطك الشهرية</div>
+      </div>
+
+      ${active.length > 0 ? `
+      <div style="margin:0 16px 16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:16px;padding:20px;color:white">
+        <div style="font-size:12px;opacity:.8;margin-bottom:4px">إجمالي المتبقي من السلف النشطة</div>
+        <div style="font-size:28px;font-weight:900">${(totalRemaining).toLocaleString('ar')} ر.س</div>
+        <div style="font-size:12px;opacity:.7;margin-top:6px">${active.length} سلف/قروض نشطة</div>
+      </div>` : ''}
+
+      ${loans.length === 0 ? `
+      <div style="text-align:center;padding:60px 20px;color:var(--text-muted)">
+        <div style="font-size:48px;margin-bottom:12px">💳</div>
+        <div style="font-weight:700;font-size:16px;color:var(--text-primary);margin-bottom:6px">لا توجد سلف أو قروض</div>
+        <div style="font-size:13px">لم يتم تسجيل أي سلفة أو قرض باسمك</div>
+      </div>
+      ` : loans.map(ln => {
+        const paid = (ln.payments||[]).reduce((s,p)=>s+(p.amount||0),0);
+        const pct  = ln.amount > 0 ? Math.round((paid/ln.amount)*100) : 0;
+        return `
+        <div style="margin:0 16px 12px;background:var(--bg-card);border-radius:16px;padding:18px;box-shadow:var(--shadow);border:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div>
+              <div style="font-weight:700;font-size:15px">${ln.type==='advance'?'سلفة راتب':'قرض'}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${ln.requestDate||''}</div>
+            </div>
+            <div style="background:${statusColor[ln.status]||'#94a3b8'}20;color:${statusColor[ln.status]||'#94a3b8'};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px">
+              ${statusLabel[ln.status]||ln.status}
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:${ln.status==='approved'?'14px':'0'}">
+            <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">المبلغ</div>
+              <div style="font-weight:800;font-size:14px">${(ln.amount||0).toLocaleString('ar')}</div>
+            </div>
+            <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">القسط</div>
+              <div style="font-weight:800;font-size:14px;color:#6366f1">${(ln.installment||0).toLocaleString('ar')}</div>
+            </div>
+            <div style="text-align:center;background:var(--bg);border-radius:10px;padding:10px">
+              <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">المتبقي</div>
+              <div style="font-weight:800;font-size:14px;color:#ef4444">${(ln.remainingAmount||0).toLocaleString('ar')}</div>
+            </div>
+          </div>
+          ${ln.status==='approved' ? `
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:5px">
+              <span>نسبة السداد</span><span>${pct}%</span>
+            </div>
+            <div style="background:var(--border);border-radius:6px;height:6px">
+              <div style="background:linear-gradient(90deg,#6366f1,#8b5cf6);height:6px;border-radius:6px;width:${pct}%;transition:width .5s"></div>
+            </div>
+          </div>` : ''}
+          ${ln.reason ? `<div style="margin-top:10px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:8px">${ln.reason}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* ── HELPER: GRATUITY CALC ── */
+function calcEmpGratuity(emp, type) {
+  if (!emp.hireDate) return { years:0, gratuity:0, eligible:false };
+  const hire  = new Date(emp.hireDate);
+  const end   = new Date();
+  const years = Math.max(0, (end - hire) / (365.25 * 24 * 3600 * 1000));
+  const sal   = emp.salary || 0;
+  let g = Math.min(years,5)*(sal/2) + Math.max(0,years-5)*sal;
+  if (type==='resign') {
+    if (years<2) g=0;
+    else if (years<5) g*=1/3;
+    else if (years<10) g*=2/3;
+  }
+  if (type==='termination' && years<0.5) g=0;
+  return { years:Math.round(years*10)/10, gratuity:Math.round(g), eligible:g>0 };
+}
+
 /* ── MODAL ── */
 function openModal(html) {
   document.getElementById('modal-body').innerHTML = html;
@@ -1662,12 +1906,18 @@ function showToast(msg, type='info') {
   setTimeout(() => { t.style.opacity='0'; t.style.transform='translateY(-8px)'; setTimeout(()=>t.remove(),300); }, 3000);
 }
 
-/* ── RESUME SESSION ── */
+/* ── INIT DB + RESUME SESSION ── */
 (function resumeSession() {
+  // Load DB from localStorage so departments/data are available
+  try { DB.loadFromLocal(); } catch(_) {}
+
   const saved = sessionStorage.getItem('emp-session');
   if (saved) {
     try {
       currentEmp = JSON.parse(saved);
+      // Refresh employee data from DB in case it was updated
+      const fresh = DB.employees.find(e => e.id === currentEmp.id);
+      if (fresh) currentEmp = fresh;
       document.getElementById('emp-login').style.display = 'none';
       document.getElementById('emp-app').style.display = 'block';
       document.getElementById('hdr-avatar').textContent = currentEmp.avatar;
@@ -1675,6 +1925,14 @@ function showToast(msg, type='info') {
     } catch(e) { sessionStorage.removeItem('emp-session'); }
   }
 })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    window.addEventListener('online',  () => showToast('✅ عاد الاتصال بالإنترنت', 'success'));
+    window.addEventListener('offline', () => showToast('📵 لا إنترنت — البيانات محلية', 'warning'));
+  }
 </script>
 </body>
 </html>

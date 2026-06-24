@@ -74,7 +74,13 @@ const WhatsApp = {
       label: 'راتب جاهز',
       icon:  'fas fa-money-bill-wave',
       color: '#6366f1',
-      text:  'عزيزي/عزيزتي {name}،\nيسعدنا إبلاغك بأن راتب شهر {date} بمبلغ {amount} ريال قد تم صرفه.\n\nإدارة الموارد البشرية — {company}',
+      text:  'عزيزي/عزيزتي {name}،\nيسعدنا إبلاغك بأن راتب شهر {month} قد تم صرفه.\n\n💰 الراتب الأساسي: {base} ريال\n➖ الخصومات: {deductions} ريال\n{deductionDetails}\n\n✅ صافي الراتب: {amount} ريال\n\nإدارة الموارد البشرية — {company}',
+    },
+    credentials: {
+      label: 'بيانات الدخول',
+      icon:  'fas fa-key',
+      color: '#6366f1',
+      text:  '🔐 *بيانات دخول بوابة الموظفين*\n\nأهلاً {name}،\nفيما يلي بيانات دخولك إلى بوابة الموظفين:\n\n👤 *كود الموظف:* {empNo}\n🔑 *كلمة المرور:* {password}\n🌐 *رابط الدخول:* {link}\n\nيُرجى الحفاظ على سرية بيانات دخولك.\n\nإدارة الموارد البشرية — {company}',
     },
   },
 
@@ -116,12 +122,38 @@ const WhatsApp = {
 
   // ─── DATA HELPER ─────────────────────────────────────────
   _data(emp, extra = {}) {
-    const now = new Date();
+    const now     = new Date();
+    const payroll = DB.payroll?.find(p => p.empId === emp?.id);
+    const fmt     = n => Number(n||0).toLocaleString('ar-EG');
+
+    // الخصومات المفصلة
+    const absentDed  = payroll?.absentDeduction || 0;
+    const lateDed    = payroll?.lateDeduction    || 0;
+    const customDed  = payroll?.customDeduction  || 0;
+    const totalDed   = absentDed + lateDed + customDed;
+
+    // بناء سطر تفاصيل الخصومات (فقط غير الصفرية)
+    const dedLines = [];
+    if (absentDed  > 0) dedLines.push(`   • غياب (${payroll.absentDays} أيام): ${fmt(absentDed)} ريال`);
+    if (lateDed    > 0) dedLines.push(`   • تأخير: ${fmt(lateDed)} ريال`);
+    if (customDed  > 0) dedLines.push(`   • خصومات أخرى: ${fmt(customDed)} ريال`);
+
+    const netSalary = payroll?.total ?? (payroll?.base || emp?.salary || 0);
+
     return {
-      name:    emp.name,
-      date:    now.toLocaleDateString('ar-EG', { year:'numeric', month:'long', day:'numeric' }),
-      time:    now.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' }),
-      company: DB.company.name || 'الشركة',
+      name:             emp.name,
+      date:             now.toLocaleDateString('ar-EG', { year:'numeric', month:'long', day:'numeric' }),
+      month:            now.toLocaleString('ar-EG', { month: 'long' }) + ' ' + now.getFullYear(),
+      time:             now.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' }),
+      company:          DB.company.name || 'الشركة',
+      amount:           fmt(netSalary),
+      base:             fmt(payroll?.base || emp?.salary || 0),
+      deductions:       fmt(totalDed),
+      absentDays:       payroll?.absentDays || 0,
+      absentDeduction:  fmt(absentDed),
+      lateDeduction:    fmt(lateDed),
+      customDeduction:  fmt(customDed),
+      deductionDetails: dedLines.length ? dedLines.join('\n') : '   • لا توجد خصومات',
       ...extra,
     };
   },
@@ -260,12 +292,28 @@ const WhatsApp = {
 
   async notifySalary(emp, amount) {
     if (!this.config.enabled) return;
-    const now = new Date();
     const msg = this.fill(this.templates.salaryReady.text, this._data(emp, {
-      date:   `${now.toLocaleString('ar-EG', { month: 'long' })} ${now.getFullYear()}`,
-      amount: Number(amount).toLocaleString('ar-EG'),
+      amount: amount ? Number(amount).toLocaleString('ar-EG') : undefined,
     }));
     return this.send(emp.phone, msg);
+  },
+
+  // ─── إرسال بيانات الدخول ──────────────────────────────────
+  async sendCredentials(emp) {
+    if (!emp.phone) {
+      App.toast('لا يوجد رقم هاتف لهذا الموظف', 'error');
+      return false;
+    }
+    const link     = window.location.origin + '/employee.html';
+    const password = emp.password || emp.no;
+    const msg = this.fill(this.templates.credentials.text, this._data(emp, {
+      empNo:    emp.no,
+      password,
+      link,
+    }));
+    const ok = await this.send(emp.phone, msg);
+    if (ok && this.isApiReady()) App.toast(`تم إرسال بيانات الدخول إلى ${emp.name}`, 'success');
+    return ok;
   },
 
   // ─── حساب ساعات العمل ─────────────────────────────────────

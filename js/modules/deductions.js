@@ -132,7 +132,7 @@ const DeductionsModule = {
                 <tr class="stagger-item">
                   <td>
                     <div class="table-avatar">
-                      <div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:30px;height:30px;font-size:11px">${emp?.avatar||'?'}</div>
+                      ${App.renderAvatar(emp, 30, 8)}
                       <div class="avatar-info">
                         <div class="avatar-name">${emp?.name||'—'}</div>
                         <div class="avatar-sub">${emp?.no ? '#'+emp.no : ''}</div>
@@ -219,8 +219,7 @@ const DeductionsModule = {
         <div class="app-form-group">
           <label>الحالة</label>
           <select class="app-form-input app-form-select" name="status">
-            <option value="pending" ${(!ded||ded.status==='pending')?'selected':''}>معلق (يُطبق عند تشغيل الرواتب)</option>
-            <option value="applied" ${ded?.status==='applied'?'selected':''}>مطبق على الراتب</option>
+            <option value="applied" ${(!ded||ded.status==='applied'||ded.status==='pending')?'selected':''}>مطبق على الراتب</option>
             <option value="paid"    ${ded?.status==='paid'?'selected':''}>مسدد</option>
           </select>
         </div>
@@ -248,7 +247,7 @@ const DeductionsModule = {
         amount: parseFloat(data.amount) || 0,
         reason: data.reason || '',
         period: data.period,
-        status: data.status || 'pending',
+        status: data.status || 'applied',
         createdAt: new Date().toISOString(),
       });
     }
@@ -282,7 +281,7 @@ const DeductionsModule = {
   // Returns total custom deductions for an employee in a given period
   getTotal(empId, period) {
     return DB.deductions
-      .filter(d => d.empId === empId && d.period === period && d.status === 'applied')
+      .filter(d => d.empId === empId && d.period === period && d.status !== 'paid')
       .reduce((s, d) => s + (d.amount || 0), 0);
   },
 };

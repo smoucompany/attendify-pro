@@ -56,7 +56,20 @@ const App = {
       if (e.key === 'Escape') { this.closeModal(); this.closeNotifPanel(); this.closeUserMenu(); }
     });
     window.addEventListener('hashchange', () => this._route());
-    document.addEventListener('click', (e) => { if (!e.target.closest('.header-user')) this.closeUserMenu(); });
+
+    // Fix sidebar visibility on window resize (mobile ↔ desktop)
+    window.addEventListener('resize', () => {
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar) return;
+      if (window.innerWidth <= 1024) {
+        sidebar.style.display = sidebar.classList.contains('mobile-open') ? '' : 'none';
+      } else {
+        sidebar.style.display = '';
+        sidebar.classList.remove('mobile-open');
+        document.querySelector('.sidebar-mobile-overlay')?.remove();
+      }
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.sb-user-card') && !e.target.closest('.sidebar-user') && !e.target.closest('#user-dropdown')) this.closeUserMenu(); });
     this._startClock();
 
     // ── Supabase Auth (الاتصال الكامل) ───────────────────────
@@ -66,13 +79,18 @@ const App = {
       if (session) {
         // مستخدم مسجّل مسبقاً — استعادة الجلسة
         const meta = session.user.user_metadata || {};
+        // Prefer locally-saved profile (survives hard refresh) over Supabase metadata
+        let savedProfile = null;
+        try { const sp = localStorage.getItem('attendify-user-profile'); if (sp) savedProfile = JSON.parse(sp); } catch(_) {}
+        const baseName = meta.name || (session.user.email || '').split('@')[0] || 'User';
+        const displayName = savedProfile?.name || DB.adminCredentials?.name || baseName || 'User';
         this.state.user = {
           id:          session.user.id,
-          name:        meta.name || session.user.email.split('@')[0],
-          avatar:      (meta.name || session.user.email).charAt(0)?.toUpperCase() || '?',
-          position:    'مدير النظام',
-          email:       session.user.email,
-          avatarColor: 'gradient-primary',
+          name:        displayName,
+          avatar:      displayName.trim().charAt(0).toUpperCase() || '?',
+          position:    savedProfile?.position || DB.adminCredentials?.position || 'مدير النظام',
+          email:       session.user.email || '',
+          avatarColor: savedProfile?.avatarColor || DB.adminCredentials?.avatarColor || 'gradient-primary',
         };
         await SupabaseDB.loadAll();
         this._showApp();
@@ -93,20 +111,46 @@ const App = {
     }
 
     // ── Fallback: تسجيل دخول محلي (Supabase غير متاح) ───────
-    const savedUser = sessionStorage.getItem('app-user');
+    const savedUser = sessionStorage.getItem('app-user') || localStorage.getItem('attendify-user-profile');
     if (savedUser) {
-      try { this.state.user = JSON.parse(savedUser); this._showApp(); return; } catch(e) { sessionStorage.removeItem('app-user'); }
+      try {
+        const u = JSON.parse(savedUser);
+        // Ensure all required state.user fields exist (profile snapshot may be a subset)
+        if (!u.avatar && u.name) u.avatar = u.name.charAt(0).toUpperCase();
+        if (!u.id)               u.id = 'admin';
+        if (!u.avatarColor)      u.avatarColor = DB.adminCredentials?.avatarColor || 'gradient-primary';
+        if (!u.position)         u.position    = DB.adminCredentials?.position    || 'مدير النظام';
+        // Always prefer DB.adminCredentials for name/position if more recent (DB was loaded first)
+        if (DB.adminCredentials?.name && !u.savedAt) u.name = DB.adminCredentials.name;
+        this.state.user = u;
+        this._showApp();
+        return;
+      } catch(e) { sessionStorage.removeItem('app-user'); }
     }
     if (!DB.adminCredentials.email) { this._showSetupForm(); } else { document.getElementById('login-page').style.display = 'flex'; }
   },
 
   // ─── AUTH ─────────────────────────────────────────────────
+
+  // Brute-force lockout state (in-memory, resets on page refresh)
+  _loginAttempts: 0,
+  _loginLockedUntil: 0,
+  _MAX_LOGIN_ATTEMPTS: 5,
+  _LOGIN_LOCK_MS: 15 * 60 * 1000, // 15 minutes
+
   async login(e) {
     e.preventDefault();
     const email    = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
     const btn      = document.getElementById('login-btn');
     if (!email || !password) { this.toast('يرجى ملء جميع الحقول', 'error'); return; }
+
+    // ── Brute-force check ──────────────────────────────────────
+    const now = Date.now();
+    if (this._loginLockedUntil > now) {
+      const wait = Math.ceil((this._loginLockedUntil - now) / 60000);
+      this.toast(`تم تعطيل تسجيل الدخول مؤقتاً. انتظر ${wait} دقيقة.`, 'error'); return;
+    }
 
     btn.innerHTML = `<span class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin-left:8px"></span> <span>جارٍ التحميل...</span>`;
     btn.disabled = true;
@@ -116,13 +160,27 @@ const App = {
       btn.innerHTML = `<span>دخول لوحة الإدارة</span><i class="fas fa-arrow-left btn-arrow"></i>`;
     };
 
+    const _onFail = (msg) => {
+      this._loginAttempts++;
+      if (this._loginAttempts >= this._MAX_LOGIN_ATTEMPTS) {
+        this._loginLockedUntil = Date.now() + this._LOGIN_LOCK_MS;
+        this._loginAttempts = 0;
+        this.toast('تم تعطيل تسجيل الدخول 15 دقيقة بسبب محاولات متكررة فاشلة.', 'error');
+      } else {
+        const left = this._MAX_LOGIN_ATTEMPTS - this._loginAttempts;
+        this.toast(`${msg} (${left} محاولة متبقية)`, 'error');
+      }
+      resetBtn();
+    };
+
     // ── Supabase Auth ──────────────────────────────────────────
     if (SupabaseDB.isConnected) {
       const { data, error } = await SupabaseDB.signIn(email, password);
       if (error || !data?.user) {
-        this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error');
-        resetBtn(); return;
+        _onFail('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+        return;
       }
+      this._loginAttempts = 0; // reset on success
       const meta = data.user.user_metadata || {};
       const user = {
         id:          data.user.id,
@@ -143,7 +201,7 @@ const App = {
 
     // ── Fallback: تسجيل دخول محلي ────────────────────────────
     const stored = DB.adminCredentials;
-    if (email !== stored.email) { this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error'); resetBtn(); return; }
+    if (email !== stored.email) { _onFail('البريد الإلكتروني أو كلمة المرور غير صحيحة'); return; }
     let match = false;
     if (stored.password?.startsWith('sha256:')) {
       match = (await _sha256(password)) === stored.password.slice(7);
@@ -151,7 +209,8 @@ const App = {
       match = password === stored.password;
       if (match) { stored.password = 'sha256:' + (await _sha256(password)); DB._saveToLocal(); }
     }
-    if (!match) { this.toast('البريد الإلكتروني أو كلمة المرور غير صحيحة', 'error'); resetBtn(); return; }
+    if (!match) { _onFail('البريد الإلكتروني أو كلمة المرور غير صحيحة'); return; }
+    this._loginAttempts = 0;
 
     setTimeout(() => {
       const savedName = DB.adminCredentials.name || '';
@@ -380,6 +439,17 @@ const App = {
     const appEl = document.getElementById('app');
     appEl.style.display = 'flex';
 
+    // Sidebar: always hidden on mobile/tablet — JS enforces this regardless of CSS cache state
+    const sidebar = document.getElementById('sidebar');
+    if (window.innerWidth <= 1024) {
+      if (sidebar) sidebar.style.display = 'none';
+      sidebar?.classList.remove('mobile-open');
+      document.querySelector('.sidebar-mobile-overlay')?.remove();
+    } else {
+      // Desktop: restore sidebar display (remove any leftover inline style)
+      if (sidebar) sidebar.style.display = '';
+    }
+
     // Update user info in sidebar and header
     const user = this.state.user;
     if (user) {
@@ -424,6 +494,40 @@ const App = {
     if (typeof Biometrics !== 'undefined' && Biometrics.canCamera()) {
       setTimeout(() => Biometrics.loadFaceApi().catch(() => {}), 3000);
     }
+
+    // Start auto-backup timer + silent Google token refresh
+    if (typeof BackupModule !== 'undefined') {
+      setTimeout(() => {
+        BackupModule._startAutoTimer();
+        BackupModule._silentTokenRefresh();
+      }, 5000);
+    }
+
+    // ── Idle timeout enforcement ───────────────────────────────
+    this._startIdleWatcher();
+  },
+
+  _idleTimer: null,
+  _idleLastActivity: Date.now(),
+
+  _startIdleWatcher() {
+    const minutes = parseInt(DB.company.idleTimeout) || 0;
+    if (!minutes || minutes < 1) return;
+    const ms = minutes * 60 * 1000;
+
+    const resetIdle = () => { this._idleLastActivity = Date.now(); };
+    ['mousemove','keydown','click','touchstart','scroll'].forEach(ev =>
+      document.addEventListener(ev, resetIdle, { passive: true })
+    );
+
+    clearInterval(this._idleTimer);
+    this._idleTimer = setInterval(() => {
+      if (Date.now() - this._idleLastActivity >= ms) {
+        clearInterval(this._idleTimer);
+        this.toast('تم تسجيل الخروج تلقائياً بسبب عدم النشاط', 'warning', 5000);
+        setTimeout(() => this.logout(), 1500);
+      }
+    }, 30_000); // check every 30s
   },
 
   _updateUserUI() {
@@ -478,9 +582,14 @@ const App = {
     content.style.transform = 'translateY(10px)';
     content.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
 
-    // Close panels
+    // Close panels + sidebar on mobile
     this.closeNotifPanel();
     this.closeUserMenu();
+    if (window.innerWidth <= 1024) {
+      const sb = document.getElementById('sidebar');
+      if (sb) { sb.classList.remove('mobile-open'); sb.style.display = 'none'; }
+      document.querySelector('.sidebar-mobile-overlay')?.remove();
+    }
 
     // Destroy existing charts
     Object.values(this.state.chartInstances).forEach(c => c?.destroy?.());
@@ -501,11 +610,14 @@ const App = {
           notifications: () => NotificationsModule.render(content),
           payroll:       () => PayrollModule.render(content),
           deductions:    () => DeductionsModule.render(content),
+          loans:         () => typeof LoansModule !== 'undefined' ? LoansModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-hand-holding-dollar"></i></div><div class="empty-title">وحدة السلف</div><p class="empty-desc">الوحدة غير محملة</p></div>',
+          gratuity:      () => typeof GratuityModule !== 'undefined' ? GratuityModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-award"></i></div><div class="empty-title">نهاية الخدمة</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           gps:           () => GpsModule.render(content),
           audit:         () => AuditModule.render(content),
           settings:      () => SettingsModule.render(content),
-          roles:         () => RolesModule.render(content),
           profile:       () => ProfileModule.render(content),
+          roles:         () => { SettingsModule._section = 'roles';  SettingsModule.render(content); },
+          backup:        () => typeof BackupModule !== 'undefined' ? BackupModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-database"></i></div><div class="empty-title">النسخ الاحتياطي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
         };
 
         if (modules[page]) {
@@ -555,35 +667,48 @@ const App = {
 
   // ─── LANGUAGE ─────────────────────────────────────────────
   setLanguage(lang) {
-    this.state.lang = lang;
-    setLanguage(lang); // from i18n.js
+    // Save language preference
+    localStorage.setItem('app-lang', lang);
+    currentLang = lang;
 
-    // Re-render current page
+    // Preserve current page in hash before reload
+    const page = this.state.currentPage || 'dashboard';
     if (this.state.user) {
-      setTimeout(() => this._navigate(this.state.currentPage), 50);
+      window.location.hash = page;
     }
+
+    // Reload — cleanest way to apply language across all modules & CSS direction
+    window.location.reload();
   },
 
   toggleLanguage() {
-    this.setLanguage(this.state.lang === 'ar' ? 'en' : 'ar');
+    this.setLanguage(currentLang === 'ar' ? 'en' : 'ar');
   },
 
   // ─── SIDEBAR ──────────────────────────────────────────────
   toggleSidebar() {
     const sidebar  = document.getElementById('sidebar');
     const appWrap  = document.querySelector('.app-wrapper');
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 1024;
 
     if (isMobile) {
-      sidebar.classList.toggle('mobile-open');
-      const overlay = document.createElement('div');
-      overlay.className = 'sidebar-mobile-overlay';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:299';
-      overlay.onclick = () => { sidebar.classList.remove('mobile-open'); overlay.remove(); };
-      if (sidebar.classList.contains('mobile-open')) {
+      const isOpen = sidebar.classList.toggle('mobile-open');
+      // Clear inline display so CSS !important rules take effect
+      sidebar.style.display = '';
+      // Remove any stale overlay first
+      document.querySelector('.sidebar-mobile-overlay')?.remove();
+      if (isOpen) {
+        const overlay = document.createElement('div');
+        overlay.className = 'sidebar-mobile-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:499';
+        overlay.onclick = () => {
+          sidebar.classList.remove('mobile-open');
+          sidebar.style.display = 'none';
+          overlay.remove();
+        };
         document.body.appendChild(overlay);
       } else {
-        document.querySelector('.sidebar-mobile-overlay')?.remove();
+        sidebar.style.display = 'none';
       }
     } else {
       this.state.sidebarCollapsed = !this.state.sidebarCollapsed;
@@ -818,6 +943,93 @@ const App = {
     if (diff < 86400) return currentLang === 'ar' ? `منذ ${Math.floor(diff/3600)} ساعة` : `${Math.floor(diff/3600)}h ago`;
     if (diff < 604800) return currentLang === 'ar' ? `منذ ${Math.floor(diff/86400)} يوم` : `${Math.floor(diff/86400)}d ago`;
     return this.formatDate(dateStr);
+  },
+
+  renderAvatar(emp, size = 36, radius = 10) {
+    const isFemale = emp?.gender === 'f' || emp?.gender === 'female';
+    const uid      = (emp?.id || Math.random()).toString().replace(/\W/g,'').slice(-6);
+    const mgId     = `mg${uid}${size}`;
+    const fgId     = `fg${uid}${size}`;
+
+    // أفاتار صغير (أقل من 32px) — أيقونة مبسطة
+    if (size < 32) {
+      if (isFemale) {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
+          style="border-radius:${radius}px;flex-shrink:0;display:block">
+          <defs><linearGradient id="${fgId}" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#7c3aed"/><stop offset="1" stop-color="#db2777"/></linearGradient></defs>
+          <rect width="32" height="32" rx="${radius}" fill="url(#${fgId})"/>
+          <ellipse cx="16" cy="12" rx="8" ry="8.5" fill="rgba(255,255,255,0.25)"/>
+          <ellipse cx="16" cy="12" rx="5.5" ry="6" fill="#FDDBB4"/>
+          <ellipse cx="13.5" cy="11" rx=".9" ry="1" fill="#3b1a08"/>
+          <ellipse cx="18.5" cy="11" rx=".9" ry="1" fill="#3b1a08"/>
+          <path d="M13.5 14.5 Q16 16.5 18.5 14.5" stroke="#c0815a" stroke-width=".9" stroke-linecap="round" fill="none"/>
+          <path d="M5 28 Q8 22 16 23 Q24 22 27 28" fill="rgba(255,255,255,0.2)"/>
+        </svg>`;
+      } else {
+        return `<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
+          style="border-radius:${radius}px;flex-shrink:0;display:block">
+          <defs><linearGradient id="${mgId}" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#2563eb"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+          <rect width="32" height="32" rx="${radius}" fill="url(#${mgId})"/>
+          <ellipse cx="16" cy="13" rx="6" ry="6.5" fill="#FDDBB4"/>
+          <path d="M10 12 Q10 6 16 5.5 Q22 6 22 12 Q21 8.5 16 8 Q11 8.5 10 12Z" fill="#3b1a08"/>
+          <ellipse cx="13.5" cy="12" rx=".9" ry="1" fill="#3b1a08"/>
+          <ellipse cx="18.5" cy="12" rx=".9" ry="1" fill="#3b1a08"/>
+          <path d="M13.5 15.5 Q16 17.5 18.5 15.5" stroke="#c0815a" stroke-width=".9" stroke-linecap="round" fill="none"/>
+          <path d="M5 28 Q9 22 16 23.5 Q23 22 27 28" fill="rgba(255,255,255,0.2)"/>
+        </svg>`;
+      }
+    }
+
+    // أفاتار كبير (32px+) — وجه كامل مع تفاصيل
+    if (isFemale) {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+        style="border-radius:${radius}px;flex-shrink:0;display:block">
+        <defs><linearGradient id="${fgId}" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#7c3aed"/><stop offset="1" stop-color="#db2777"/></linearGradient></defs>
+        <rect width="64" height="64" rx="${radius}" fill="url(#${fgId})"/>
+        <ellipse cx="32" cy="72" rx="22" ry="18" fill="rgba(255,255,255,0.15)"/>
+        <path d="M10 52 Q16 44 32 46 Q48 44 54 52 L56 64 H8 Z" fill="rgba(255,255,255,0.2)"/>
+        <ellipse cx="32" cy="26" rx="16" ry="17" fill="rgba(255,255,255,0.25)"/>
+        <path d="M16 28 Q14 38 16 46 Q24 50 32 50 Q40 50 48 46 Q50 38 48 28" fill="rgba(255,255,255,0.18)"/>
+        <ellipse cx="32" cy="26" rx="11" ry="12" fill="#FDDBB4"/>
+        <ellipse cx="27.5" cy="24" rx="1.6" ry="1.8" fill="#3b1a08"/>
+        <ellipse cx="36.5" cy="24" rx="1.6" ry="1.8" fill="#3b1a08"/>
+        <circle cx="27.8" cy="23.5" r=".6" fill="white" opacity=".7"/>
+        <circle cx="36.8" cy="23.5" r=".6" fill="white" opacity=".7"/>
+        <path d="M25 21.5 Q27.5 20 30 21.5" stroke="#6b3a1f" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <path d="M34 21.5 Q36.5 20 39 21.5" stroke="#6b3a1f" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26.5" cy="28" rx="1.2" ry=".6" fill="#e8a090" opacity=".6"/>
+        <ellipse cx="37.5" cy="28" rx="1.2" ry=".6" fill="#e8a090" opacity=".6"/>
+        <path d="M28 30.5 Q32 34 36 30.5" stroke="#c0815a" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M21 17 Q18 10 32 9 Q46 10 43 17" fill="rgba(255,255,255,0.28)" stroke="none"/>
+      </svg>`;
+    } else {
+      return `<svg width="${size}" height="${size}" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"
+        style="border-radius:${radius}px;flex-shrink:0;display:block">
+        <defs><linearGradient id="${mgId}" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#2563eb"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs>
+        <rect width="64" height="64" rx="${radius}" fill="url(#${mgId})"/>
+        <ellipse cx="32" cy="72" rx="22" ry="18" fill="rgba(255,255,255,0.15)"/>
+        <path d="M12 56 Q20 46 32 48 Q44 46 52 56 L56 64 H8 Z" fill="rgba(255,255,255,0.2)"/>
+        <path d="M28 48 L32 54 L36 48" fill="white" opacity=".4"/>
+        <rect x="28" y="38" width="8" height="10" rx="3" fill="#FDDBB4"/>
+        <ellipse cx="32" cy="27" rx="12" ry="13" fill="#FDDBB4"/>
+        <path d="M20 24 Q20 12 32 11 Q44 12 44 24 Q42 17 32 16 Q22 17 20 24Z" fill="#3b1a08"/>
+        <ellipse cx="20.5" cy="28" rx="2.2" ry="3" fill="#F0C090"/>
+        <ellipse cx="43.5" cy="28" rx="2.2" ry="3" fill="#F0C090"/>
+        <ellipse cx="27.5" cy="26" rx="1.6" ry="1.8" fill="#3b1a08"/>
+        <ellipse cx="36.5" cy="26" rx="1.6" ry="1.8" fill="#3b1a08"/>
+        <circle cx="27.8" cy="25.5" r=".6" fill="white" opacity=".7"/>
+        <circle cx="36.8" cy="25.5" r=".6" fill="white" opacity=".7"/>
+        <path d="M25 22.5 Q27.5 21 30 22.5" stroke="#3b1a08" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <path d="M34 22.5 Q36.5 21 39 22.5" stroke="#3b1a08" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+        <ellipse cx="26.5" cy="30" rx="1.2" ry=".6" fill="#e8a090" opacity=".5"/>
+        <ellipse cx="37.5" cy="30" rx="1.2" ry=".6" fill="#e8a090" opacity=".5"/>
+        <path d="M28 32.5 Q32 36 36 32.5" stroke="#c0815a" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      </svg>`;
+    }
   },
 
   getStatusBadge(status) {
@@ -1069,12 +1281,12 @@ document.addEventListener('DOMContentLoaded', () => {
   _initStagger();
 });
 
-// Force-save before tab/browser closes (prevents data loss from debounce timer)
+// Force-save before tab/browser closes or hard-refresh (Ctrl+Shift+R)
 window.addEventListener('beforeunload', () => {
-  if (DB._saveTimer) {
-    clearTimeout(DB._saveTimer);
-    DB._saveToLocal();
-  }
+  clearTimeout(DB._saveTimer);
+  DB._saveToLocal();
+  // Reset sync timestamp so local is always preferred on next load
+  try { localStorage.removeItem('attendify-sync-ts'); } catch(_) {}
 });
 
 /* Ripple effect on .btn clicks */

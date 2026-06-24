@@ -26,6 +26,9 @@ const EmployeesModule = {
           <button class="btn btn-secondary" onclick="EmployeesModule.openImportExport()">
             <i class="fas fa-arrows-up-down"></i> استيراد / تصدير
           </button>
+          <button class="btn btn-secondary" onclick="EmployeesModule.migrateEmpNos()" title="تحديث أكواد الموظفين لتصبح: حرف إنجليزي + أرقام">
+            <i class="fas fa-arrow-rotate-right"></i> تحديث الأكواد
+          </button>
           <button class="btn btn-primary" onclick="EmployeesModule.openAdd()">
             <i class="fas fa-user-plus"></i> ${t('employees.addEmployee')}
           </button>
@@ -95,6 +98,10 @@ const EmployeesModule = {
       const matchDept   = this._deptFilter === 'all' || e.dept === this._deptFilter;
       const matchStatus = this._statusFilter === 'all' || e.status === this._statusFilter;
       return matchSearch && matchDept && matchStatus;
+    }).sort((a, b) => {
+      const na = parseInt((a.no || '').replace(/^[^\d]+/, ''), 10) || 0;
+      const nb = parseInt((b.no || '').replace(/^[^\d]+/, ''), 10) || 0;
+      return na - nb;
     });
 
     if (!emps.length) {
@@ -148,20 +155,20 @@ const EmployeesModule = {
       : '#6366f1');
     return `
       <div class="employee-card stagger-item" style="border-top:3px solid ${deptHex}">
-        <div class="employee-card-avatar ${e.avatarColor}">${e.avatar}</div>
+        <div class="employee-card-avatar" style="background:none;padding:0">${App.renderAvatar(e, 64, 16)}</div>
         <div class="employee-card-name">${e.name}</div>
         <div class="employee-card-role">${e.position}</div>
         <div class="employee-card-dept" style="color:${deptHex}"><i class="fas fa-building"></i> ${dept?.name || ''}</div>
         <div class="employee-card-stats">
-          <div class="emp-stat">
+          <div class="emp-stat" style="cursor:pointer" onclick="EmployeesModule._goEmpPage('${e.id}','${e.name}','leaves')" title="عرض الإجازات">
             <div class="emp-stat-val">${DB.leaveBalances[e.id]?.remaining || 0}</div>
             <div class="emp-stat-label">${t('leaves.remaining')}</div>
           </div>
-          <div class="emp-stat">
+          <div class="emp-stat" style="cursor:pointer" onclick="EmployeesModule._goEmpPage('${e.id}','${e.name}','attendance')" title="عرض الحضور">
             <div class="emp-stat-val">${DB.attendance.filter(a=>a.empId===e.id).length}</div>
             <div class="emp-stat-label">${t('nav.attendance')}</div>
           </div>
-          <div class="emp-stat">
+          <div class="emp-stat" style="cursor:pointer" onclick="EmployeesModule._goEmpPage('${e.id}','${e.name}','payroll')" title="عرض الراتب">
             <div class="emp-stat-val">${App.formatCurrency(e.salary)}</div>
             <div class="emp-stat-label">${t('payroll.baseSalary')}</div>
           </div>
@@ -170,6 +177,8 @@ const EmployeesModule = {
         <div class="employee-card-actions">
           <button class="btn btn-outline-primary btn-sm" onclick="EmployeesModule.viewEmployee('${e.id}')"><i class="fas fa-eye"></i></button>
           <button class="btn btn-secondary btn-sm" onclick="EmployeesModule.openEdit('${e.id}')"><i class="fas fa-pencil"></i></button>
+          <button class="btn btn-sm" style="background:var(--warning);color:#fff" title="كلمة المرور" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
+          <button class="btn btn-sm" style="background:#25d366;color:#fff" title="إرسال بيانات الدخول على واتساب" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
           <button class="btn btn-danger btn-sm" onclick="EmployeesModule.deleteEmployee('${e.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>
@@ -184,7 +193,7 @@ const EmployeesModule = {
         <td><code style="background:var(--bg-input);padding:2px 8px;border-radius:6px;font-size:12px">${e.no}</code></td>
         <td>
           <div class="table-avatar">
-            <div class="avatar ${e.avatarColor}">${e.avatar}</div>
+            ${App.renderAvatar(e, 36, 10)}
             <div class="avatar-info">
               <div class="avatar-name">${e.name}</div>
               <div class="avatar-sub">${e.email}</div>
@@ -200,6 +209,8 @@ const EmployeesModule = {
           <div style="display:flex;gap:4px">
             <button class="btn-icon btn" title="${t('common.view')}" onclick="EmployeesModule.viewEmployee('${e.id}')"><i class="fas fa-eye"></i></button>
             <button class="btn-icon btn" title="${t('common.edit')}" onclick="EmployeesModule.openEdit('${e.id}')"><i class="fas fa-pencil"></i></button>
+            <button class="btn-icon btn" title="كلمة المرور" style="color:var(--warning)" onclick="EmployeesModule.openPasswordModal('${e.id}')"><i class="fas fa-key"></i></button>
+            <button class="btn-icon btn" title="إرسال بيانات الدخول" style="color:#25d366" onclick="EmployeesModule.sendCredentials('${e.id}')"><i class="fab fa-whatsapp"></i></button>
             <button class="btn-icon btn" title="${t('common.delete')}" style="color:var(--danger)" onclick="EmployeesModule.deleteEmployee('${e.id}')"><i class="fas fa-trash"></i></button>
           </div>
         </td>
@@ -231,28 +242,86 @@ const EmployeesModule = {
     App.openModal(t('employees.addTitle'), this._form(null));
   },
 
+  // معاينة كود الموظف لحظة كتابة الاسم (يدعم الأسماء العربية والإنجليزية)
+  _previewEmpNo(firstName) {
+    const preview = document.getElementById('emp-no-preview');
+    const hidden  = document.querySelector('input[name="no"]');
+    if (!preview) return;
+    const ch = (firstName || '').trim().charAt(0);
+    if (!ch) {
+      preview.textContent = 'سيُولَّد تلقائياً';
+      preview.style.color = 'var(--text-muted)';
+      if (hidden) hidden.value = '';
+      return;
+    }
+    // استخدم نفس الدالة الموجودة في data.js
+    const code = DB.nextEmpNo(firstName);
+    preview.textContent = code;
+    preview.style.color = 'var(--text-primary)';
+    if (hidden) hidden.value = code;
+  },
+
+  _toggleShift(shiftId, labelEl) {
+    const cb   = labelEl.querySelector('input[type="checkbox"]');
+    const icon = document.getElementById('shift-icon-' + shiftId);
+    const txt  = document.getElementById('shift-txt-'  + shiftId);
+    const isOn = !cb.checked;
+    cb.checked = isOn;
+    labelEl.style.borderColor  = isOn ? 'var(--primary)' : 'var(--border)';
+    labelEl.style.background   = isOn ? 'var(--primary-bg)' : 'transparent';
+    if (icon) { icon.style.color = isOn ? 'var(--primary)' : 'var(--border)'; }
+    if (txt)  { txt.style.color  = isOn ? 'var(--primary)' : 'var(--text-secondary)'; }
+    // Recalc hourly rate using first selected shift
+    this._updateRates(document.getElementById('emp-salary-input')?.value);
+  },
+
+  _updateRates(salaryVal) {
+    const salary    = Number(salaryVal) || 0;
+    const parseHM   = (str, def) => { const p = (str||def).split(':').map(Number); return (isNaN(p[0]) || p.length < 2) ? def.split(':').map(Number) : p; };
+    const workDays  = (DB.company.workDays||['sat','sun','mon','tue','wed','thu']).length;
+    const monthDays = workDays * 4.33;
+    // Read the first checked shift from the multi-shift picker
+    const checkedCbs = [...document.querySelectorAll('#emp-shifts-picker input[type="checkbox"]:checked')];
+    const shiftId    = checkedCbs[0]?.value || null;
+    const empShift   = shiftId ? DB.shifts.find(s => s.id === shiftId) : null;
+    const shiftStart = empShift?.start || DB.company.workStart || '08:00';
+    const shiftEnd   = empShift?.end   || DB.company.workEnd   || '17:00';
+    const [ssh, ssm] = parseHM(shiftStart, '08:00');
+    const [seh, sem] = parseHM(shiftEnd,   '17:00');
+    const rawHours   = ((seh*60+sem) - (ssh*60+ssm)) / 60;
+    const workHours  = rawHours > 0 ? rawHours : 8;
+    const dayRate   = salary > 0 ? (salary / monthDays).toFixed(2) : null;
+    const hrRate    = salary > 0 ? (salary / monthDays / workHours).toFixed(2) : null;
+    const dayEl = document.getElementById('emp-day-rate');
+    const hrEl  = document.getElementById('emp-hr-val');
+    if (dayEl) dayEl.querySelector('span').textContent = dayRate ? dayRate + ' ريال' : '—';
+    if (hrEl)  hrEl.textContent = hrRate ? hrRate + ' ريال' : '—';
+  },
+
   openEdit(id) {
     const emp = DB.getEmployee(id);
     App.openModal(t('employees.editTitle'), this._form(emp));
   },
 
   _form(emp) {
-    const nextNo = emp ? emp.no : DB.nextEmpNo();
     return `
       <form onsubmit="EmployeesModule.saveEmployee(event, '${emp?.id||''}')">
         <div class="app-form-group">
           <label>${t('employees.employeeId')} <span style="color:var(--text-muted);font-weight:400;font-size:11px">(كود الدخول لبوابة الموظف)</span></label>
-          <div style="display:flex;align-items:center;gap:10px;background:var(--bg-input,#f8fafc);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px">
-            <i class="fas fa-hashtag" style="color:var(--primary)"></i>
-            <span style="font-size:18px;font-weight:800;letter-spacing:3px;color:var(--text-primary)">${nextNo}</span>
-            <span style="font-size:11px;color:var(--text-muted);margin-right:auto">${emp ? 'كود موجود' : 'يتولد تلقائياً'}</span>
+          <div style="display:flex;align-items:center;gap:10px;background:var(--bg-input,#f8fafc);border:1.5px solid var(--border);border-radius:10px;padding:10px 14px" id="emp-no-display">
+            <i class="fas fa-id-badge" style="color:var(--primary)"></i>
+            <span id="emp-no-preview" style="font-size:18px;font-weight:800;letter-spacing:3px;color:${emp ? 'var(--text-primary)' : 'var(--text-muted)'}">
+              ${emp ? emp.no : 'سيُولَّد تلقائياً'}
+            </span>
+            <span style="font-size:11px;color:var(--text-muted);margin-right:auto">${emp ? 'كود موجود' : 'حرف + أرقام'}</span>
           </div>
-          <input type="hidden" name="no" value="${nextNo}">
+          <input type="hidden" name="no" value="${emp ? emp.no : ''}">
         </div>
         <div class="app-form-row">
           <div class="app-form-group">
             <label>${t('employees.firstName')}</label>
-            <input class="app-form-input" type="text" name="firstName" value="${emp ? emp.name.split(' ')[0] : ''}" required>
+            <input class="app-form-input" type="text" name="firstName" value="${emp ? emp.name.split(' ')[0] : ''}" required
+              oninput="EmployeesModule._previewEmpNo(this.value)">
           </div>
           <div class="app-form-group">
             <label>${t('employees.lastName')}</label>
@@ -284,7 +353,9 @@ const EmployeesModule = {
         <div class="app-form-row">
           <div class="app-form-group">
             <label>${t('employees.salary')}</label>
-            <input class="app-form-input" type="number" name="salary" value="${emp?.salary||''}" min="0" step="100">
+            <input class="app-form-input" type="number" name="salary" id="emp-salary-input"
+              value="${emp?.salary||''}" min="0" step="100"
+              oninput="EmployeesModule._updateRates(this.value)">
           </div>
           <div class="app-form-group">
             <label>${t('common.status')}</label>
@@ -297,6 +368,56 @@ const EmployeesModule = {
         </div>
         <div class="app-form-row">
           <div class="app-form-group">
+            <label><i class="fas fa-location-dot" style="color:var(--primary)"></i> مكان العمل</label>
+            <input class="app-form-input" type="text" name="workLocation" value="${emp?.workLocation||''}" placeholder="مثال: المقر الرئيسي، فرع الرياض، عن بُعد...">
+          </div>
+          <div class="app-form-group">
+            <label><i class="fas fa-building" style="color:var(--primary)"></i> جهة العمل</label>
+            <input class="app-form-input" type="text" name="workEntity" value="${emp?.workEntity||''}" placeholder="مثال: المقر الرئيسي، فرع جدة...">
+          </div>
+        </div>
+        ${(() => {
+          const parseHM  = (str, def) => { const p = (str||def).split(':').map(Number); return (isNaN(p[0]) || p.length < 2) ? def.split(':').map(Number) : p; };
+          const workDays = (DB.company.workDays||['sat','sun','mon','tue','wed','thu']).length;
+          const monthDays = workDays * 4.33;
+          // Shift hours: use employee's assigned shift, fallback to company hours
+          const empShift   = emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+          const shiftStart = empShift?.start || DB.company.workStart || '08:00';
+          const shiftEnd   = empShift?.end   || DB.company.workEnd   || '17:00';
+          const [ssh, ssm] = parseHM(shiftStart, '08:00');
+          const [seh, sem] = parseHM(shiftEnd,   '17:00');
+          const rawHours   = ((seh*60+sem) - (ssh*60+ssm)) / 60;
+          const workHours  = rawHours > 0 ? rawHours : 8;
+          const shiftLabel = empShift ? empShift.name : (currentLang==='ar'?'إعدادات الشركة':'Company default');
+          const salary     = Number(emp?.salary||0);
+          const dayRate    = salary > 0 ? (salary / monthDays).toFixed(2) : '—';
+          const hrRate     = salary > 0 ? (salary / monthDays / workHours).toFixed(2) : '—';
+          return `
+        <div class="app-form-row">
+          <div class="app-form-group">
+            <label style="display:flex;align-items:center;gap:6px">
+              <i class="fas fa-calendar-day" style="color:var(--primary);font-size:12px"></i>
+              احتساب اليوم
+            </label>
+            <div id="emp-day-rate" class="app-form-input" style="background:var(--bg-input);color:var(--primary);font-weight:700;cursor:default;display:flex;align-items:center;justify-content:space-between">
+              <span>${dayRate !== '—' ? dayRate + ' ريال' : '—'}</span>
+              <span style="font-size:11px;color:var(--text-muted);font-weight:400">= الراتب ÷ ${Math.round(monthDays)} يوم</span>
+            </div>
+          </div>
+          <div class="app-form-group">
+            <label style="display:flex;align-items:center;gap:6px">
+              <i class="fas fa-clock" style="color:var(--info);font-size:12px"></i>
+              احتساب الساعة
+            </label>
+            <div id="emp-hr-rate" class="app-form-input" style="background:var(--bg-input);color:#06b6d4;font-weight:700;cursor:default;display:flex;align-items:center;justify-content:space-between">
+              <span id="emp-hr-val">${hrRate !== '—' ? hrRate + ' ريال' : '—'}</span>
+              <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-align:end">= اليومية ÷ ${workHours}س<br><span style="color:var(--primary);opacity:.7">(${shiftLabel})</span></span>
+            </div>
+          </div>
+        </div>`;
+        })()}
+        <div class="app-form-row">
+          <div class="app-form-group">
             <label>${t('employees.hireDate')}</label>
             <input class="app-form-input" type="date" name="hireDate" value="${emp?.hireDate||''}">
           </div>
@@ -307,6 +428,40 @@ const EmployeesModule = {
               <option value="f" ${emp?.gender==='f'?'selected':''}>${t('common.female')}</option>
             </select>
           </div>
+        </div>
+        <div class="app-form-group">
+          <label style="display:flex;align-items:center;gap:6px">
+            <i class="fas fa-user-clock" style="color:var(--primary);font-size:12px"></i>
+            الورديات
+            <span style="font-size:11px;color:var(--text-muted);font-weight:400">(يمكن اختيار أكثر من وردية)</span>
+          </label>
+          ${DB.shifts.filter(s => s.name && s.start && s.end).length ? `
+          <div id="emp-shifts-picker" style="display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-md)">
+            ${DB.shifts.filter(s => s.name && s.start && s.end).map(s => {
+              const pHM = str => (str||'00:00').split(':').map(Number);
+              const [sh,sm] = pHM(s.start); const [eh,em] = pHM(s.end);
+              const hrs = ((eh*60+em)-(sh*60+sm))/60;
+              const timeRange = `${s.start} — ${s.end}`;
+              const hrsLabel = hrs > 0 ? `(${hrs.toFixed(1)} س)` : '';
+              const empShifts = Array.isArray(emp?.shifts) ? emp.shifts : (emp?.shift ? [emp.shift] : []);
+              const isOn = empShifts.includes(s.id);
+              const typeColors = { morning:'#f59e0b', evening:'#6366f1', night:'#7c3aed' };
+              const dotColor = typeColors[s.type] || 'var(--primary)';
+              return `
+              <label style="display:flex;flex-direction:column;gap:3px;padding:9px 14px;border-radius:12px;cursor:pointer;border:1.5px solid ${isOn?'var(--primary)':'var(--border)'};background:${isOn?'var(--primary-bg)':'transparent'};transition:all .15s;user-select:none;min-width:130px" id="shift-lbl-${s.id}"
+                onclick="EmployeesModule._toggleShift('${s.id}',this)">
+                <input type="checkbox" name="shifts" value="${s.id}" ${isOn?'checked':''} style="display:none">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+                  <span style="font-size:13px;font-weight:700;color:${isOn?'var(--primary)':'var(--text-primary)'}" id="shift-txt-${s.id}">${s.name}</span>
+                  <i class="fas fa-circle-check" style="font-size:12px;color:${isOn?'var(--primary)':'var(--border)'};margin-right:auto" id="shift-icon-${s.id}"></i>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);direction:ltr;text-align:start">${timeRange} ${hrsLabel}</div>
+              </label>`;
+            }).join('')}
+          </div>` : `<div style="padding:12px;color:var(--text-muted);font-size:13px;text-align:center;background:var(--bg-input);border-radius:var(--radius-md)">
+            <i class="fas fa-circle-info"></i> لا توجد ورديات — أضف من <b>إدارة الورديات</b> أولاً
+          </div>`}
         </div>
         <div class="modal-footer" style="padding:0;margin-top:20px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
@@ -335,6 +490,10 @@ const EmployeesModule = {
         emp.status = data.status;
         emp.gender = data.gender;
         emp.hireDate = data.hireDate;
+        emp.workLocation = data.workLocation || emp.workLocation || '';
+        emp.workEntity   = data.workEntity   || emp.workEntity   || '';
+        emp.shifts = [...form.querySelectorAll('input[name="shifts"]:checked')].map(c => c.value);
+        emp.shift  = emp.shifts[0] || null;  // backward compat for attendance module
         const pr = DB.payroll.find(p => p.empId === id);
         if (pr && emp.salary) {
           pr.base  = emp.salary;
@@ -346,7 +505,7 @@ const EmployeesModule = {
     } else {
       const newEmp = {
         id: DB.nextId('e'),
-        no: data.no || DB.nextEmpNo(),
+        no: data.no || DB.nextEmpNo(data.firstName),
         name: fullName,
         nameEn: fullName,
         dept: data.dept,
@@ -358,13 +517,17 @@ const EmployeesModule = {
         status: data.status || 'active',
         gender: data.gender,
         hireDate: data.hireDate || new Date().toISOString().split('T')[0],
+        workLocation: data.workLocation || '',
+        workEntity:   data.workEntity   || '',
+        shifts: [...(e.target).querySelectorAll('input[name="shifts"]:checked')].map(c => c.value),
+        shift:  [...(e.target).querySelectorAll('input[name="shifts"]:checked')].map(c => c.value)[0] || null,
         avatar: fullName.charAt(0),
         avatarColor: 'gradient-primary',
         password: Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6),
       };
       DB.employees.push(newEmp);
       // رصيد الإجازات
-      DB.leaveBalances[newEmp.id] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0 };
+      DB.leaveBalances[newEmp.id] = { annual: 21, sick: 10, emergency: 3, remaining: 21, taken: 0, sickTaken: 0, emergencyTaken: 0 };
       // سجل الراتب
       const base = newEmp.salary || 0;
       DB.payroll.push({
@@ -399,21 +562,23 @@ const EmployeesModule = {
 
     App.openModal(emp.name, `
       <div style="text-align:center;padding:20px 0 24px">
-        <div class="avatar ${emp.avatarColor}" style="width:80px;height:80px;font-size:30px;margin:0 auto 12px;border-radius:20px">${emp.avatar}</div>
+        <div style="margin:0 auto 12px;width:80px">${App.renderAvatar(emp, 80, 20)}</div>
         <h2 style="font-size:20px;font-weight:800">${emp.name}</h2>
         <p style="color:var(--text-muted)">${emp.position}</p>
         <div style="margin-top:8px">${App.getStatusBadge(emp.status)}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
         ${[
-          ['fas fa-hashtag', t('employees.employeeId'), emp.no],
-          ['fas fa-building', t('common.department'), dept?.name||''],
-          ['fas fa-envelope', t('common.email'), emp.email],
-          ['fas fa-phone', t('common.phone'), emp.phone],
-          ['fas fa-calendar', t('employees.hireDate'), App.formatDate(emp.hireDate)],
-          ['fas fa-money-bill', t('employees.salary'), App.formatCurrency(emp.salary)],
-          ['fas fa-clock', t('nav.attendance'), attCount + ' ' + t('common.month')],
-          ['fas fa-calendar-minus', t('leaves.remaining'), (bal.remaining||0) + ' ' + t('leaves.days')],
+          ['fas fa-hashtag',      t('employees.employeeId'), emp.no],
+          ['fas fa-building',     t('common.department'),   dept?.name||'—'],
+          ['fas fa-location-dot', 'مكان العمل',             emp.workLocation||'—'],
+          ['fas fa-building-user','جهة العمل',              emp.workEntity||'—'],
+          ['fas fa-envelope',     t('common.email'),        emp.email],
+          ['fas fa-phone',        t('common.phone'),        emp.phone],
+          ['fas fa-calendar',     t('employees.hireDate'),  App.formatDate(emp.hireDate)],
+          ['fas fa-money-bill',   t('employees.salary'),    App.formatCurrency(emp.salary)],
+          ['fas fa-clock',        t('nav.attendance'),      attCount + ' ' + t('common.month')],
+          ['fas fa-calendar-minus',t('leaves.remaining'),   (bal.remaining||0) + ' ' + t('leaves.days')],
         ].map(([icon,label,val]) => `
           <div style="background:var(--bg-input);border-radius:10px;padding:12px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px"><i class="${icon}"></i> ${label}</div>
@@ -421,9 +586,31 @@ const EmployeesModule = {
           </div>
         `).join('')}
       </div>
-      ${Biometrics.renderBiometricCard(id)}
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+      ${typeof Biometrics !== 'undefined' ? Biometrics.renderBiometricCard(id) : ''}
+
+      <!-- Quick navigation to related modules -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">انتقل إلى</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          ${[
+            { icon:'fa-clock-rotate-left', label:'الحضور',    color:'#10b981', bg:'rgba(16,185,129,.1)',   page:'attendance' },
+            { icon:'fa-calendar-minus',    label:'الإجازات',  color:'#f59e0b', bg:'rgba(245,158,11,.1)',   page:'leaves'     },
+            { icon:'fa-money-bill-wave',   label:'الرواتب',   color:'#6366f1', bg:'rgba(99,102,241,.1)',   page:'payroll'    },
+            { icon:'fa-hand-holding-dollar',label:'السلف',   color:'#8b5cf6', bg:'rgba(139,92,246,.1)',   page:'loans'      },
+          ].map(a => `
+            <button onclick="App.closeModal(); EmployeesModule._goEmpPage('${id}','${emp.name}','${a.page}')"
+              style="padding:10px 4px;border-radius:10px;border:1.5px solid ${a.bg};background:${a.bg};color:${a.color};font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .2s"
+              onmouseover="this.style.borderColor='${a.color}'" onmouseout="this.style.borderColor='${a.bg}'">
+              <i class="fas ${a.icon}" style="font-size:16px"></i>${a.label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
         <button class="btn btn-outline-primary" onclick="App.closeModal(); EmployeesModule.openEdit('${id}')"><i class="fas fa-pencil"></i> ${t('common.edit')}</button>
+        <button class="btn btn-secondary" onclick="App.closeModal(); LoansModule.openAddForm('${id}')"><i class="fas fa-hand-holding-dollar"></i> سلفة جديدة</button>
+        <button class="btn btn-sm" style="background:#25d366;color:#fff" onclick="App.closeModal(); EmployeesModule.sendCredentials('${id}')"><i class="fab fa-whatsapp"></i> إرسال بيانات الدخول</button>
         <button class="btn btn-danger" onclick="App.closeModal(); EmployeesModule.deleteEmployee('${id}')"><i class="fas fa-trash"></i> ${t('common.delete')}</button>
       </div>
     `);
@@ -439,7 +626,101 @@ const EmployeesModule = {
     });
   },
 
+  // Navigate to a module pre-filtered by employee name
+  _goEmpPage(empId, empName, page) {
+    App.navigate(page);
+    // After render, find the search box and apply the employee's name as filter
+    setTimeout(() => {
+      const searchSelectors = [
+        '#att-search', '#lv-search', '#payroll-emp-search',
+        '#loan-search', '#emp-search', 'input[id$="-search"]',
+        'input.search-input', '.search-box input',
+      ];
+      let found = false;
+      for (const sel of searchSelectors) {
+        const el = document.querySelector(sel);
+        if (el) {
+          el.value = empName;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        // Fallback: try filter-select for empId
+        const empSel = document.querySelector('select[id*="emp"]');
+        if (empSel) { empSel.value = empId; empSel.dispatchEvent(new Event('change',{bubbles:true})); }
+      }
+    }, 180);
+  },
+
   exportData() { this.openImportExport(); },
+
+  // ── MIGRATE EMPLOYEE CODES ────────────────────────────────
+  migrateEmpNos() {
+    const count = DB.employees.length;
+    if (!count) { App.toast('لا يوجد موظفون', 'warning'); return; }
+
+    App.confirm(
+      `سيتم تحديث أكواد ${count} موظف لتصبح بصيغة (حرف إنجليزي + أرقام). هذا الإجراء لا يمكن التراجع عنه.`,
+      () => {
+        // خريطة تحويل الحروف العربية (مع الحروف المركبة) — نفس الخريطة في data.js
+        const _ar = {
+          'ا':'A',  'أ':'A',  'إ':'E', 'آ':'A', 'ء':'A', 'ئ':'Y',
+          'ب':'B',
+          'ت':'T',  'ث':'TH',
+          'ج':'J',
+          'ح':'H',  'خ':'KH',
+          'د':'D',  'ذ':'DH',
+          'ر':'R',
+          'ز':'Z',
+          'س':'S',  'ش':'SH', 'ص':'S', 'ض':'D',
+          'ط':'T',  'ظ':'Z',
+          'ع':'O',  'غ':'GH',
+          'ف':'F',
+          'ق':'Q',  'ك':'K',
+          'ل':'L',
+          'م':'M',
+          'ن':'N',
+          'ه':'H',  'ة':'H',
+          'و':'W',
+          'ي':'Y',  'ى':'Y',
+        };
+        const prefix = name => {
+          const n  = (name || '').trim();
+          const ch = n.charAt(0);
+          if (ch === 'ع') {
+            const next = n.charAt(1);
+            if (next === 'م' || next === 'ث') return 'O';
+            if (next === 'ي')                 return 'I';
+            return 'A';
+          }
+          return ch ? (_ar[ch] || (/[a-z]/i.test(ch) ? ch.toUpperCase() : 'E')) : 'E';
+        };
+
+        // رتّب حسب الرقم الموجود في الكود الحالي للحفاظ على الترتيب
+        const sorted = [...DB.employees].sort((a, b) => {
+          const na = parseInt((a.no || '').replace(/^[^\d]+/, ''), 10) || 0;
+          const nb = parseInt((b.no || '').replace(/^[^\d]+/, ''), 10) || 0;
+          return na - nb;
+        });
+
+        // أعد توليد الأكواد بشكل متسلسل 001, 002, ...
+        sorted.forEach((emp, idx) => {
+          const firstName = (emp.name || '').trim().split(/\s+/)[0];
+          emp.no = prefix(firstName) + String(idx + 1).padStart(3, '0');
+          // أضف كل موظف صراحةً في قائمة المزامنة حتى يُرفع فوراً لـ Supabase
+          if (typeof SupabaseDB !== 'undefined' && SupabaseDB.isConnected) {
+            SupabaseDB._enqueue('upsert', 'employees', emp);
+          }
+        });
+
+        DB._saveToLocal();
+        App.toast(`تم تحديث أكواد ${count} موظف بنجاح ✓ — جارٍ المزامنة...`, 'success');
+        this.render(document.getElementById('page-content'));
+      }
+    );
+  },
 
   // ── IMPORT / EXPORT MODAL ─────────────────────────────────
   openImportExport() {
@@ -550,63 +831,12 @@ const EmployeesModule = {
 
   // ── TEMPLATE DOWNLOAD (generated in browser via SheetJS) ──
   downloadTemplate() {
-    if (typeof XLSX === 'undefined') {
-      App.toast('جارٍ تحميل مكتبة Excel...', 'info');
-      return;
-    }
-    const wb = XLSX.utils.book_new();
-
-    // ── شيت البيانات ──
-    const headers = [
-      'الاسم الأول *', 'اسم العائلة *', 'رقم الهاتف', 'البريد الإلكتروني',
-      'القسم *', 'المنصب / الوظيفة', 'الراتب الأساسي *', 'تاريخ التعيين *',
-      'الجنس', 'الحالة', 'رقم الموظف', 'ملاحظات'
-    ];
-    const sample = [
-      'أحمد', 'محمد', '0501234567', 'ahmed@company.com',
-      'الموارد البشرية', 'محاسب', 5000, '2024-01-15',
-      'ذكر', 'نشط', 'EMP-001', 'موظف نموذجي'
-    ];
-
-    const wsData = [headers, sample];
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-    // عرض الأعمدة
-    ws['!cols'] = [
-      {wch:16},{wch:16},{wch:15},{wch:24},{wch:18},{wch:20},
-      {wch:15},{wch:15},{wch:10},{wch:12},{wch:13},{wch:22}
-    ];
-
-    // نطاق الجدول
-    ws['!ref'] = XLSX.utils.encode_range({ s:{r:0,c:0}, e:{r:101,c:11} });
-
-    XLSX.utils.book_append_sheet(wb, ws, 'بيانات الموظفين');
-
-    // ── شيت التعليمات ──
-    const wsInst = XLSX.utils.aoa_to_sheet([
-      ['حقل', 'مطلوب؟', 'الوصف', 'مثال'],
-      ['الاسم الأول',         'نعم', 'اسم الموظف الأول',                    'أحمد'],
-      ['اسم العائلة',         'نعم', 'اسم العائلة',                           'محمد'],
-      ['رقم الهاتف',          'لا',  'رقم الجوال مع رمز الدولة',             '0501234567'],
-      ['البريد الإلكتروني',   'لا',  'للتواصل والإشعارات',                   'ahmed@co.com'],
-      ['القسم',               'نعم', 'يجب أن يكون موجوداً في النظام',        'الموارد البشرية'],
-      ['المنصب / الوظيفة',    'لا',  'المسمى الوظيفي',                        'محاسب'],
-      ['الراتب الأساسي',      'نعم', 'أرقام فقط بدون رموز',                  '5000'],
-      ['تاريخ التعيين',       'نعم', 'بالصيغة YYYY-MM-DD',                   '2024-01-15'],
-      ['الجنس',               'لا',  'ذكر أو أنثى',                           'ذكر'],
-      ['الحالة',              'لا',  'نشط / غير نشط / في إجازة',             'نشط'],
-      ['رقم الموظف',          'لا',  'سيُولَّد تلقائياً إن تُرك فارغاً',     'EMP-001'],
-      ['ملاحظات',             'لا',  'أي ملاحظات إضافية',                    ''],
-      [],
-      ['تعليمات مهمة:'],
-      ['• لا تغيّر أسماء الأعمدة في الصف الأول'],
-      ['• احذف صف المثال (الصف 2) قبل الرفع'],
-      ['• الحقول المعلّمة بـ (*) إلزامية'],
-    ]);
-    wsInst['!cols'] = [{wch:20},{wch:10},{wch:36},{wch:18}];
-    XLSX.utils.book_append_sheet(wb, wsInst, 'تعليمات');
-
-    XLSX.writeFile(wb, 'قالب_رفع_الموظفين.xlsx');
+    const a = document.createElement('a');
+    a.href     = '/assets/employee-template.xlsx';
+    a.download = 'قالب_رفع_الموظفين.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     App.toast('تم تحميل القالب ✓', 'success');
   },
 
@@ -623,45 +853,125 @@ const EmployeesModule = {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const wb   = XLSX.read(e.target.result, { type: 'binary' });
-        const ws   = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        // cellDates:true يحوّل التواريخ لـ Date objects بدل serial numbers
+        const wb  = XLSX.read(e.target.result, { type: 'binary', cellDates: true, cellNF: false });
+        const ws  = wb.Sheets[wb.SheetNames[0]];
 
-        if (!rows.length) { App.toast('الملف فارغ أو لا يحتوي بيانات', 'error'); return; }
+        // قراءة كل الصفوف كمصفوفات خام (بالموضع مش الاسم)
+        const rawAll = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
 
-        // map headers → employee fields
-        const mapped = rows.map((r, idx) => {
-          const firstName = (r['الاسم الأول *'] || r['الاسم الأول'] || '').toString().trim();
-          const lastName  = (r['اسم العائلة *'] || r['اسم العائلة'] || '').toString().trim();
-          const name = [firstName, lastName].filter(Boolean).join(' ');
+        // إيجاد صف الـ headers — أول صف فيه "الاسم" أو "name"
+        let headerRowIdx = -1;
+        for (let i = 0; i < Math.min(rawAll.length, 12); i++) {
+          const row = rawAll[i];
+          const norm = row.map(c => (c||'').toString().trim());
+          if (norm.some(c => c.includes('الاسم') || c.toLowerCase().includes('name'))) {
+            headerRowIdx = i;
+            break;
+          }
+        }
+        if (headerRowIdx === -1) {
+          App.toast('لم يُعثر على صف الأعمدة في الملف', 'error'); return;
+        }
 
-          const statusRaw = (r['الحالة'] || 'نشط').toString().trim();
-          const statusMap = { 'نشط':'active', 'active':'active', 'غير نشط':'inactive', 'inactive':'inactive', 'في إجازة':'on_leave', 'on_leave':'on_leave' };
+        const headerRow  = rawAll[headerRowIdx].map(c => (c||'').toString().trim());
+        const dataRows   = rawAll.slice(headerRowIdx + 1);
 
-          const genderRaw = (r['الجنس'] || '').toString().trim();
-          const genderMap = { 'ذكر':'male', 'male':'male', 'أنثى':'female', 'female':'female' };
+        // دالة مساعدة: البحث عن عمود بأي من الأسماء البديلة
+        const colIdx = (...names) => {
+          for (const n of names) {
+            const i = headerRow.findIndex(h => h === n || h.replace(/\s*\*\s*$/,'').trim() === n);
+            if (i !== -1) return i;
+          }
+          return -1;
+        };
 
-          const dept    = (r['القسم *'] || r['القسم'] || '').toString().trim();
-          const salary  = parseFloat(r['الراتب الأساسي *'] || r['الراتب الأساسي'] || 0) || 0;
-          const hireDate= (r['تاريخ التعيين *'] || r['تاريخ التعيين'] || new Date().toISOString().split('T')[0]).toString().trim();
+        // خريطة مواضع الأعمدة
+        const C = {
+          firstName: colIdx('الاسم الأول', 'الاسم'),
+          lastName:  colIdx('اسم العائلة', 'العائلة'),
+          fullName:  colIdx('الاسم الكامل'),
+          phone:     colIdx('رقم الهاتف', 'الهاتف', 'موبايل'),
+          email:     colIdx('البريد الإلكتروني', 'البريد'),
+          dept:      colIdx('القسم', 'الإدارة', 'الادارة'),
+          position:  colIdx('المنصب / الوظيفة', 'المنصب', 'الوظيفة', 'المسمى الوظيفي'),
+          salary:    colIdx('الراتب الأساسي', 'الراتب'),
+          hireDate:  colIdx('تاريخ التعيين', 'تاريخ الانضمام', 'تاريخ التوظيف'),
+          gender:    colIdx('الجنس'),
+          status:    colIdx('الحالة'),
+          empNo:     colIdx('رقم الموظف', 'الرقم الوظيفي'),
+          notes:     colIdx('ملاحظات', 'ملاحظة'),
+          password:  colIdx('رمز الدخول (اختياري)', 'رمز الدخول', 'كلمة المرور'),
+        };
+
+        // تحويل تاريخ Excel (Serial أو Date object أو نص)
+        const parseDate = (val) => {
+          if (!val && val !== 0) return '';
+          if (val instanceof Date && !isNaN(val)) {
+            return val.toISOString().split('T')[0];
+          }
+          if (typeof val === 'number' && val > 1000) {
+            // Excel serial date (Windows: epoch 1900-01-01 مع خطأ السنة الكبيسة)
+            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+            return d.toISOString().split('T')[0];
+          }
+          const s = val.toString().trim();
+          // دعم dd/mm/yyyy أو dd-mm-yyyy
+          const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2,'0')}-${dmyMatch[1].padStart(2,'0')}`;
+          return s; // YYYY-MM-DD أو غيره
+        };
+
+        // تحويل رقم الهاتف (يضيف الصفر المحذوف لو ضروري)
+        const parsePhone = (val) => {
+          if (!val && val !== 0) return '';
+          const s = val.toString().trim();
+          // لو رقم بدأ بـ 5 وطوله 9 → ضيف 0 في البداية
+          if (/^5\d{8}$/.test(s)) return '0' + s;
+          return s;
+        };
+
+        const statusMap = {
+          'نشط':'active', 'active':'active',
+          'غير نشط':'inactive', 'inactive':'inactive',
+          'في إجازة':'on_leave', 'on_leave':'on_leave'
+        };
+        const genderMap = {
+          'ذكر':'m', 'male':'m', 'm':'m',
+          'أنثى':'f', 'female':'f', 'f':'f'
+        };
+
+        const get = (row, idx) => idx !== -1 ? (row[idx] ?? '') : '';
+
+        const mapped = dataRows.map((row, idx) => {
+          const firstName = get(row, C.firstName).toString().trim();
+          const lastName  = get(row, C.lastName).toString().trim();
+          const name      = [firstName, lastName].filter(Boolean).join(' ')
+                         || get(row, C.fullName).toString().trim();
+
+          if (!name) return null; // صف فارغ
+
+          const genderRaw = get(row, C.gender).toString().trim();
+          const statusRaw = get(row, C.status).toString().trim();
 
           return {
-            _row:     idx + 2,
-            _valid:   !!name,
-            _error:   !name ? 'الاسم مطلوب' : '',
+            _row:     headerRowIdx + idx + 2,
+            _valid:   true,
+            _error:   '',
             name, firstName, lastName,
-            phone:    (r['رقم الهاتف']         || '').toString().trim(),
-            email:    (r['البريد الإلكتروني']   || '').toString().trim(),
-            deptName: dept,
-            position: (r['المنصب / الوظيفة']    || '').toString().trim(),
-            salary,
-            hireDate,
-            gender:   genderMap[genderRaw] || 'male',
-            status:   statusMap[statusRaw]  || 'active',
-            no:       (r['رقم الموظف']         || '').toString().trim(),
-            notes:    (r['ملاحظات']             || '').toString().trim(),
+            email:    get(row, C.email).toString().trim(),
+            phone:    parsePhone(get(row, C.phone)),
+            deptName: get(row, C.dept).toString().trim(),
+            position: get(row, C.position).toString().trim(),
+            salary:   parseFloat(get(row, C.salary)) || 0,
+            hireDate: parseDate(get(row, C.hireDate)) || new Date().toISOString().split('T')[0],
+            gender:   genderMap[genderRaw] || 'm',
+            status:   statusMap[statusRaw] || 'active',
+            no:       get(row, C.empNo).toString().trim(),
+            notes:    get(row, C.notes).toString().trim(),
+            password: get(row, C.password).toString().trim(),
           };
-        }).filter(r => r.name); // skip fully empty rows
+        }).filter(Boolean); // إزالة الصفوف الفارغة
 
         if (!mapped.length) { App.toast('لم يُعثر على بيانات صالحة', 'error'); return; }
 
@@ -738,7 +1048,7 @@ const EmployeesModule = {
         DB.departments.push(dept);
       }
 
-      const empNo = r.no || DB.nextEmpNo();
+      const empNo = r.no || DB.nextEmpNo((r.name || '').split(' ')[0]);
       const newEmp = {
         id:        DB.nextId('e'),
         no:        empNo,
@@ -755,10 +1065,10 @@ const EmployeesModule = {
         notes:     r.notes,
         avatar:    r.name.charAt(0),
         avatarColor: 'gradient-primary',
-        password:  Math.random().toString(36).slice(2, 10),
+        password:  r.password || Math.random().toString(36).slice(2, 10),
       };
       DB.employees.push(newEmp);
-      DB.leaveBalances[newEmp.id] = { annual:21, sick:10, emergency:3, remaining:21, taken:0 };
+      DB.leaveBalances[newEmp.id] = { annual:21, sick:10, emergency:3, remaining:21, taken:0, sickTaken:0, emergencyTaken:0 };
       added++;
     });
 
@@ -807,5 +1117,140 @@ const EmployeesModule = {
     }));
     App.exportCSV(data, `الموظفون_${new Date().toISOString().split('T')[0]}.csv`);
     App.toast('تم تصدير CSV ✓', 'success');
+  },
+
+  // ── PASSWORD MANAGEMENT ──────────────────────────────────
+
+  openPasswordModal(id) {
+    const emp = DB.getEmployee(id);
+    if (!emp) return;
+    const pwd = emp.password || '';
+    App.openModal(`كلمة مرور — ${emp.name}`, `
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Current password display -->
+        <div class="card" style="background:var(--bg-input);border:none;box-shadow:none">
+          <div class="card-body" style="padding:14px">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px">كلمة المرور الحالية</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="emp-cur-pass" type="password" value="${pwd}"
+                style="flex:1;background:transparent;border:none;font-family:var(--font-en);font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:2px;outline:none" readonly>
+              <button class="btn-icon btn" title="إظهار" onclick="const i=document.getElementById('emp-cur-pass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fas fa-eye':'fas fa-eye-slash'">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-icon btn" title="نسخ" onclick="navigator.clipboard.writeText('${pwd}');App.toast('تم نسخ كلمة المرور ✓','success')">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Set new password -->
+        <div class="app-form-group">
+          <label>كلمة مرور جديدة</label>
+          <div style="display:flex;gap:8px">
+            <div style="position:relative;flex:1">
+              <input class="app-form-input" id="emp-new-pass" type="password" placeholder="أدخل كلمة مرور جديدة" style="padding-left:40px">
+              <button type="button" class="btn-icon btn" style="position:absolute;left:8px;top:50%;transform:translateY(-50%)"
+                onclick="const i=document.getElementById('emp-new-pass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fas fa-eye':'fas fa-eye-slash'">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <button class="btn btn-outline" title="توليد تلقائي" onclick="EmployeesModule._generatePass()" style="white-space:nowrap">
+              <i class="fas fa-dice"></i> توليد
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-outline" onclick="App.closeModal()">إلغاء</button>
+          <button class="btn btn-primary" onclick="EmployeesModule.savePassword('${id}')">
+            <i class="fas fa-save"></i> حفظ كلمة المرور
+          </button>
+        </div>
+      </div>
+    `);
+  },
+
+  _generatePass() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$!';
+    let pass = '';
+    for (let i = 0; i < 10; i++) pass += chars[Math.floor(Math.random() * chars.length)];
+    const inp = document.getElementById('emp-new-pass');
+    if (inp) { inp.value = pass; inp.type = 'text'; }
+    App.toast('تم توليد كلمة مرور جديدة', 'info');
+  },
+
+  savePassword(id) {
+    const emp  = DB.getEmployee(id);
+    if (!emp) return;
+    const newPass = document.getElementById('emp-new-pass')?.value.trim();
+    if (!newPass) { App.toast('يرجى إدخال كلمة مرور', 'error'); return; }
+    if (newPass.length < 6) { App.toast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
+    emp.password = newPass;
+    DB.save();
+    DB.logAudit(App.state.user?.id || 'admin', 'تغيير كلمة مرور موظف', 'الموظفون', `تم تغيير كلمة مرور ${emp.name}`);
+    App.closeModal();
+    App.toast(`تم حفظ كلمة مرور ${emp.name} ✓`, 'success');
+  },
+
+  // ─── إرسال بيانات الدخول عبر واتساب ─────────────────────────
+  sendCredentials(id) {
+    const emp = DB.getEmployee(id);
+    if (!emp) return;
+
+    const password = emp.password || emp.no;
+    const link     = window.location.origin + '/employee.html';
+    const phone    = emp.phone || '';
+
+    App.openModal(`إرسال بيانات الدخول — ${emp.name}`, `
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <div style="background:rgba(37,211,102,.08);border:1px solid rgba(37,211,102,.25);border-radius:12px;padding:16px">
+          <div style="font-size:12px;font-weight:700;color:#25d366;margin-bottom:10px">
+            <i class="fab fa-whatsapp"></i> معاينة الرسالة
+          </div>
+          <div style="font-size:13px;line-height:1.7;color:var(--text-primary);white-space:pre-line">🔐 <b>بيانات دخول بوابة الموظفين</b>
+
+أهلاً ${emp.name}،
+فيما يلي بيانات دخولك إلى بوابة الموظفين:
+
+👤 <b>كود الموظف:</b> ${emp.no}
+🔑 <b>كلمة المرور:</b> ${password}
+🌐 <b>رابط الدخول:</b> ${link}
+
+يُرجى الحفاظ على سرية بيانات دخولك.
+
+إدارة الموارد البشرية — ${DB.company.name || 'الشركة'}</div>
+        </div>
+
+        <div class="app-form-group">
+          <label class="app-form-label">رقم هاتف الموظف (واتساب)</label>
+          <input id="cred-phone" class="app-form-input" type="tel" value="${phone}" placeholder="05xxxxxxxx">
+          ${!phone ? '<div style="font-size:11px;color:var(--warning);margin-top:4px"><i class="fas fa-triangle-exclamation"></i> لا يوجد رقم هاتف محفوظ لهذا الموظف</div>' : ''}
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" style="flex:1;background:#25d366;border-color:#25d366" onclick="EmployeesModule._doSendCredentials('${id}')">
+            <i class="fab fa-whatsapp"></i> إرسال عبر واتساب
+          </button>
+          <button class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
+        </div>
+
+      </div>
+    `);
+  },
+
+  async _doSendCredentials(id) {
+    const emp   = DB.getEmployee(id);
+    if (!emp) return;
+    const phone = document.getElementById('cred-phone')?.value.trim();
+    if (!phone) { App.toast('أدخل رقم الهاتف', 'error'); return; }
+
+    // حفظ الرقم على الموظف إذا تغيّر
+    if (phone !== emp.phone) { emp.phone = phone; DB.save(); }
+
+    App.closeModal();
+    await WhatsApp.sendCredentials(emp);
   },
 };

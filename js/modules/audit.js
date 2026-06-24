@@ -81,7 +81,7 @@ const AuditModule = {
                 return ranked.map(({emp, count}, i) => `
                   <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:8px;margin-bottom:4px">
                     <span style="font-size:13px;font-weight:700;color:var(--text-muted);width:20px;text-align:center">${i+1}</span>
-                    <div class="avatar ${emp.avatarColor}" style="width:28px;height:28px;font-size:10px">${emp.avatar}</div>
+                    ${App.renderAvatar(emp, 28, 8)}
                     <div style="flex:1">
                       <div style="font-size:12.5px;font-weight:600;color:var(--text-primary)">${emp.name}</div>
                     </div>

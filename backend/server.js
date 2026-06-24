@@ -159,6 +159,31 @@ app.get('/api/first-setup', async (req, res) => {
 //  DATA ROUTES (CRUD)
 // ════════════════════════════════════════════════════════
 
+// جلب كل الجداول دفعة واحدة
+app.get('/api/data/all', authenticate, async (req, res) => {
+  const tables = ['departments','employees','shifts','attendance','leaves',
+                  'requests','notifications','payroll','deductions','locations','roles','audit_logs'];
+  try {
+    const result = {};
+
+    // Company
+    const { data: co, error: coErr } = await supabaseAdmin
+      .from('company').select('data').eq('id', 'main').maybeSingle();
+    result.company = coErr ? null : { data: co?.data || null };
+
+    // Arrays
+    await Promise.all(tables.map(async table => {
+      const { data, error } = await supabaseAdmin
+        .from(table).select('id,data').order('created_at', { ascending: true });
+      result[table] = error ? { rows: [] } : { rows: data || [] };
+    }));
+
+    res.json({ data: result });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // جلب البيانات من جدول
 app.get('/api/data/:table', authenticate, async (req, res) => {
   const { table } = req.params;

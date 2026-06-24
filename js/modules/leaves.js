@@ -80,7 +80,7 @@ const LeavesModule = {
                   <div style="margin-bottom:14px">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
                       <div style="display:flex;align-items:center;gap:6px">
-                        <div class="avatar ${emp.avatarColor}" style="width:24px;height:24px;font-size:9px">${emp.avatar}</div>
+                        ${App.renderAvatar(emp, 24, 7)}
                         <span style="font-size:12px;font-weight:600;color:var(--text-primary)">${emp.name}</span>
                       </div>
                       <span style="font-size:11px;color:var(--text-muted)">${bal.taken}/${bal.annual}</span>
@@ -159,7 +159,7 @@ const LeavesModule = {
                 <tr class="stagger-item">
                   <td>
                     <div class="table-avatar">
-                      <div class="avatar ${emp?.avatarColor||'gradient-primary'}">${emp?.avatar||'?'}</div>
+                      ${App.renderAvatar(emp, 36, 10)}
                       <div class="avatar-info">
                         <div class="avatar-name">${emp?.name||'—'}</div>
                         <div class="avatar-sub">${App.formatDate(l.appliedOn)}</div>
@@ -222,7 +222,7 @@ const LeavesModule = {
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'موافقة إجازة', 'الإجازات', `${emp?.name} — ${days} يوم`);
-      if (emp && WhatsApp.config.enabled) WhatsApp.notifyLeaveApproved(emp, leave);
+      if (emp && typeof WhatsApp !== 'undefined' && WhatsApp.config?.enabled) WhatsApp.notifyLeaveApproved(emp, leave);
     });
   },
 
@@ -238,7 +238,7 @@ const LeavesModule = {
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'رفض إجازة', 'الإجازات', emp?.name||'');
-      if (emp && WhatsApp.config.enabled) WhatsApp.notifyLeaveRejected(emp, leave);
+      if (emp && typeof WhatsApp !== 'undefined' && WhatsApp.config?.enabled) WhatsApp.notifyLeaveRejected(emp, leave);
     });
   },
 
@@ -268,7 +268,7 @@ const LeavesModule = {
 
     App.openModal(currentLang==='ar'?'تفاصيل الإجازة':'Leave Details', `
       <div style="text-align:center;margin-bottom:20px">
-        <div class="avatar ${emp?.avatarColor}" style="width:60px;height:60px;font-size:22px;margin:0 auto 10px;border-radius:14px">${emp?.avatar}</div>
+        <div style="margin:0 auto 10px;width:60px">${App.renderAvatar(emp, 60, 14)}</div>
         <div style="font-size:16px;font-weight:700">${emp?.name}</div>
         <div style="font-size:12px;color:var(--text-muted)">${emp?.position}</div>
       </div>

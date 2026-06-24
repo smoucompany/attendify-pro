@@ -737,5 +737,9 @@ function setLanguage(lang) {
 function initLanguage() {
   const saved = localStorage.getItem('app-lang') || 'ar';
   currentLang = saved;
+  // Apply direction immediately to <html> before any render
+  document.documentElement.lang = saved;
+  document.documentElement.dir  = saved === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.dataset.lang = saved;
   applyTranslations();
 }

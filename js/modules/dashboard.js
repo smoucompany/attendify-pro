@@ -43,15 +43,15 @@ const DashboardModule = {
           const newLabel = newThisMonth > 0
             ? `+${newThisMonth} ${currentLang==='ar'?'هذا الشهر':'this month'}`
             : (currentLang==='ar'?'لا إضافات هذا الشهر':'no new this month');
-          return this._statCard('primary', 'fas fa-users', stats.total, t('dashboard.totalEmployees'), newLabel, newThisMonth > 0 ? 'up' : 'neutral', 'gradient-primary');
+          return this._statCard('primary', 'fas fa-users', stats.total, t('dashboard.totalEmployees'), newLabel, newThisMonth > 0 ? 'up' : 'neutral', 'gradient-primary', 'employees');
         })()}
-        ${this._statCard('success', 'fas fa-user-check', stats.present + stats.late, t('dashboard.presentToday'), `${stats.attendanceRate}% ${currentLang==='ar'?'نسبة الحضور':'attendance rate'}`, 'up', 'gradient-success')}
-        ${this._statCard('warning', 'fas fa-calendar-minus', stats.onLeave, t('dashboard.onLeave'), `${currentLang==='ar'?'إجازة مؤكدة':'confirmed leaves'}`, 'neutral', 'gradient-warning')}
-        ${this._statCard('danger',  'fas fa-clock', stats.late, t('dashboard.lateArrivals'), `${currentLang==='ar'?'اليوم':'today'}`, stats.late > 3 ? 'down' : 'neutral', 'gradient-danger')}
-        ${this._statCard('info',    'fas fa-user-xmark', stats.absent, t('dashboard.absent'), `${currentLang==='ar'?'غياب اليوم':'absent today'}`, 'down', 'gradient-info')}
-        ${this._statCard('primary', 'fas fa-percent', stats.attendanceRate + '%', t('dashboard.attendanceRate'), currentLang==='ar'?'مقارنة بالأمس':'vs yesterday', 'up', 'gradient-indigo')}
-        ${this._statCard('success', 'fas fa-hourglass-half', monthOvertimeHrs, t('dashboard.overtimeHours'), `${todayOvertimeHrs} ${currentLang==='ar'?'ساعة إضافية اليوم':'overtime hrs today'}`, todayOvertimeMin > 0 ? 'up' : 'neutral', 'gradient-cyan')}
-        ${this._statCard('warning', 'fas fa-file-circle-question', counts.leaves + counts.requests, t('dashboard.pendingRequests'), currentLang==='ar'?'تنتظر موافقتك':'awaiting approval', 'neutral', 'gradient-rose')}
+        ${this._statCard('success', 'fas fa-user-check', stats.present + stats.late, t('dashboard.presentToday'), `${stats.attendanceRate}% ${currentLang==='ar'?'نسبة الحضور':'attendance rate'}`, 'up', 'gradient-success', 'attendance')}
+        ${this._statCard('warning', 'fas fa-calendar-minus', stats.onLeave, t('dashboard.onLeave'), `${currentLang==='ar'?'إجازة مؤكدة':'confirmed leaves'}`, 'neutral', 'gradient-warning', 'leaves')}
+        ${this._statCard('danger',  'fas fa-clock', stats.late, t('dashboard.lateArrivals'), `${currentLang==='ar'?'اليوم':'today'}`, stats.late > 3 ? 'down' : 'neutral', 'gradient-danger', 'attendance')}
+        ${this._statCard('info',    'fas fa-user-xmark', stats.absent, t('dashboard.absent'), `${currentLang==='ar'?'غياب اليوم':'absent today'}`, 'down', 'gradient-info', 'attendance')}
+        ${this._statCard('primary', 'fas fa-percent', stats.attendanceRate + '%', t('dashboard.attendanceRate'), currentLang==='ar'?'مقارنة بالأمس':'vs yesterday', 'up', 'gradient-indigo', 'reports')}
+        ${this._statCard('success', 'fas fa-hourglass-half', monthOvertimeHrs, t('dashboard.overtimeHours'), `${todayOvertimeHrs} ${currentLang==='ar'?'ساعة إضافية اليوم':'overtime hrs today'}`, todayOvertimeMin > 0 ? 'up' : 'neutral', 'gradient-cyan', 'attendance')}
+        ${this._statCard('warning', 'fas fa-file-circle-question', counts.leaves + counts.requests, t('dashboard.pendingRequests'), currentLang==='ar'?'تنتظر موافقتك':'awaiting approval', 'neutral', 'gradient-rose', 'requests')}
       </div>
 
       <!-- QUICK ACTIONS -->
@@ -117,7 +117,7 @@ const DashboardModule = {
           <div class="card">
             <div class="card-header">
               <h3><i class="fas fa-calendar-minus" style="color:var(--warning)"></i> ${t('leaves.title')} ${currentLang==='ar'?'المعلقة':'Pending'}</h3>
-              <a href="#leaves" class="btn-text">${t('common.view')} ${t('common.all')}</a>
+              <button class="btn-text" onclick="App.navigate('leaves')">${t('common.view')} ${t('common.all')}</button>
             </div>
             <div class="card-body" style="padding:8px">
               ${DB.leaves.filter(l=>l.status==='pending').slice(0,3).map(l=>{
@@ -182,10 +182,11 @@ const DashboardModule = {
     }, 100);
   },
 
-  _statCard(type, icon, value, label, trend, trendDir, gradient) {
+  _statCard(type, icon, value, label, trend, trendDir, gradient, link = '') {
     const trendIcons = { up: 'fa-arrow-trend-up', down: 'fa-arrow-trend-down', neutral: 'fa-minus' };
+    const clickable  = link ? `style="cursor:pointer;transition:transform .15s,box-shadow .15s" onclick="App.navigate('${link}')" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow-lg)'" onmouseout="this.style.transform='';this.style.boxShadow=''"` : '';
     return `
-      <div class="stat-card ${type} stagger-item">
+      <div class="stat-card ${type} stagger-item" ${clickable}>
         <div style="display:flex;align-items:flex-start;justify-content:space-between">
           <div class="stat-icon ${gradient}"><i class="${icon}"></i></div>
           <div class="stat-info" style="text-align:${currentLang==='ar'?'right':'left'}">
@@ -193,9 +194,9 @@ const DashboardModule = {
             <div class="stat-label">${label}</div>
           </div>
         </div>
-        <div class="stat-trend ${trendDir}">
-          <i class="fas ${trendIcons[trendDir]}"></i>
-          <span>${trend}</span>
+        <div class="stat-trend ${trendDir}" style="display:flex;align-items:center;justify-content:space-between">
+          <span style="display:flex;align-items:center;gap:4px"><i class="fas ${trendIcons[trendDir]}"></i> ${trend}</span>
+          ${link ? `<i class="fas fa-arrow-left" style="font-size:10px;opacity:.4"></i>` : ''}
         </div>
       </div>
     `;
@@ -230,7 +231,7 @@ const DashboardModule = {
       const method  = att?.method  || '';
       return `
         <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background 0.15s" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
-          <div class="avatar ${emp.avatarColor}">${emp.avatar}</div>
+          ${App.renderAvatar(emp, 36, 10)}
           <div style="flex:1;min-width:0">
             <div style="font-size:13.5px;font-weight:600;color:var(--text-primary)">${emp.name}</div>
             <div style="font-size:11.5px;color:var(--text-muted)">${emp.position}${dept?' · '+dept.name:''}</div>

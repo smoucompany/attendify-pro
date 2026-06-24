@@ -73,13 +73,19 @@ const NotificationsModule = {
       return;
     }
 
-    container.innerHTML = notifs.map(n => `
-      <div class="notif-item ${n.read?'':'unread'} stagger-item" style="margin-bottom:4px" onclick="NotificationsModule.markRead('${n.id}', this)">
+    const _typeLink = { leave:'leaves', attendance:'attendance', request:'requests', payroll:'payroll', loan:'loans', gratuity:'gratuity', employee:'employees', report:'reports', system:'dashboard' };
+    container.innerHTML = notifs.map(n => {
+      const link = n.link || _typeLink[n.type] || '';
+      return `
+      <div class="notif-item ${n.read?'':'unread'} stagger-item" style="margin-bottom:4px;cursor:${link?'pointer':'default'}" onclick="NotificationsModule.openNotif('${n.id}', this)">
         <div class="notif-icon ${n.iconBg}" style="color:white"><i class="${n.icon}"></i></div>
         <div class="notif-content">
           <div class="notif-title">${n.title}</div>
           <div class="notif-desc">${n.desc}</div>
-          <div class="notif-time"><i class="fas fa-clock" style="font-size:10px"></i> ${App.timeAgo(n.time)}</div>
+          <div class="notif-time" style="display:flex;align-items:center;gap:8px">
+            <span><i class="fas fa-clock" style="font-size:10px"></i> ${App.timeAgo(n.time)}</span>
+            ${link ? `<span style="font-size:10px;color:var(--primary);font-weight:600"><i class="fas fa-arrow-left" style="font-size:9px"></i> ${NotificationsModule._pageName(link)}</span>` : ''}
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0">
           ${!n.read ? `<span style="width:8px;height:8px;border-radius:50%;background:var(--primary);display:block"></span>` : ''}
@@ -88,7 +94,23 @@ const NotificationsModule = {
           </button>
         </div>
       </div>
-    `).join('');
+    `}).join('');
+  },
+
+  _pageName(page) {
+    const map = { leaves:'الإجازات', attendance:'الحضور', requests:'الطلبات', payroll:'الرواتب', loans:'السلف', gratuity:'نهاية الخدمة', employees:'الموظفون', reports:'التقارير', dashboard:'لوحة التحكم' };
+    return map[page] || page;
+  },
+
+  openNotif(id, el) {
+    const n = DB.notifications.find(n => n.id === id);
+    if (!n) return;
+    n.read = true;
+    el?.classList.remove('unread');
+    App._updateBadges();
+    DB.save();
+    const link = n.link || { leave:'leaves', attendance:'attendance', request:'requests', payroll:'payroll', loan:'loans', gratuity:'gratuity', employee:'employees', report:'reports' }[n.type];
+    if (link) App.navigate(link);
   },
 
   markRead(id, el) {

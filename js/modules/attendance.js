@@ -228,7 +228,7 @@ const AttendanceModule = {
                 <tr class="stagger-item" style="${rowBg}">
                   <td>
                     <div class="table-avatar">
-                      <div class="avatar ${emp.avatarColor||'gradient-primary'}">${emp.avatar||'?'}</div>
+                      ${App.renderAvatar(emp, 36, 10)}
                       <div class="avatar-info">
                         <div class="avatar-name">${emp.name}</div>
                         <div class="avatar-sub">${emp.no||''} · ${emp.position||''}</div>
@@ -282,6 +282,13 @@ const AttendanceModule = {
   },
 
   _quickCheckIn(empId) {
+    // منع التسجيل المكرر لنفس الموظف في نفس اليوم
+    const existing = DB.attendance.find(a => a.empId === empId && a.date === this._dateFilter);
+    if (existing) {
+      App.toast(currentLang === 'ar' ? 'تم تسجيل الحضور مسبقاً لهذا الموظف' : 'Already checked in today', 'warning');
+      return;
+    }
+
     const now  = new Date();
     const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     const workStart = DB.company.workStart || '08:00';

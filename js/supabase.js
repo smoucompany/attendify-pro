@@ -26,6 +26,7 @@ const SupabaseDB = {
     notifications: 'notifications',
     payroll:       'payroll',
     deductions:    'deductions',
+    loans:         'loans',
     locations:     'locations',
     roles:         'roles',
     audit:         'audit_logs',
@@ -71,22 +72,10 @@ const SupabaseDB = {
 
       return { ok: r.ok, status: r.status, data: json };
     } catch(e) {
-      // Show visible diagnostic when ByteString error occurs
       if (e.message && e.message.indexOf('ByteString') !== -1) {
-        var _dbgAuth = headers['Authorization'] || '';
-        var _dbgCodes = [];
-        for (var _di = 0; _di < Math.min(_dbgAuth.length, 12); _di++) { _dbgCodes.push(_dbgAuth.charCodeAt(_di)); }
-        var _dbgMsg = 'ByteString at path=' + path + ' | auth[0-12]=[' + _dbgCodes.join(',') + '] | base=' + safeBase;
-        console.error('[BYTESTRING DBG]', _dbgMsg);
-        try {
-          var _dv = document.getElementById('_bsdbg') || document.createElement('div');
-          _dv.id = '_bsdbg';
-          _dv.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#7f1d1d;color:#fff;z-index:9999999;padding:10px;font:11px monospace;word-break:break-all;direction:ltr';
-          _dv.textContent = _dbgMsg;
-          if (!document.getElementById('_bsdbg')) document.body.appendChild(_dv);
-        } catch(_) {}
+        // Token contains non-ASCII chars — clear and force re-login
+        this._clearTokens();
       }
-      console.warn('[API]', path, e.message);
       return { ok: false, status: 0, data: { error: e.message } };
     }
   },
@@ -224,25 +213,32 @@ const SupabaseDB = {
 
       let _needsUpload = false;
 
+      // Determine if local has unsynced changes using timestamps
+      const localSaveTs = localSnap?.ts || 0;
+      const lastSyncTs  = parseInt(localStorage.getItem('attendify-sync-ts') || '0');
+      // Local is ahead if it was saved after the last sync (0ms grace — no 5s buffer)
+      const localIsAhead = localSaveTs >= lastSyncTs;
+
       // Arrays
       for (const [jsKey, table] of Object.entries(this._tables)) {
         const td = all.data?.[table];
         if (!td) continue;
         const serverRows = td.rows || [];
 
-        if (serverRows.length === 0) {
-          // Server empty — check if local snapshot has data for this table
-          const snapK = _snapKey[jsKey] || jsKey;
-          const localArr = localSnap?.[snapK] || localSnap?.[jsKey] || [];
-          if (Array.isArray(localArr) && localArr.length > 0) {
-            // Keep local data in memory and mark for upload
-            DB[jsKey].length = 0;
-            localArr.forEach(r => Array.prototype.push.call(DB[jsKey], r));
-            _needsUpload = true;
-          }
-          // else: already empty, nothing to do
+        const snapK    = _snapKey[jsKey] || jsKey;
+        const localArr = localSnap?.[snapK] || localSnap?.[jsKey] || [];
+
+        const keepLocal = serverRows.length === 0
+          ? (localArr.length > 0)        // server empty → rescue local
+          : localIsAhead && localArr.length > 0; // local has unsynced changes
+
+        if (keepLocal) {
+          DB[jsKey].length = 0;
+          localArr.forEach(r => Array.prototype.push.call(DB[jsKey], r));
+          _needsUpload = true;
+          console.log(`[Backend] Local is newer for ${jsKey} (localSave=${new Date(localSaveTs).toLocaleTimeString()} lastSync=${new Date(lastSyncTs).toLocaleTimeString()}) — keeping local`);
         } else {
-          // Server has data — use it as source of truth
+          // Server is up to date — use server as source of truth
           DB[jsKey].length = 0;
           serverRows.forEach(row => Array.prototype.push.call(DB[jsKey], row.data || {}));
         }
@@ -364,14 +360,25 @@ const SupabaseDB = {
       if (!ok) anyFail = true;
     }
 
+    if (!anyFail) {
+      // Record the timestamp of last successful server sync
+      try { localStorage.setItem('attendify-sync-ts', String(Date.now())); } catch(_) {}
+    }
     this._setSyncUI(anyFail ? 'error' : 'saved');
+  },
+
+  // Triggered by DB.save() to catch property mutations not detected by proxy
+  _serverSyncTimer: null,
+  _scheduleServerSync() {
+    clearTimeout(this._serverSyncTimer);
+    this._serverSyncTimer = setTimeout(() => this._dirtySync(), 2000);
   },
 
   // ── PERIODIC DIRTY CHECK ──────────────────────────────────
 
   _startPeriodicSync() {
     clearInterval(this._syncTimer);
-    this._syncTimer = setInterval(() => this._dirtySync(), 8000);
+    this._syncTimer = setInterval(() => this._dirtySync(), 5000);
   },
 
   async _dirtySync() {
@@ -395,7 +402,8 @@ const SupabaseDB = {
   _checksum(arr) {
     if (!arr?.length) return '0';
     const a = Array.from(arr);
-    return `${a.length}|${a[0]?.id||''}|${a[a.length-1]?.id||''}`;
+    // Full content hash — catches property mutations, not just add/delete
+    return `${a.length}:${JSON.stringify(a.slice(0, 15))}:${JSON.stringify(a.slice(-5))}`;
   },
 
   // ── MIGRATE LOCAL → SERVER ────────────────────────────────

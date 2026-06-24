@@ -1,0 +1,46 @@
+{
+  "name": "Attendify Pro — نظام الحضور والانصراف",
+  "short_name": "Attendify",
+  "description": "نظام متكامل لإدارة حضور وانصراف الموظفين",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "تسجيل الحضور",
+      "short_name": "حضور",
+      "description": "فتح صفحة الحضور مباشرة",
+      "url": "/#attendance",
+      "icons": [{ "src": "/assets/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "الموظفون",
+      "short_name": "موظفون",
+      "description": "قائمة الموظفين",
+      "url": "/#employees",
+      "icons": [{ "src": "/assets/icon.svg", "sizes": "any" }]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

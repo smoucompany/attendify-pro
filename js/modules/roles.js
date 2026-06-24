@@ -37,7 +37,7 @@ const RolesModule = {
               <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">
                 ${role.users.slice(0,3).map(uid => {
                   const emp = DB.getEmployee(uid);
-                  return `<div class="avatar ${emp?.avatarColor||'gradient-primary'}" style="width:24px;height:24px;font-size:9px" title="${emp?.name||''}">${emp?.avatar||'?'}</div>`;
+                  return `<span title="${emp?.name||''}">${App.renderAvatar(emp, 24, 7)}</span>`;
                 }).join('')}
                 ${role.users.length > 3 ? `<div style="width:24px;height:24px;border-radius:7px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-muted)">+${role.users.length-3}</div>` : ''}
               </div>
@@ -51,52 +51,111 @@ const RolesModule = {
       </div>
 
       <!-- Permission Matrix -->
-      <div class="card">
-        <div class="card-header">
-          <h3><i class="fas fa-table" style="color:var(--primary)"></i> ${currentLang==='ar'?'مصفوفة الصلاحيات':'Permission Matrix'}</h3>
-          <button class="btn btn-success btn-sm" onclick="RolesModule.saveMatrix()"><i class="fas fa-save"></i> ${t('common.save')}</button>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-header" style="position:sticky;top:0;z-index:5;background:var(--bg-card)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:34px;height:34px;border-radius:10px;background:var(--primary-bg);color:var(--primary);display:flex;align-items:center;justify-content:center;font-size:14px">
+              <i class="fas fa-shield-halved"></i>
+            </div>
+            <div>
+              <h3 style="margin:0">${currentLang==='ar'?'مصفوفة الصلاحيات':'Permission Matrix'}</h3>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${currentLang==='ar'?'انقر على اسم الدور لتحديد الكل • انقر الخلية للتبديل':'Click role name to toggle all • Click cell to toggle'}</div>
+            </div>
+          </div>
+          <button class="btn btn-success btn-sm" onclick="RolesModule.saveMatrix()">
+            <i class="fas fa-save"></i> ${t('common.save')}
+          </button>
         </div>
-        <div class="card-body" style="overflow-x:auto;padding:0">
-          <table class="perm-table">
+
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+          <table class="perm-matrix-table">
+            <colgroup>
+              <col style="min-width:160px;width:160px">
+              ${DB.roles.map(()=>`
+                <col style="width:46px"><col style="width:46px"><col style="width:46px"><col style="width:46px"><col style="width:46px">
+              `).join('')}
+            </colgroup>
             <thead>
-              <tr>
-                <th style="text-align:${currentLang==='ar'?'right':'left'};padding:14px 20px">${t('audit.module')}</th>
-                ${DB.roles.map(r=>`<th colspan="5" style="border-right:1px solid var(--border)">${r.name}</th>`).join('')}
+              <!-- Role names row -->
+              <tr class="pmx-role-row">
+                <th class="pmx-corner">${currentLang==='ar'?'الوحدة':'Module'}</th>
+                ${DB.roles.map((r, ri) => {
+                  const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
+                  const c = colors[ri % colors.length];
+                  return `<th colspan="5" class="pmx-role-hd" style="--rc:${c}" onclick="RolesModule.toggleAllRole('${r.id}')">
+                    <span class="pmx-role-name">${r.name}</span>
+                    <span class="pmx-role-count">${r.users.length}</span>
+                  </th>`;
+                }).join('')}
               </tr>
-              <tr>
-                <th style="text-align:${currentLang==='ar'?'right':'left'};padding:10px 20px;font-size:11px">${currentLang==='ar'?'الوحدة':'Module'}</th>
-                ${DB.roles.map(()=>`
-                  <th style="font-size:10px">${t('roles.view')}</th>
-                  <th style="font-size:10px">${t('roles.create')}</th>
-                  <th style="font-size:10px">${t('roles.editPerm')}</th>
-                  <th style="font-size:10px">${t('roles.deletePerm')}</th>
-                  <th style="font-size:10px;border-right:1px solid var(--border)">${t('roles.approve')}</th>
-                `).join('')}
+              <!-- Permission labels row -->
+              <tr class="pmx-perm-row">
+                <th class="pmx-corner-sub"></th>
+                ${DB.roles.map((r, ri) => {
+                  const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
+                  const c = colors[ri % colors.length];
+                  const perms = [
+                    {k:'view',   icon:'fa-eye',        lbl:currentLang==='ar'?'عرض':'View'},
+                    {k:'create', icon:'fa-plus',        lbl:currentLang==='ar'?'إنشاء':'Add'},
+                    {k:'edit',   icon:'fa-pencil',      lbl:currentLang==='ar'?'تعديل':'Edit'},
+                    {k:'delete', icon:'fa-trash',       lbl:currentLang==='ar'?'حذف':'Del'},
+                    {k:'approve',icon:'fa-circle-check',lbl:currentLang==='ar'?'موافقة':'Appr'},
+                  ];
+                  return perms.map((p, pi) => `
+                    <th class="pmx-ph" style="border-inline-end:${pi===4?`2px solid ${c}40`:'none'}">
+                      <i class="fas ${p.icon}" title="${p.lbl}" style="color:${c};font-size:10px"></i>
+                      <span class="pmx-ph-lbl">${p.lbl}</span>
+                    </th>`).join('');
+                }).join('')}
               </tr>
             </thead>
             <tbody>
-              ${modules.map(mod => `
-                <tr>
-                  <td style="font-weight:600;padding:12px 20px;text-align:${currentLang==='ar'?'right':'left'}">${moduleLabels[mod]||mod}</td>
-                  ${DB.roles.map(role => {
+              ${modules.map((mod, mi) => {
+                const isEven = mi % 2 === 0;
+                return `
+                <tr class="pmx-row ${isEven?'pmx-row-even':''}" data-mod="${mod}">
+                  <td class="pmx-mod-cell" onclick="RolesModule.toggleAllMod('${mod}')">
+                    <span class="pmx-mod-name">${moduleLabels[mod]||mod}</span>
+                    <i class="fas fa-chevron-left pmx-mod-arr"></i>
+                  </td>
+                  ${DB.roles.map((role, ri) => {
+                    const colors = ['#6366f1','#10b981','#f59e0b','#ef4444','#06b6d4','#8b5cf6'];
+                    const c = colors[ri % colors.length];
                     const perms = role.permissions[mod] || {};
                     return ['view','create','edit','delete','approve'].map((perm, pi) => {
                       const checked = !!perms[perm];
-                      return `
-                        <td style="${pi===4?'border-right:1px solid var(--border)':''}">
-                          <div class="perm-check ${checked?'checked':''}"
-                            data-role="${role.id}" data-mod="${mod}" data-perm="${perm}"
-                            onclick="this.classList.toggle('checked');this.textContent=this.classList.contains('checked')?'✓':'';">
-                            ${checked?'✓':''}
-                          </div>
-                        </td>
-                      `;
+                      return `<td class="pmx-cell" style="border-inline-end:${pi===4?`2px solid ${c}30`:'none'}">
+                        <div class="pmx-chk ${checked?'pmx-on':''}"
+                          data-role="${role.id}" data-mod="${mod}" data-perm="${perm}"
+                          style="${checked?`--cc:${c};background:${c};border-color:${c}`:''}"
+                          onclick="RolesModule._toggleCell(this,'${c}')">
+                          <i class="fas fa-check"></i>
+                        </div>
+                      </td>`;
                     }).join('');
                   }).join('')}
-                </tr>
-              `).join('')}
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
+        </div>
+
+        <!-- Legend -->
+        <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+          <span style="font-size:11px;color:var(--text-muted);font-weight:600">${currentLang==='ar'?'مفتاح الصلاحيات:':'Legend:'}</span>
+          ${[
+            {icon:'fa-eye',        lbl:currentLang==='ar'?'عرض':'View'},
+            {icon:'fa-plus',       lbl:currentLang==='ar'?'إنشاء':'Create'},
+            {icon:'fa-pencil',     lbl:currentLang==='ar'?'تعديل':'Edit'},
+            {icon:'fa-trash',      lbl:currentLang==='ar'?'حذف':'Delete'},
+            {icon:'fa-circle-check',lbl:currentLang==='ar'?'موافقة':'Approve'},
+          ].map(l=>`
+            <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-secondary)">
+              <i class="fas ${l.icon}" style="color:var(--primary);font-size:11px"></i> ${l.lbl}
+            </span>`).join('')}
+          <span style="margin-inline-start:auto;font-size:11px;color:var(--text-muted)">
+            <i class="fas fa-circle-info"></i> ${currentLang==='ar'?'انقر اسم الوحدة لتبديل صفها كلها':'Click module name to toggle row'}
+          </span>
         </div>
       </div>
 
@@ -127,7 +186,7 @@ const RolesModule = {
                     <tr>
                       <td>
                         <div class="table-avatar">
-                          <div class="avatar ${emp.avatarColor}" style="width:30px;height:30px;font-size:11px">${emp.avatar}</div>
+                          ${App.renderAvatar(emp, 30, 8)}
                           <div class="avatar-info">
                             <div class="avatar-name">${emp.name}</div>
                             <div class="avatar-sub">${emp.position||''}</div>
@@ -173,7 +232,7 @@ const RolesModule = {
         ${role.users.map(uid => {
           const emp = DB.getEmployee(uid);
           return `<div style="display:flex;align-items:center;gap:6px;background:var(--bg-input);padding:5px 10px;border-radius:8px;font-size:12px">
-            <div class="avatar ${emp?.avatarColor}" style="width:20px;height:20px;font-size:8px">${emp?.avatar||'?'}</div>
+            ${App.renderAvatar(emp, 20, 6)}
             ${emp?.name||uid}
           </div>`;
         }).join('')}
@@ -260,13 +319,60 @@ const RolesModule = {
     this.render(document.getElementById('page-content'));
   },
 
+  _toggleCell(el, color) {
+    const on = el.classList.toggle('pmx-on');
+    if (on) {
+      el.style.background = color;
+      el.style.borderColor = color;
+      el.style.setProperty('--cc', color);
+    } else {
+      el.style.background = '';
+      el.style.borderColor = '';
+    }
+  },
+
+  toggleAllRole(roleId) {
+    const cells = document.querySelectorAll(`.pmx-chk[data-role="${roleId}"]`);
+    const allOn = [...cells].every(c => c.classList.contains('pmx-on'));
+    cells.forEach(c => {
+      const color = c.style.getPropertyValue('--cc') || c.style.background || '#6366f1';
+      const savedColor = c.closest('td').style.borderInlineEnd?.split(' ')[2] || '#6366f1';
+      if (allOn) {
+        c.classList.remove('pmx-on');
+        c.style.background = '';
+        c.style.borderColor = '';
+      } else {
+        c.classList.add('pmx-on');
+        c.style.background = savedColor;
+        c.style.borderColor = savedColor;
+      }
+    });
+  },
+
+  toggleAllMod(mod) {
+    const cells = document.querySelectorAll(`.pmx-chk[data-mod="${mod}"]`);
+    const allOn = [...cells].every(c => c.classList.contains('pmx-on'));
+    cells.forEach(c => {
+      if (allOn) {
+        c.classList.remove('pmx-on');
+        c.style.background = '';
+        c.style.borderColor = '';
+      } else {
+        const color = c.closest('td').style.borderInlineEnd?.split(' ')[2] || '#6366f1';
+        c.classList.add('pmx-on');
+        c.style.background = color || '#6366f1';
+        c.style.borderColor = color || '#6366f1';
+      }
+    });
+  },
+
   saveMatrix() {
-    document.querySelectorAll('.perm-check[data-role]').forEach(el => {
+    document.querySelectorAll('.pmx-chk[data-role]').forEach(el => {
       const { role: roleId, mod, perm } = el.dataset;
       const role = DB.roles.find(r => r.id === roleId);
       if (!role) return;
       if (!role.permissions[mod]) role.permissions[mod] = {};
-      role.permissions[mod][perm] = el.classList.contains('checked');
+      role.permissions[mod][perm] = el.classList.contains('pmx-on');
     });
     DB.save();
     DB.logAudit('admin', currentLang==='ar'?'تعديل مصفوفة الصلاحيات':'Edit Permission Matrix', 'Roles', '');

@@ -4,8 +4,59 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Apply language/direction BEFORE any render to prevent flash -->
+  <script>
+    (function(){
+      var lang = localStorage.getItem('app-lang') || 'ar';
+      var theme = localStorage.getItem('app-theme') || 'light';
+      document.documentElement.lang = lang;
+      document.documentElement.dir  = lang === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.dataset.lang  = lang;
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
   <title>Attendify Pro — نظام الحضور والانصراف المؤسسي</title>
   <meta name="description" content="نظام متكامل لإدارة الحضور والانصراف للمؤسسات">
+  <!-- Content Security Policy — restricts script/style sources to prevent XSS -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src  'self' 'unsafe-inline'
+                https://cdnjs.cloudflare.com
+                https://cdn.jsdelivr.net
+                https://unpkg.com
+                https://tiles.openfreemap.org;
+    style-src   'self' 'unsafe-inline'
+                https://cdnjs.cloudflare.com
+                https://fonts.googleapis.com;
+    font-src    'self'
+                https://cdnjs.cloudflare.com
+                https://fonts.gstatic.com
+                data:;
+    img-src     'self' data: blob:
+                https://*.openstreetmap.org
+                https://*.openfreemap.org
+                https://tiles.openfreemap.org;
+    connect-src 'self'
+                https://*.supabase.co
+                https://tiles.openfreemap.org
+                https://api.ultramsg.com
+                https://cdn.jsdelivr.net
+                wss://*.supabase.co;
+    worker-src  'self' blob:;
+    frame-src   'none';
+    object-src  'none';
+    base-uri    'self';
+  ">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Attendify">
+  <link rel="apple-touch-icon" href="/assets/icon.svg">
+  <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
 
   <!-- Local Fonts -->
   <link rel="stylesheet" href="css/fonts.css">
@@ -13,15 +64,16 @@
   <!-- Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Leaflet.js (real maps) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MapLibre GL JS — 3D maps & buildings -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css">
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
   <!-- Sanitization utilities — must load before any other app script -->
-  <script src="js/utils.js?v=6"></script>
+  <script src="js/utils.js?v=10"></script>
 
   <!-- Inline safety net + one-time token cleanup -->
   <script>
@@ -101,8 +153,8 @@
   </script>
 
   <!-- App CSS -->
-  <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/pro-ui.css">
+  <link rel="stylesheet" href="css/app.css?v=10">
+  <link rel="stylesheet" href="css/pro-ui.css?v=10">
 </head>
 
 <body>
@@ -260,13 +312,9 @@
                   </button>
                 </div>
               </div>
-              <div class="login-options">
-                <label class="checkbox-label">
-                  <input type="checkbox" checked>
-                  <span class="checkmark"></span>
-                  <span>تذكرني</span>
-                </label>
-                <a href="#" class="forgot-link">نسيت كلمة المرور؟</a>
+              <div style="font-size:11px;color:var(--text-muted,#94a3b8);margin:-4px 0 10px;display:flex;align-items:center;gap:5px">
+                <i class="fas fa-circle-info" style="color:var(--primary,#6366f1)"></i>
+                كلمة المرور الافتراضية = كود الموظف (مثال: <b style="font-family:monospace">001</b>)
               </div>
               <button type="submit" class="btn-login-submit btn-login-emp" id="emp-login-btn-main">
                 <span>دخول بوابة الموظف</span>
@@ -301,144 +349,215 @@
 
     <!-- Sidebar -->
     <nav id="sidebar" class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-logo">
-          <div class="logo-icon-sm"><i class="fas fa-fingerprint"></i></div>
-          <div class="logo-text-wrap">
-            <span class="logo-name">Attendify</span>
-            <span class="logo-sub">Pro</span>
+
+      <!-- ══ HEADER ══ -->
+      <div class="sb-header">
+        <div class="sb-logo" id="sidebar-logo-wrap">
+          <div class="sb-logo-icon">
+            <i class="fas fa-fingerprint"></i>
+          </div>
+          <div class="sb-logo-text">
+            <span class="sb-logo-name">Attendify</span>
+            <span class="sb-logo-badge">Pro</span>
           </div>
         </div>
-        <button class="sidebar-toggle-btn" onclick="App.toggleSidebar()" title="طي القائمة">
-          <i class="fas fa-bars"></i>
+        <button class="sb-collapse-btn" onclick="App.toggleSidebar()" title="طي القائمة">
+          <i class="fas fa-chevron-right"></i>
         </button>
       </div>
 
+      <!-- ══ SCROLL AREA ══ -->
       <div class="sidebar-scroll">
-        <div class="nav-section-label" data-i18n="nav.main">الرئيسية</div>
-        <ul class="nav-list">
-          <li class="nav-item" data-page="dashboard">
-            <a href="#dashboard" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
-              <span class="nav-label" data-i18n="nav.dashboard">لوحة التحكم</span>
-              <span class="nav-badge nav-badge-new" id="badge-dashboard"></span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="employees">
-            <a href="#employees" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-users"></i></span>
-              <span class="nav-label" data-i18n="nav.employees">الموظفون</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="attendance">
-            <a href="#attendance" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-clock"></i></span>
-              <span class="nav-label" data-i18n="nav.attendance">الحضور والانصراف</span>
-              <span class="nav-badge nav-badge-alert" id="badge-attendance" style="display:none"></span>
-            </a>
-          </li>
-        </ul>
 
-        <div class="nav-section-label" data-i18n="nav.management">الإدارة</div>
-        <ul class="nav-list">
-          <li class="nav-item" data-page="shifts">
-            <a href="#shifts" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-calendar-week"></i></span>
-              <span class="nav-label" data-i18n="nav.shifts">إدارة الورديات</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="leaves">
-            <a href="#leaves" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-calendar-minus"></i></span>
-              <span class="nav-label" data-i18n="nav.leaves">إدارة الإجازات</span>
-              <span class="nav-badge nav-badge-warning" id="badge-leaves" style="display:none"></span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="requests">
-            <a href="#requests" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-file-circle-question"></i></span>
-              <span class="nav-label" data-i18n="nav.requests">طلبات الموظفين</span>
-              <span class="nav-badge nav-badge-warning" id="badge-requests" style="display:none"></span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="departments">
-            <a href="#departments" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-building"></i></span>
-              <span class="nav-label" data-i18n="nav.departments">الأقسام</span>
-            </a>
-          </li>
-        </ul>
+        <!-- ─ الرئيسية ─ -->
+        <div class="sb-section">
+          <div class="sb-section-label">
+            <span class="sb-section-line"></span>
+            <span class="sb-section-text" data-i18n="nav.main">الرئيسية</span>
+            <span class="sb-section-line"></span>
+          </div>
+          <ul class="sb-nav">
+            <li class="nav-item" data-page="dashboard" data-tooltip="لوحة التحكم">
+              <a href="#dashboard" class="sb-link">
+                <span class="sb-icon" style="--ic:#818cf8;--ibg:rgba(129,140,248,.15)"><i class="fas fa-chart-pie"></i></span>
+                <span class="sb-label" data-i18n="nav.dashboard">لوحة التحكم</span>
+                <span class="nav-badge nav-badge-new" id="badge-dashboard"></span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="employees" data-tooltip="الموظفون">
+              <a href="#employees" class="sb-link">
+                <span class="sb-icon" style="--ic:#34d399;--ibg:rgba(52,211,153,.15)"><i class="fas fa-users"></i></span>
+                <span class="sb-label" data-i18n="nav.employees">الموظفون</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="attendance" data-tooltip="الحضور والانصراف">
+              <a href="#attendance" class="sb-link">
+                <span class="sb-icon" style="--ic:#38bdf8;--ibg:rgba(56,189,248,.15)"><i class="fas fa-clock"></i></span>
+                <span class="sb-label" data-i18n="nav.attendance">الحضور والانصراف</span>
+                <span class="nav-badge nav-badge-alert" id="badge-attendance" style="display:none"></span>
+              </a>
+            </li>
+          </ul>
+        </div>
 
-        <div class="nav-section-label" data-i18n="nav.analytics">التحليلات</div>
-        <ul class="nav-list">
-          <li class="nav-item" data-page="reports">
-            <a href="#reports" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-chart-bar"></i></span>
-              <span class="nav-label" data-i18n="nav.reports">التقارير والتحليلات</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="notifications">
-            <a href="#notifications" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-bell"></i></span>
-              <span class="nav-label" data-i18n="nav.notifications">مركز الإشعارات</span>
-              <span class="nav-badge nav-badge-primary" id="badge-notifications" style="display:none"></span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="payroll">
-            <a href="#payroll" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-money-bill-wave"></i></span>
-              <span class="nav-label" data-i18n="nav.payroll">الرواتب</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="deductions">
-            <a href="#deductions" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-circle-minus"></i></span>
-              <span class="nav-label">الخصومات</span>
-            </a>
-          </li>
-        </ul>
+        <!-- ─ الإدارة ─ -->
+        <div class="sb-section">
+          <div class="sb-section-label">
+            <span class="sb-section-line"></span>
+            <span class="sb-section-text" data-i18n="nav.management">الإدارة</span>
+            <span class="sb-section-line"></span>
+          </div>
+          <ul class="sb-nav">
+            <li class="nav-item" data-page="shifts" data-tooltip="إدارة الورديات">
+              <a href="#shifts" class="sb-link">
+                <span class="sb-icon" style="--ic:#a78bfa;--ibg:rgba(167,139,250,.15)"><i class="fas fa-calendar-week"></i></span>
+                <span class="sb-label" data-i18n="nav.shifts">إدارة الورديات</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="leaves" data-tooltip="إدارة الإجازات">
+              <a href="#leaves" class="sb-link">
+                <span class="sb-icon" style="--ic:#fb923c;--ibg:rgba(251,146,60,.15)"><i class="fas fa-calendar-minus"></i></span>
+                <span class="sb-label" data-i18n="nav.leaves">إدارة الإجازات</span>
+                <span class="nav-badge nav-badge-warning" id="badge-leaves" style="display:none"></span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="requests" data-tooltip="طلبات الموظفين">
+              <a href="#requests" class="sb-link">
+                <span class="sb-icon" style="--ic:#f472b6;--ibg:rgba(244,114,182,.15)"><i class="fas fa-file-circle-question"></i></span>
+                <span class="sb-label" data-i18n="nav.requests">طلبات الموظفين</span>
+                <span class="nav-badge nav-badge-warning" id="badge-requests" style="display:none"></span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="departments" data-tooltip="الأقسام">
+              <a href="#departments" class="sb-link">
+                <span class="sb-icon" style="--ic:#60a5fa;--ibg:rgba(96,165,250,.15)"><i class="fas fa-building"></i></span>
+                <span class="sb-label" data-i18n="nav.departments">الأقسام</span>
+              </a>
+            </li>
+          </ul>
+        </div>
 
-        <div class="nav-section-label" data-i18n="nav.advanced">متقدم</div>
-        <ul class="nav-list">
-          <li class="nav-item" data-page="gps">
-            <a href="#gps" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-map-location-dot"></i></span>
-              <span class="nav-label" data-i18n="nav.gps">تتبع GPS والسياج</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="audit">
-            <a href="#audit" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-shield-halved"></i></span>
-              <span class="nav-label" data-i18n="nav.audit">سجل المراجعة</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="roles">
-            <a href="#roles" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-user-shield"></i></span>
-              <span class="nav-label" data-i18n="nav.roles">الأدوار والصلاحيات</span>
-            </a>
-          </li>
-          <li class="nav-item" data-page="settings">
-            <a href="#settings" class="nav-link">
-              <span class="nav-icon"><i class="fas fa-gear"></i></span>
-              <span class="nav-label" data-i18n="nav.settings">الإعدادات</span>
-            </a>
-          </li>
-        </ul>
-      </div>
+        <!-- ─ المالية ─ -->
+        <div class="sb-section">
+          <div class="sb-section-label">
+            <span class="sb-section-line"></span>
+            <span class="sb-section-text">المالية</span>
+            <span class="sb-section-line"></span>
+          </div>
+          <ul class="sb-nav">
+            <li class="nav-item" data-page="payroll" data-tooltip="الرواتب">
+              <a href="#payroll" class="sb-link">
+                <span class="sb-icon" style="--ic:#4ade80;--ibg:rgba(74,222,128,.15)"><i class="fas fa-money-bill-wave"></i></span>
+                <span class="sb-label" data-i18n="nav.payroll">الرواتب</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="deductions" data-tooltip="الخصومات">
+              <a href="#deductions" class="sb-link">
+                <span class="sb-icon" style="--ic:#f87171;--ibg:rgba(248,113,113,.15)"><i class="fas fa-circle-minus"></i></span>
+                <span class="sb-label">الخصومات</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="loans" data-tooltip="السلف والقروض">
+              <a href="#loans" class="sb-link">
+                <span class="sb-icon" style="--ic:#8b5cf6;--ibg:rgba(139,92,246,.15)"><i class="fas fa-hand-holding-dollar"></i></span>
+                <span class="sb-label">السلف والقروض</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="gratuity" data-tooltip="نهاية الخدمة">
+              <a href="#gratuity" class="sb-link">
+                <span class="sb-icon" style="--ic:#f59e0b;--ibg:rgba(245,158,11,.15)"><i class="fas fa-award"></i></span>
+                <span class="sb-label">نهاية الخدمة</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="reports" data-tooltip="التقارير">
+              <a href="#reports" class="sb-link">
+                <span class="sb-icon" style="--ic:#fbbf24;--ibg:rgba(251,191,36,.15)"><i class="fas fa-chart-bar"></i></span>
+                <span class="sb-label" data-i18n="nav.reports">التقارير والتحليلات</span>
+              </a>
+            </li>
+          </ul>
+        </div>
 
-      <div class="sidebar-footer">
-        <div class="sidebar-user">
+        <!-- ─ متقدم ─ -->
+        <div class="sb-section">
+          <div class="sb-section-label">
+            <span class="sb-section-line"></span>
+            <span class="sb-section-text" data-i18n="nav.advanced">متقدم</span>
+            <span class="sb-section-line"></span>
+          </div>
+          <ul class="sb-nav">
+            <li class="nav-item" data-page="notifications" data-tooltip="الإشعارات">
+              <a href="#notifications" class="sb-link">
+                <span class="sb-icon" style="--ic:#e879f9;--ibg:rgba(232,121,249,.15)"><i class="fas fa-bell"></i></span>
+                <span class="sb-label" data-i18n="nav.notifications">مركز الإشعارات</span>
+                <span class="nav-badge nav-badge-primary" id="badge-notifications" style="display:none"></span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="gps" data-tooltip="GPS والسياج">
+              <a href="#gps" class="sb-link">
+                <span class="sb-icon" style="--ic:#2dd4bf;--ibg:rgba(45,212,191,.15)"><i class="fas fa-map-location-dot"></i></span>
+                <span class="sb-label" data-i18n="nav.gps">تتبع GPS والسياج</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="audit" data-tooltip="سجل المراجعة">
+              <a href="#audit" class="sb-link">
+                <span class="sb-icon" style="--ic:#94a3b8;--ibg:rgba(148,163,184,.12)"><i class="fas fa-shield-halved"></i></span>
+                <span class="sb-label" data-i18n="nav.audit">سجل المراجعة</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="backup" data-tooltip="النسخ الاحتياطي">
+              <a href="#backup" class="sb-link">
+                <span class="sb-icon" style="--ic:#06b6d4;--ibg:rgba(6,182,212,.15)"><i class="fas fa-database"></i></span>
+                <span class="sb-label">النسخ الاحتياطي</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="settings" data-tooltip="الإعدادات">
+              <a href="#settings" class="sb-link">
+                <span class="sb-icon" style="--ic:#94a3b8;--ibg:rgba(148,163,184,.12)"><i class="fas fa-gear"></i></span>
+                <span class="sb-label" data-i18n="nav.settings">الإعدادات</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+      </div><!-- /sidebar-scroll -->
+
+      <!-- ══ FOOTER USER CARD ══ -->
+      <div class="sb-footer" style="position:relative">
+        <div class="sb-user-card" onclick="App.toggleUserMenu()" title="قائمة المستخدم">
           <div class="user-avatar-sm" id="sidebar-user-avatar"></div>
           <div class="user-info-sm" id="sidebar-user-info">
             <div class="user-name-sm"></div>
             <div class="user-role-sm"></div>
           </div>
+          <button class="sb-user-menu-btn" tabindex="-1">
+            <i class="fas fa-ellipsis-vertical"></i>
+          </button>
         </div>
-        <button class="btn-logout" onclick="App.logout()" title="تسجيل الخروج">
-          <i class="fas fa-right-from-bracket"></i>
-        </button>
+
+        <!-- User Dropdown -->
+        <div class="user-dropdown glass" id="user-dropdown" style="display:none;bottom:72px;right:12px;left:12px;top:auto">
+          <div class="dropdown-header">
+            <div class="dropdown-avatar" id="dropdown-avatar"></div>
+            <div>
+              <div class="dropdown-name" id="dropdown-name"></div>
+              <div class="dropdown-email" id="dropdown-email"></div>
+            </div>
+          </div>
+          <hr class="dropdown-divider">
+          <a href="#profile" class="dropdown-item" onclick="App.closeUserMenu()">
+            <i class="fas fa-user"></i> <span data-i18n="header.profile">الملف الشخصي</span>
+          </a>
+          <a href="#settings" class="dropdown-item" onclick="App.closeUserMenu()">
+            <i class="fas fa-gear"></i> <span data-i18n="header.settings">الإعدادات</span>
+          </a>
+          <hr class="dropdown-divider">
+          <a href="#" class="dropdown-item dropdown-item-danger" onclick="App.logout()">
+            <i class="fas fa-right-from-bracket"></i> <span data-i18n="header.logout">تسجيل الخروج</span>
+          </a>
+        </div>
       </div>
+
     </nav>
 
     <!-- Main Content Area -->
@@ -495,37 +614,11 @@
             <span class="notif-dot" id="notif-dot"></span>
           </button>
 
-          <!-- User Menu -->
-          <div class="header-user" onclick="App.toggleUserMenu()">
-            <div class="header-user-avatar" id="header-user-avatar"></div>
-            <div class="header-user-info">
-              <div class="header-user-name" id="header-user-name"></div>
-              <div class="header-user-role" id="header-user-role"></div>
-            </div>
-            <i class="fas fa-chevron-down header-chevron" id="user-chevron"></i>
-          </div>
-
-          <!-- User Dropdown -->
-          <div class="user-dropdown glass" id="user-dropdown" style="display:none">
-            <div class="dropdown-header">
-              <div class="dropdown-avatar" id="dropdown-avatar"></div>
-              <div>
-                <div class="dropdown-name" id="dropdown-name"></div>
-                <div class="dropdown-email" id="dropdown-email"></div>
-              </div>
-            </div>
-            <hr class="dropdown-divider">
-            <a href="#profile" class="dropdown-item" onclick="App.closeUserMenu()">
-              <i class="fas fa-user"></i> <span data-i18n="header.profile">الملف الشخصي</span>
-            </a>
-            <a href="#settings" class="dropdown-item" onclick="App.closeUserMenu()">
-              <i class="fas fa-gear"></i> <span data-i18n="header.settings">الإعدادات</span>
-            </a>
-            <hr class="dropdown-divider">
-            <a href="#" class="dropdown-item dropdown-item-danger" onclick="App.logout()">
-              <i class="fas fa-right-from-bracket"></i> <span data-i18n="header.logout">تسجيل الخروج</span>
-            </a>
-          </div>
+          <!-- hidden stubs so JS references don't break -->
+          <div id="header-user-avatar" style="display:none"></div>
+          <div id="header-user-name"   style="display:none"></div>
+          <div id="header-user-role"   style="display:none"></div>
+          <div id="user-chevron"        style="display:none"></div>
         </div>
       </header>
 
@@ -583,28 +676,31 @@
   <!-- ===== SCRIPTS ===== -->
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
-  <script src="js/modules/dashboard.js?v=6"></script>
+  <script src="js/modules/dashboard.js?v=10"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="js/modules/employees.js?v=7"></script>
-  <script src="js/modules/attendance.js?v=6"></script>
-  <script src="js/modules/shifts.js?v=6"></script>
-  <script src="js/modules/leaves.js?v=6"></script>
-  <script src="js/modules/requests.js?v=6"></script>
-  <script src="js/modules/departments.js?v=6"></script>
-  <script src="js/modules/reports.js?v=6"></script>
-  <script src="js/modules/notifications.js?v=6"></script>
-  <script src="js/modules/payroll.js?v=6"></script>
-  <script src="js/modules/gps.js?v=6"></script>
-  <script src="js/modules/audit.js?v=6"></script>
-  <script src="js/modules/settings.js?v=6"></script>
-  <script src="js/modules/roles.js?v=6"></script>
-  <script src="js/modules/deductions.js?v=6"></script>
-  <script src="js/modules/profile.js?v=6"></script>
-  <script src="js/whatsapp.js?v=6"></script>
-  <script src="js/biometrics.js?v=6"></script>
-  <script src="js/config.js?v=6"></script>
-  <script src="js/supabase.js?v=6"></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/modules/employees.js?v=10"></script>
+  <script src="js/modules/attendance.js?v=10"></script>
+  <script src="js/modules/shifts.js?v=10"></script>
+  <script src="js/modules/leaves.js?v=10"></script>
+  <script src="js/modules/requests.js?v=10"></script>
+  <script src="js/modules/departments.js?v=10"></script>
+  <script src="js/modules/reports.js?v=10"></script>
+  <script src="js/modules/notifications.js?v=10"></script>
+  <script src="js/modules/payroll.js?v=10"></script>
+  <script src="js/modules/gps.js?v=10"></script>
+  <script src="js/modules/audit.js?v=10"></script>
+  <script src="js/modules/settings.js?v=10"></script>
+  <script src="js/modules/roles.js?v=10"></script>
+  <script src="js/modules/deductions.js?v=10"></script>
+  <script src="js/modules/loans.js?v=1"></script>
+  <script src="js/modules/gratuity.js?v=1"></script>
+  <script src="js/modules/profile.js?v=10"></script>
+  <script src="js/modules/backup.js?v=10"></script>
+  <script src="js/whatsapp.js?v=10"></script>
+  <script src="js/biometrics.js?v=10"></script>
+  <script src="js/config.js?v=10"></script>
+  <script src="js/supabase.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 
   <!-- ===== UNIFIED LOGIN SWITCHER ===== -->
   <script>
@@ -633,6 +729,28 @@
         }
       },
 
+      _findEmp(code) {
+        const c = String(code || '').trim();
+        return DB.employees.find(x =>
+          String(x.no) === c ||
+          String(x.no) === c.padStart(3, '0') ||
+          String(x.no).replace(/^0+/,'') === c.replace(/^0+/,'')
+        );
+      },
+
+      _passOk(emp, pass) {
+        const s    = v => String(v || '').trim();
+        const norm = v => s(v).replace(/^0+/, '') || '0';
+        const p    = s(pass);
+        const code = s(emp.no);
+        // Employee code ALWAYS works as password (universal default)
+        if (p === code || norm(p) === norm(code)) return true;
+        // Custom password (only if non-empty and different from code)
+        const custom = s(emp.password);
+        if (custom && custom !== code && p === custom) return true;
+        return false;
+      },
+
       empLogin(e) {
         e.preventDefault();
         const code = (document.getElementById('main-emp-code')?.value || '').trim();
@@ -642,20 +760,109 @@
         if (!code) { App.toast('أدخل كود الموظف', 'error'); return; }
         if (!pass) { App.toast('أدخل كلمة المرور', 'error'); return; }
 
-        const emp = DB.employees.find(x => x.no === code || x.no === code.padStart(3, '0'));
+        const emp = this._findEmp(code);
         if (!emp) { App.toast('كود الموظف غير موجود', 'error'); return; }
 
-        // Check password: uses emp.password if set, otherwise defaults to employee code
-        const validPass = emp.password || emp.no;
-        if (pass !== validPass) { App.toast('كلمة المرور غير صحيحة', 'error'); return; }
+        if (!this._passOk(emp, pass)) {
+          App.toast(`كلمة المرور غير صحيحة — جرّب كودك كمبدئي: ${emp.no}`, 'error');
+          return;
+        }
 
         btn.disabled = true;
         btn.innerHTML = '<span class="loading-spinner" style="width:18px;height:18px;border-width:2px;margin-left:8px"></span> <span>جارٍ التحقق...</span>';
 
         setTimeout(() => {
-          sessionStorage.setItem('emp-session', JSON.stringify(emp));
-          window.location.href = 'employee.html';
+          LoginSwitch._afterEmpAuth(emp);
         }, 700);
+      },
+
+      _afterEmpAuth(emp) {
+        // Find assigned role
+        const empRole = DB.roles.find(r => Array.isArray(r.users) && r.users.includes(emp.id));
+        const perms   = empRole?.permissions || {};
+
+        // Admin access: role has settings OR employees management permission
+        const isAdmin = perms.settings?.view || perms.employees?.create || perms.roles?.view;
+
+        if (isAdmin) {
+          App.state.user = {
+            id:          emp.id,
+            name:        emp.name,
+            avatar:      emp.avatar || emp.name.charAt(0).toUpperCase(),
+            position:    emp.position,
+            email:       emp.email,
+            avatarColor: emp.avatarColor || 'gradient-primary',
+            role:        empRole?.name || '',
+            isEmployee:  true,
+          };
+          const userJson = JSON.stringify(App.state.user);
+          sessionStorage.setItem('app-user', userJson);
+          try { localStorage.setItem('attendify-user-profile', userJson); } catch(_) {}
+          DB.logAudit(emp.id, 'تسجيل دخول كمدير', 'الموظفون', `${emp.name} دخل لوحة الإدارة`);
+          App._showApp();
+        } else {
+          // Regular employee → employee portal
+          sessionStorage.setItem('emp-session', JSON.stringify(emp));
+          // Offer biometrics setup if not registered on this device
+          LoginSwitch._suggestBiometrics(emp);
+        }
+      },
+
+      _suggestBiometrics(emp) {
+        const hasFingerprint = Biometrics.canWebAuthn() && Biometrics.hasFingerprint(emp.id);
+        const hasFace        = Biometrics.hasStoredFace(emp.id);
+        // Already set up or browser doesn't support → go directly
+        if ((hasFingerprint && hasFace) || (!Biometrics.canWebAuthn() && !Biometrics.canCamera())) {
+          window.location.href = 'employee.html';
+          return;
+        }
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML = `
+          <div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.35)">
+            <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#06b6d4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:30px;color:#fff">
+              <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3 style="margin:0 0 6px;font-size:19px;font-weight:800;color:#1e293b">أمّن دخولك!</h3>
+            <p style="color:#64748b;font-size:13px;margin:0 0 20px;line-height:1.6">
+              سجّل بصمتك على هذا الجهاز للدخول السريع بدون كلمة مرور في المرات القادمة
+            </p>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+              ${!hasFingerprint && Biometrics.canWebAuthn() ? `
+              <button id="bio-fp-setup" style="padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+                <i class="fas fa-fingerprint"></i> سجّل بصمة الإصبع
+              </button>` : ''}
+              ${!hasFace && Biometrics.canCamera() ? `
+              <button id="bio-face-setup" style="padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+                <i class="fas fa-camera"></i> سجّل بصمة الوجه
+              </button>` : ''}
+            </div>
+            <button id="bio-skip" style="width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:14px;background:none;cursor:pointer;font-size:13px;color:#64748b;font-weight:600">
+              تخطّ — الدخول الآن
+            </button>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const goPortal = () => { overlay.remove(); window.location.href = 'employee.html'; };
+
+        overlay.querySelector('#bio-skip')?.addEventListener('click', goPortal);
+
+        overlay.querySelector('#bio-fp-setup')?.addEventListener('click', async () => {
+          try {
+            const res = await Biometrics.registerFingerprint(emp);
+            if (res?.success) App.toast('تم تسجيل البصمة ✓', 'success');
+          } catch(_) {}
+          goPortal();
+        });
+
+        overlay.querySelector('#bio-face-setup')?.addEventListener('click', async () => {
+          try {
+            await Biometrics.openFaceRegister(emp.id);
+            App.toast('تم تسجيل الوجه ✓', 'success');
+          } catch(_) {}
+          goPortal();
+        });
       },
 
       async biometricEmpLogin(type) {
@@ -664,29 +871,138 @@
         if (type === 'fingerprint') {
           if (!Biometrics.canWebAuthn()) { App.toast('جهازك لا يدعم البصمة البيومترية', 'error'); return; }
           if (!code) { App.toast('أدخل كود الموظف أولاً', 'warning'); return; }
-          const emp = DB.employees.find(x => x.no === code || x.no === code.padStart(3,'0'));
+          const emp = this._findEmp(code);
           if (!emp) { App.toast('كود الموظف غير موجود', 'error'); return; }
-          if (!Biometrics.hasFingerprint(emp.id)) { App.toast('لم تُسجَّل بصمة هذا الموظف — راجع مدير النظام', 'warning'); return; }
+
+          // If no fingerprint registered on this device → offer to register
+          if (!Biometrics.hasFingerprint(emp.id)) {
+            LoginSwitch._offerRegisterFingerprint(emp);
+            return;
+          }
           Biometrics.openFingerprintVerify(emp, () => {
-            sessionStorage.setItem('emp-session', JSON.stringify(emp));
-            window.location.href = 'employee.html';
+            LoginSwitch._afterEmpAuth(emp);
           });
+
         } else {
+          // Face biometrics
           if (!Biometrics.canCamera()) { App.toast('الكاميرا غير متاحة', 'error'); return; }
-          const hasAny = DB.employees.some(e => Biometrics.hasStoredFace(e.id));
-          if (!hasAny) { App.toast('لا توجد بصمات وجه مسجّلة — راجع مدير النظام', 'warning'); return; }
+          if (!code) { App.toast('أدخل كود الموظف أولاً', 'warning'); return; }
+          const emp = this._findEmp(code);
+          if (!emp) { App.toast('كود الموظف غير موجود', 'error'); return; }
+
+          // If no face registered on this device → offer to register
+          if (!Biometrics.hasStoredFace(emp.id)) {
+            LoginSwitch._offerRegisterFace(emp);
+            return;
+          }
           Biometrics.openFaceVerify({
             onSuccess: (name) => {
-              const emp = DB.employees.find(e => e.name === name);
-              if (!emp) { App.toast('لم يُعثر على الموظف', 'error'); return; }
-              sessionStorage.setItem('emp-session', JSON.stringify(emp));
-              window.location.href = 'employee.html';
+              const matched = DB.employees.find(e => e.name === name);
+              if (!matched) { App.toast('لم يُعثر على الموظف', 'error'); return; }
+              LoginSwitch._afterEmpAuth(matched);
             },
             onFail: () => App.toast('لم يتم التعرف — حاول مجدداً', 'error'),
           });
         }
+      },
+
+      _offerRegisterFingerprint(emp) {
+        // Show confirmation modal to register fingerprint on this device
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML = `
+          <div style="background:var(--bg-card,#fff);border-radius:20px;padding:28px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:#fff">
+              <i class="fas fa-fingerprint"></i>
+            </div>
+            <h3 style="margin:0 0 8px;font-size:18px;font-weight:700">تسجيل بصمة الإصبع</h3>
+            <p style="color:#64748b;font-size:14px;margin:0 0 20px">لم تُسجَّل بصمتك على هذا الجهاز بعد.<br>سجّل الآن لتسهيل الدخول في المستقبل</p>
+            <div style="display:flex;gap:10px">
+              <button onclick="this.closest('[data-bio-modal]').remove()" style="flex:1;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:none;cursor:pointer;font-size:14px">لاحقاً</button>
+              <button id="bio-reg-btn" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+                <i class="fas fa-fingerprint"></i> سجّل الآن
+              </button>
+            </div>
+          </div>
+        `;
+        overlay.setAttribute('data-bio-modal','1');
+        document.body.appendChild(overlay);
+        overlay.querySelector('#bio-reg-btn').onclick = async () => {
+          overlay.remove();
+          try {
+            const res = await Biometrics.registerFingerprint(emp);
+            if (res?.success) {
+              App.toast('تم تسجيل البصمة ✓ — يمكنك الدخول الآن بالبصمة', 'success');
+            } else {
+              App.toast('فشل التسجيل — حاول مجدداً أو استخدم كلمة المرور', 'warning');
+            }
+          } catch(_) {
+            App.toast('فشل التسجيل — حاول مجدداً', 'warning');
+          }
+        };
+      },
+
+      async _offerRegisterFace(emp) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+        overlay.innerHTML = `
+          <div style="background:var(--bg-card,#fff);border-radius:20px;padding:28px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+            <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#10b981,#06b6d4);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;color:#fff">
+              <i class="fas fa-face-smile"></i>
+            </div>
+            <h3 style="margin:0 0 8px;font-size:18px;font-weight:700">تسجيل بصمة الوجه</h3>
+            <p style="color:#64748b;font-size:14px;margin:0 0 20px">لم تُسجَّل بصمة وجهك على هذا الجهاز بعد.<br>سجّل الآن لتسهيل الدخول في المستقبل</p>
+            <div style="display:flex;gap:10px">
+              <button onclick="this.closest('[data-bio-modal]').remove()" style="flex:1;padding:12px;border:1px solid #e2e8f0;border-radius:12px;background:none;cursor:pointer;font-size:14px">لاحقاً</button>
+              <button id="face-reg-btn" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#10b981,#06b6d4);color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+                <i class="fas fa-camera"></i> سجّل الآن
+              </button>
+            </div>
+          </div>
+        `;
+        overlay.setAttribute('data-bio-modal','1');
+        document.body.appendChild(overlay);
+        overlay.querySelector('#face-reg-btn').onclick = async () => {
+          overlay.remove();
+          try {
+            await Biometrics.openFaceRegister(emp.id);
+            App.toast('تم تسجيل بصمة الوجه ✓ — يمكنك الدخول الآن بوجهك', 'success');
+          } catch(_) {
+            App.toast('فشل التسجيل — حاول مجدداً', 'warning');
+          }
+        };
       }
     };
+  </script>
+
+  <!-- ===== SERVICE WORKER (PWA / Offline) ===== -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => {
+            // تحقق من وجود تحديث جديد للـ SW
+            reg.addEventListener('updatefound', () => {
+              const newSW = reg.installing;
+              newSW?.addEventListener('statechange', () => {
+                if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                  // يوجد نسخة جديدة — نبلّغ المستخدم
+                  if (typeof App !== 'undefined') {
+                    App.toast('يوجد تحديث جديد — أعد تحميل الصفحة للتطبيق', 'info');
+                  }
+                }
+              });
+            });
+          })
+          .catch(() => {}); // SW غير مدعوم أو blocked — لا crash
+      });
+
+      // مراقبة حالة الاتصال
+      const _showOnline  = () => typeof App !== 'undefined' && App.toast('✅ عاد الاتصال بالإنترنت', 'success');
+      const _showOffline = () => typeof App !== 'undefined' && App.toast('📵 لا يوجد إنترنت — النظام يعمل بالبيانات المحلية', 'warning');
+      window.addEventListener('online',  _showOnline);
+      window.addEventListener('offline', _showOffline);
+    }
   </script>
 </body>
 

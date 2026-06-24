@@ -422,6 +422,28 @@ body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; 
   transform: scale(1.1) !important;
 }
 
+/* Small icon button (used in table actions) */
+.btn-icon-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  background: var(--bg);
+  color: var(--text-secondary);
+  transition: background .15s, color .15s, transform .15s;
+}
+.btn-icon-sm:hover { transform: scale(1.12); filter: brightness(1.08); }
+
+/* Info cell used in modals */
+.info-cell { display: flex; flex-direction: column; gap: 3px; }
+.info-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .3px; }
+.info-val   { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
 /* ─── 6. CARDS ──────────────────────────────────────────── */
 .card {
   border-radius: 18px;
@@ -977,32 +999,15 @@ body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; 
   .grid-main-side { grid-template-columns: 1fr; }
 }
 
+/* pro-ui 768px — minimal overrides, main responsive in app.css */
 @media (max-width: 768px) {
-  :root { --sidebar-w: 260px; }
-  .sidebar { transform: translateX(100%); box-shadow: none; }
-  [data-lang="en"] .sidebar { transform: translateX(-100%); }
-  .sidebar.mobile-open { transform: translateX(0); box-shadow: -8px 0 40px rgba(0,0,0,0.25); }
-  [data-lang="en"] .sidebar.mobile-open { box-shadow: 8px 0 40px rgba(0,0,0,0.25); }
-  .main-content { margin-right: 0 !important; margin-left: 0 !important; }
-  .page-content { padding: 16px; }
-  .stat-cards { grid-template-columns: 1fr 1fr; gap: 12px; }
-  .stat-value { font-size: 24px; }
-  .grid-2,.grid-3 { grid-template-columns: 1fr; }
-  .page-header { flex-direction: column; gap: 12px; }
-  .mobile-toggle-btn { display: flex !important; }
-  .header-center { display: none; }
-  .header-datetime { display: none; }
-  .modal-box { max-height: 95vh; border-radius: 20px 20px 0 0; align-self: flex-end; }
-  #toast-container { bottom: 16px; left: 12px; right: 12px; }
-  [data-lang="ar"] #toast-container { left: 12px; right: 12px; }
-  .toast-item { max-width: 100%; }
-  .btn { font-size: 13px; padding: 9px 14px; }
+  #toast-container { bottom: 16px; left: 10px !important; right: 10px !important; top: auto !important; }
+  .toast-item { max-width: 100%; font-size: 13px; }
+  .modal-box { max-height: 94vh; border-radius: 20px 20px 0 0; align-self: flex-end; }
 }
 
 @media (max-width: 480px) {
-  .stat-cards { grid-template-columns: 1fr; }
-  .data-table { font-size: 12px; }
-  .data-table td, .data-table th { padding: 10px 10px; }
+  #toast-container { bottom: 12px; left: 8px !important; right: 8px !important; }
 }
 
 /* ─── 28. FOCUS RING (ACCESSIBILITY) ────────────────────── */

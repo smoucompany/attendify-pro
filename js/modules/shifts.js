@@ -1,27 +1,36 @@
 /* =========================================================
    SHIFTS MODULE
-   Shift Templates · Weekly Schedule · Assignment
+   Shift Templates · Weekly Schedule · Multi-shift Assignment
    ========================================================= */
 
 const ShiftsModule = {
+
+  _search: '',
+
+  // ── نموذج البيانات: emp.shifts = [{ shiftId, days[] }]
+  // مع دعم legacy: emp.shift (string) → يُحوَّل تلقائياً
+
+  _empDayMap(emp) {
+    const map = {};
+    const ids  = this._normalizeShifts(emp);
+    ids.forEach(sid => {
+      const tpl = DB.shifts.find(s => s.id === sid);
+      if (!tpl) return;
+      const days = (tpl.days && tpl.days.length) ? tpl.days : ['sat','sun','mon','tue','wed','thu'];
+      days.forEach(d => { map[d] = sid; });
+    });
+    return map;
+  },
+
   render(container) {
     const dayKeys = ['sat','sun','mon','tue','wed','thu','fri'];
-    const days = dayKeys.map(d => t('day.'+d));
+    const days    = dayKeys.map(d => t('day.'+d));
 
-    // Build weekly grid from emp.shift — respect shift's own days
-    const shiftAssignments = {};
-    DB.employees.forEach(emp => {
-      if (emp.shift && emp.shift !== 'off') {
-        const tpl = DB.shifts.find(s => s.id === emp.shift && s.type !== 'assignment');
-        if (tpl) {
-          const activeDays = new Set(tpl.days || dayKeys.slice(0,6));
-          shiftAssignments[emp.id] = dayKeys.map(d => activeDays.has(d) ? emp.shift : 'off');
-        } else {
-          shiftAssignments[emp.id] = Array(7).fill(emp.shift);
-        }
-      }
-    });
-    const displayEmps = DB.employees.filter(e => e.status !== 'terminated').slice(0, 10);
+    const query      = this._search.toLowerCase();
+    const allEmps    = DB.employees.filter(e => e.status !== 'terminated');
+    const displayEmps = query
+      ? allEmps.filter(e => e.name.includes(query) || e.position?.toLowerCase().includes(query))
+      : allEmps;
 
     container.innerHTML = `
       <div class="page-header">
@@ -37,35 +46,48 @@ const ShiftsModule = {
 
       <!-- Shift Templates -->
       <div class="grid-4" style="margin-bottom:24px">
-        ${DB.shifts.filter(s=>s.type!=='assignment').map(s => {
+        ${DB.shifts.filter(s => s.type !== 'assignment').map(s => {
           const isOvernight = s.end && s.start && s.end <= s.start;
           const hrs = ShiftsModule._shiftHours(s.start, s.end);
+          const assigned = allEmps.filter(e =>
+            Array.isArray(e.shifts)
+              ? e.shifts.includes(s.id)
+              : e.shift === s.id
+          ).length;
           return `
-          <div class="card" style="border-top:3px solid ${s.color||'#6366f1'}">
-            <div class="card-body">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span style="font-size:15px;font-weight:700;color:var(--text-primary)">${s.name}</span>
-                  ${isOvernight?`<span style="font-size:10px;background:rgba(139,92,246,0.12);color:#7c3aed;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ليلي</span>`:''}
+          <div class="card stagger-item" style="overflow:hidden;border:1.5px solid ${s.color||'#6366f1'}28;transition:transform .2s,box-shadow .2s" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.10)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+            <!-- Colored header -->
+            <div style="background:linear-gradient(135deg,${s.color||'#6366f1'},${s.color||'#6366f1'}bb);padding:14px 16px;position:relative;overflow:hidden">
+              <!-- Decorative circles -->
+              <div style="position:absolute;top:-18px;left:-18px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,0.08)"></div>
+              <div style="position:absolute;bottom:-22px;right:10px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.06)"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
+                <div>
+                  <div style="font-size:15px;font-weight:800;color:white;margin-bottom:3px">${s.name}</div>
+                  <div style="font-size:12px;color:rgba(255,255,255,0.8);font-family:var(--font-en)">${s.start} — ${s.end}${isOvernight?' <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px">+يوم</span>':''}</div>
                 </div>
-                <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')"><i class="fas fa-pencil"></i></button>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                  ${isOvernight ? `<span style="font-size:10px;background:rgba(255,255,255,0.2);color:white;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ليلي</span>` : ''}
+                  <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')" style="background:rgba(255,255,255,0.15);color:white;border-radius:8px;width:30px;height:30px">
+                    <i class="fas fa-pencil" style="font-size:12px"></i>
+                  </button>
+                </div>
               </div>
-              <div style="display:flex;flex-direction:column;gap:8px">
-                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                  <i class="fas fa-clock" style="color:${s.color||'#6366f1'};width:16px"></i>
-                  <span style="font-family:var(--font-en);font-weight:600">${s.start} — ${s.end}${isOvernight?' (+يوم)':''}</span>
+            </div>
+            <!-- Body -->
+            <div class="card-body" style="padding:12px 16px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div style="background:var(--bg-input);border-radius:8px;padding:8px 10px;text-align:center">
+                  <div style="font-size:18px;font-weight:800;color:${s.color||'#6366f1'}">${hrs}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">${currentLang==='ar'?'مدة الوردية':'Duration'}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                  <i class="fas fa-hourglass-half" style="color:var(--success);width:16px"></i>
-                  <span>${hrs}</span>
+                <div style="background:var(--bg-input);border-radius:8px;padding:8px 10px;text-align:center">
+                  <div style="font-size:18px;font-weight:800;color:var(--primary)">${assigned}</div>
+                  <div style="font-size:10px;color:var(--text-muted)">${currentLang==='ar'?'موظف':'Employees'}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-secondary)">
-                  <i class="fas fa-coffee" style="color:var(--warning);width:16px"></i>
-                  <span>${s.break||0} ${currentLang==='ar'?'دقيقة استراحة':'min break'}</span>
-                </div>
-                <div style="display:flex;gap:3px;margin-top:4px;flex-wrap:wrap">
-                  ${(s.days||[]).map(d => `<span style="padding:2px 7px;background:${s.color||'#6366f1'}22;color:${s.color||'#6366f1'};border-radius:4px;font-size:10px;font-weight:700">${t('day.'+d).substring(0,3)}</span>`).join('')}
-                </div>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap">
+                ${(s.days||[]).map(d => `<span style="padding:3px 8px;background:${s.color||'#6366f1'}18;color:${s.color||'#6366f1'};border-radius:6px;font-size:11px;font-weight:700">${t('day.'+d).substring(0,3)}</span>`).join('')}
               </div>
             </div>
           </div>`;
@@ -76,50 +98,291 @@ const ShiftsModule = {
       <div class="card" style="margin-bottom:20px">
         <div class="card-header">
           <h3><i class="fas fa-calendar-week" style="color:var(--primary)"></i> ${t('shifts.weekSchedule')}</h3>
-          <button class="btn btn-outline-primary btn-sm" onclick="ShiftsModule.openAssign()">
-            <i class="fas fa-user-clock"></i> ${t('shifts.assignShift')}
-          </button>
-        </div>
-        <div class="card-body" style="overflow-x:auto">
-          <!-- Header -->
-          <div class="shift-row" style="margin-bottom:8px">
-            <div style="font-size:12px;font-weight:700;color:var(--text-muted);padding:8px">${t('common.name')}</div>
-            ${days.map(d => `<div style="font-size:12px;font-weight:700;color:var(--text-muted);text-align:center;padding:8px">${d}</div>`).join('')}
+          <div style="display:flex;gap:8px;align-items:center">
+            <div style="position:relative">
+              <i class="fas fa-search" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:12px;pointer-events:none"></i>
+              <input type="text" placeholder="${currentLang==='ar'?'بحث عن موظف…':'Search employee…'}"
+                value="${this._search}"
+                oninput="ShiftsModule._search=this.value;ShiftsModule.render(document.getElementById('page-content'))"
+                style="padding:7px 32px 7px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;background:var(--bg-input);color:var(--text-primary);width:180px;outline:none;direction:rtl">
+            </div>
+            <button class="btn btn-outline-primary btn-sm" onclick="ShiftsModule.openAssign()">
+              <i class="fas fa-user-clock"></i> ${t('shifts.assignShift')}
+            </button>
           </div>
-          <!-- Employee rows -->
-          ${displayEmps.map(emp => {
-            const assigns = shiftAssignments[emp.id] || Array(7).fill('off');
-            return `
-              <div class="shift-row stagger-item">
-                <div style="display:flex;align-items:center;gap:8px;padding:4px 8px">
-                  <div class="avatar ${emp.avatarColor}" style="width:28px;height:28px;font-size:11px">${emp.avatar}</div>
-                  <span style="font-size:12.5px;font-weight:600;color:var(--text-primary)">${emp.name}</span>
-                </div>
-                ${assigns.map(sid => {
-                  if (sid === 'off') return `<div class="shift-cell off">OFF</div>`;
-                  const sh = DB.shifts.find(s => s.id === sid);
-                  if (!sh) return `<div class="shift-cell empty"></div>`;
-                  return `<div class="shift-cell ${sh.type}" title="${sh.name}: ${sh.start}–${sh.end}">${sh.start}</div>`;
-                }).join('')}
-              </div>
-            `;
-          }).join('')}
+        </div>
+        <div class="card-body" style="overflow-x:auto;padding:0">
+          <table style="width:100%;border-collapse:collapse;min-width:700px">
+            <thead>
+              <tr style="background:var(--bg-secondary)">
+                <th style="padding:10px 14px;text-align:right;font-size:12px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);min-width:160px">${t('common.name')}</th>
+                ${days.map(d => `<th style="padding:10px 8px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border)">${d}</th>`).join('')}
+                <th style="padding:10px 8px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);border-bottom:1px solid var(--border);width:70px"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayEmps.length ? displayEmps.map((emp, ri) => {
+                const dayMap = ShiftsModule._empDayMap(emp);
+                return `
+                  <tr style="border-bottom:1px solid var(--border);background:${ri%2?'var(--bg-secondary)':'var(--bg)'}">
+                    <td style="padding:8px 14px">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        ${App.renderAvatar(emp, 28, 8)}
+                        <div>
+                          <div style="font-size:12.5px;font-weight:600;color:var(--text-primary)">${emp.name}</div>
+                          <div style="font-size:11px;color:var(--text-muted)">${emp.position||''}</div>
+                        </div>
+                      </div>
+                    </td>
+                    ${dayKeys.map(d => {
+                      const sid = dayMap[d];
+                      const sh  = sid ? DB.shifts.find(s => s.id === sid) : null;
+                      if (!sh) return `
+                        <td style="padding:4px;text-align:center">
+                          <div class="shift-cell off" style="cursor:pointer;font-size:10px"
+                            onclick="ShiftsModule.quickAssign('${emp.id}','${d}')" title="اضغط للتعيين">—</div>
+                        </td>`;
+                      return `
+                        <td style="padding:4px;text-align:center">
+                          <div class="shift-cell ${sh.type}" style="cursor:pointer;position:relative;font-size:11px"
+                            onclick="ShiftsModule.quickAssign('${emp.id}','${d}')"
+                            title="${sh.name}: ${sh.start}–${sh.end} (اضغط للتغيير)">
+                            ${sh.start}
+                          </div>
+                        </td>`;
+                    }).join('')}
+                    <td style="padding:4px;text-align:center">
+                      <button class="btn-icon btn" style="font-size:11px" title="${currentLang==='ar'?'تعيين ورديات':'Assign shifts'}"
+                        onclick="ShiftsModule.openAssign('${emp.id}')">
+                        <i class="fas fa-pencil"></i>
+                      </button>
+                    </td>
+                  </tr>`;
+              }).join('') : `
+                <tr><td colspan="9" style="padding:40px;text-align:center;color:var(--text-muted)">
+                  ${currentLang==='ar'?'لا يوجد موظفون':'No employees found'}
+                </td></tr>`}
+            </tbody>
+          </table>
+          ${displayEmps.length < allEmps.length ? `
+            <div style="padding:8px 14px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center">
+              عرض ${displayEmps.length} من ${allEmps.length} موظف
+            </div>` : ''}
         </div>
       </div>
 
       <!-- Legend -->
       <div class="card">
-        <div class="card-body" style="display:flex;gap:20px;flex-wrap:wrap">
+        <div class="card-body" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
           <span style="font-size:13px;font-weight:700;color:var(--text-muted)">${currentLang==='ar'?'المفتاح:':'Legend:'}</span>
           <span class="shift-cell morning" style="padding:4px 12px">${t('shifts.morning')}</span>
           <span class="shift-cell evening" style="padding:4px 12px">${t('shifts.evening')}</span>
           <span class="shift-cell night"   style="padding:4px 12px">${t('shifts.night')}</span>
-          <span class="shift-cell off"     style="padding:4px 12px">OFF / ${t('leaves.days')}</span>
+          <span class="shift-cell off"     style="padding:4px 12px">— ${currentLang==='ar'?'(اضغط للتعيين)':'(click to assign)'}</span>
         </div>
       </div>
     `;
   },
 
+  // ── تعيين سريع بالنقر على الخلية ──────────────────────────
+  quickAssign(empId, day) {
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+    const shifts = DB.shifts.filter(s => s.type !== 'assignment');
+    const dayMap = this._empDayMap(emp);
+    const curSid = dayMap[day];
+
+    App.openModal(`${emp.name} — ${t('day.'+day)}`, `
+      <div style="margin-bottom:16px;font-size:13px;color:var(--text-muted)">
+        ${currentLang==='ar'?'الوردية الحالية:':'Current:'}
+        <strong>${curSid ? DB.shifts.find(s=>s.id===curSid)?.name || '—' : '—'}</strong>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button onclick="ShiftsModule._setDayShift('${empId}','${day}',null);App.closeModal()"
+          style="padding:10px 16px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-input);color:var(--danger);font-size:13px;font-weight:600;cursor:pointer;text-align:right">
+          <i class="fas fa-ban"></i> ${currentLang==='ar'?'إيقاف هذا اليوم (OFF)':'Set as OFF'}
+        </button>
+        ${shifts.map(s => `
+          <button onclick="ShiftsModule._setDayShift('${empId}','${day}','${s.id}');App.closeModal()"
+            style="padding:10px 16px;border:2px solid ${curSid===s.id?s.color:'var(--border)'};border-radius:10px;background:${curSid===s.id?s.color+'18':'var(--bg-input)'};cursor:pointer;text-align:right;display:flex;align-items:center;gap:10px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${s.color||'#6366f1'};flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:700;color:var(--text-primary)">${s.name}</div>
+              <div style="font-size:11.5px;color:var(--text-muted)">${s.start} — ${s.end}</div>
+            </div>
+            ${curSid===s.id?'<i class="fas fa-check" style="color:'+s.color+'"></i>':''}
+          </button>
+        `).join('')}
+      </div>
+    `, { size: 'sm' });
+  },
+
+  _setDayShift(empId, day, shiftId) {
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+
+    // Normalize to string[]
+    emp.shifts = this._normalizeShifts(emp);
+
+    if (shiftId) {
+      // Add shift if not already in list
+      if (!emp.shifts.includes(shiftId)) {
+        emp.shifts.push(shiftId);
+      }
+    } else {
+      // OFF: remove the shift that covers this day
+      const dayMap = this._empDayMap(emp);
+      const curSid = dayMap[day];
+      if (curSid) emp.shifts = emp.shifts.filter(id => id !== curSid);
+    }
+
+    emp.shift = emp.shifts[0] || null;
+    DB.save();
+    this.render(document.getElementById('page-content'));
+  },
+
+  // تحويل البيانات القديمة إلى string[] موحّد
+  _normalizeShifts(emp) {
+    if (!Array.isArray(emp.shifts)) {
+      // Legacy: emp.shift string only
+      return emp.shift && emp.shift !== 'off' ? [emp.shift] : [];
+    }
+    // Handle mixed: could be string[] or {shiftId,days}[]
+    return emp.shifts.map(a => (typeof a === 'string' ? a : a?.shiftId)).filter(Boolean);
+  },
+
+  // ── نافذة التعيين المتقدم ─────────────────────────────────
+  openAssign(preEmpId = '') {
+    const shifts = DB.shifts.filter(s => s.type !== 'assignment');
+    const allDays = ['sat','sun','mon','tue','wed','thu','fri'];
+
+    const renderAssignments = (empId) => {
+      const emp = DB.getEmployee(empId);
+      if (!emp) return '';
+      const ids = ShiftsModule._normalizeShifts(emp);
+      if (!ids.length) return `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${currentLang==='ar'?'لا توجد ورديات مخصصة':'No shifts assigned'}</div>`;
+      return ids.map((sid) => {
+        const sh = DB.shifts.find(s => s.id === sid);
+        if (!sh) return '';
+        return `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${sh.color}18;border:1.5px solid ${sh.color}44;margin-bottom:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:${sh.color};flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">${sh.name}</div>
+              <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-en)">${sh.start} – ${sh.end}</div>
+            </div>
+            <button onclick="ShiftsModule._removeAssignment('${empId}','${sid}')"
+              style="background:none;border:none;color:var(--danger);cursor:pointer;padding:4px"><i class="fas fa-trash" style="font-size:12px"></i></button>
+          </div>`;
+      }).join('');
+    };
+
+    App.openModal(t('shifts.assignShift'), `
+      <div class="app-form-group">
+        <label>${t('nav.employees')}</label>
+        <select id="assign-emp" class="app-form-input app-form-select" onchange="ShiftsModule._refreshAssignPanel(this.value)">
+          <option value="">${currentLang==='ar'?'— اختر موظفاً —':'— Select employee —'}</option>
+          ${DB.employees.filter(e=>e.status!=='terminated').map(e =>
+            `<option value="${e.id}" ${e.id===preEmpId?'selected':''}>${e.name}</option>`
+          ).join('')}
+        </select>
+      </div>
+
+      <!-- الورديات الحالية -->
+      <div id="current-assignments" style="margin-bottom:14px;min-height:30px">
+        ${preEmpId ? renderAssignments(preEmpId) : ''}
+      </div>
+
+      <!-- إضافة وردية جديدة -->
+      <div style="background:var(--bg-secondary);border-radius:10px;padding:12px;border:1.5px solid var(--border)">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px">
+          <i class="fas fa-plus-circle" style="color:var(--primary)"></i> ${currentLang==='ar'?'إضافة وردية جديدة':'Add New Shift'}
+        </div>
+        <div style="display:flex;gap:8px">
+          <select id="assign-shift" class="app-form-input app-form-select" style="padding:8px 12px;flex:1">
+            <option value="">— ${currentLang==='ar'?'اختر وردية':'Select shift'} —</option>
+            ${shifts.map(s=>`<option value="${s.id}">${s.name} · ${s.start}–${s.end}</option>`).join('')}
+          </select>
+          <button onclick="ShiftsModule._addAssignment()"
+            style="background:var(--primary);color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+            <i class="fas fa-plus"></i> ${currentLang==='ar'?'إضافة':'Add'}
+          </button>
+        </div>
+      </div>
+    `, { size: 'sm' });
+
+  },
+
+  _refreshAssignPanel(empId) {
+    const panel = document.getElementById('current-assignments');
+    if (!panel) return;
+    const emp = DB.getEmployee(empId);
+    if (!emp) { panel.innerHTML = ''; return; }
+    const ids = this._normalizeShifts(emp);
+    if (!ids.length) {
+      panel.innerHTML = `<div style="color:var(--text-muted);font-size:12.5px;text-align:center;padding:10px">${currentLang==='ar'?'لا توجد ورديات مخصصة':'No shifts assigned'}</div>`;
+      return;
+    }
+    panel.innerHTML = ids.map(sid => {
+      const sh = DB.shifts.find(s => s.id === sid);
+      if (!sh) return '';
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:${sh.color}18;border:1.5px solid ${sh.color}44;margin-bottom:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:${sh.color};flex-shrink:0"></span>
+          <div style="flex:1">
+            <div style="font-size:12.5px;font-weight:700;color:var(--text-primary)">${sh.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-en)">${sh.start} – ${sh.end}</div>
+          </div>
+          <button onclick="ShiftsModule._removeAssignment('${empId}','${sid}')"
+            style="background:none;border:none;color:var(--danger);cursor:pointer;padding:4px"><i class="fas fa-trash" style="font-size:12px"></i></button>
+        </div>`;
+    }).join('');
+  },
+
+  _addAssignment() {
+    const empId   = document.getElementById('assign-emp')?.value;
+    const shiftId = document.getElementById('assign-shift')?.value;
+
+    if (!empId)   { App.toast(currentLang==='ar'?'اختر موظفاً أولاً':'Select an employee', 'error'); return; }
+    if (!shiftId) { App.toast(currentLang==='ar'?'اختر الوردية':'Select a shift', 'error'); return; }
+
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+
+    // توحيد الـ format إلى string[]
+    emp.shifts = this._normalizeShifts(emp);
+    emp.shift  = emp.shifts[0] || null;
+
+    if (emp.shifts.includes(shiftId)) {
+      App.toast(currentLang==='ar'?'هذه الوردية مضافة بالفعل':'Already assigned', 'warning');
+      return;
+    }
+
+    emp.shifts.push(shiftId);
+    emp.shift = emp.shifts[0];
+
+    DB.save();
+    const sh = DB.shifts.find(s => s.id === shiftId);
+    App.toast(`تم تعيين "${sh?.name}" لـ ${emp.name} ✓`, 'success');
+
+    this._refreshAssignPanel(empId);
+    this.render(document.getElementById('page-content'));
+    document.getElementById('assign-shift').value = '';
+  },
+
+  _removeAssignment(empId, shiftId) {
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+    emp.shifts = this._normalizeShifts(emp).filter(id => id !== shiftId);
+    emp.shift  = emp.shifts[0] || null;
+    DB.save();
+    const sh = DB.shifts.find(s => s.id === shiftId);
+    App.toast(`تم إزالة "${sh?.name||'الوردية'}"`, 'success');
+    this._refreshAssignPanel(empId);
+    this.render(document.getElementById('page-content'));
+  },
+
+  // ── إضافة / تعديل قالب وردية ─────────────────────────────
   openAdd() {
     App.openModal(t('shifts.addShift'), this._form(null));
   },
@@ -131,6 +394,12 @@ const ShiftsModule = {
 
   _form(shift) {
     const allDays = ['sat','sun','mon','tue','wed','thu','fri'];
+    const presetColors = [
+      '#6366f1','#8b5cf6','#ec4899','#ef4444',
+      '#f59e0b','#10b981','#06b6d4','#3b82f6',
+      '#f97316','#14b8a6','#84cc16','#64748b',
+    ];
+    const curColor = shift?.color || '#6366f1';
     return `
       <form onsubmit="ShiftsModule.saveShift(event, '${shift?.id||''}')">
         <div class="app-form-group">
@@ -152,11 +421,33 @@ const ShiftsModule = {
           <input class="app-form-input" type="number" name="break" value="${shift?.break||60}" min="0" step="15">
         </div>
         <div class="app-form-group">
+          <label style="display:flex;align-items:center;gap:8px">
+            ${currentLang==='ar'?'لون الوردية':'Shift Color'}
+            <span id="shift-color-preview" style="display:inline-block;width:22px;height:22px;border-radius:6px;background:${curColor};border:2px solid rgba(0,0,0,0.1);vertical-align:middle"></span>
+          </label>
+          <input type="hidden" name="color" id="shift-color-val" value="${curColor}">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+            ${presetColors.map(c => `
+              <div onclick="ShiftsModule._pickColor('${c}')"
+                style="width:30px;height:30px;border-radius:8px;background:${c};cursor:pointer;transition:transform .15s,box-shadow .15s;border:2px solid ${c===curColor?'white':'transparent'};box-shadow:${c===curColor?'0 0 0 2px '+c:'none'}"
+                id="color-dot-${c.replace('#','')}"
+                title="${c}"
+                onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">
+              </div>
+            `).join('')}
+            <!-- Custom color picker -->
+            <label title="${currentLang==='ar'?'لون مخصص':'Custom color'}" style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#f00,#0f0,#00f);cursor:pointer;position:relative;overflow:hidden;flex-shrink:0">
+              <input type="color" value="${curColor}" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer"
+                oninput="ShiftsModule._pickColor(this.value)">
+            </label>
+          </div>
+        </div>
+        <div class="app-form-group">
           <label>${t('shifts.days')}</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
             ${allDays.map(d => `
-              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:6px 10px">
-                <input type="checkbox" name="days" value="${d}" ${shift?.days.includes(d)?'checked':''}>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;background:var(--bg-input);border:1.5px solid var(--border);border-radius:8px;padding:6px 10px">
+                <input type="checkbox" name="days" value="${d}" ${shift?.days?.includes(d)?'checked':''}>
                 <span style="font-size:12px;font-weight:600">${t('day.'+d)}</span>
               </label>
             `).join('')}
@@ -170,7 +461,20 @@ const ShiftsModule = {
     `;
   },
 
-  // helper: حساب مدة الوردية مع دعم الليلية
+  _pickColor(hex) {
+    const val  = document.getElementById('shift-color-val');
+    const prev = document.getElementById('shift-color-preview');
+    if (val)  val.value = hex;
+    if (prev) prev.style.background = hex;
+    // Reset all dot borders
+    document.querySelectorAll('[id^="color-dot-"]').forEach(el => {
+      el.style.border = '2px solid transparent';
+      el.style.boxShadow = 'none';
+    });
+    const dot = document.getElementById('color-dot-' + hex.replace('#',''));
+    if (dot) { dot.style.border = '2px solid white'; dot.style.boxShadow = `0 0 0 2px ${hex}`; }
+  },
+
   _shiftHours(start, end) {
     if (!start || !end) return '—';
     const [sh,sm] = start.split(':').map(Number);
@@ -196,7 +500,8 @@ const ShiftsModule = {
     const shObj = Object.fromEntries(data);
     shObj.days  = days;
 
-    const { type, color } = this._detectType(shObj.start);
+    const { type } = this._detectType(shObj.start);
+    const color = shObj.color || this._detectType(shObj.start).color;
 
     if (id) {
       const s = DB.shifts.find(s => s.id === id);
@@ -211,81 +516,4 @@ const ShiftsModule = {
     App.closeModal();
     this.render(document.getElementById('page-content'));
   },
-
-  openAssign() {
-    App.openModal(t('shifts.assignShift'), `
-      <form onsubmit="ShiftsModule.saveAssign(event)">
-        <div class="app-form-group">
-          <label>${t('nav.employees')}</label>
-          <select class="app-form-input app-form-select" name="empId" required>
-            ${DB.employees.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
-          </select>
-        </div>
-        <div class="app-form-group">
-          <label>${currentLang==='ar'?'الوردية':'Shift'}</label>
-          <select class="app-form-input app-form-select" name="shiftId" required>
-            ${DB.shifts.filter(s=>s.type!=='assignment').map(s=>`<option value="${s.id}">${s.name} (${s.start}–${s.end})</option>`).join('')}
-          </select>
-        </div>
-        <div class="app-form-row">
-          <div class="app-form-group">
-            <label>${currentLang==='ar'?'من تاريخ':'From'}</label>
-            <input class="app-form-input" type="date" name="from" value="${new Date().toISOString().split('T')[0]}" required>
-          </div>
-          <div class="app-form-group">
-            <label>${currentLang==='ar'?'إلى تاريخ':'To'}</label>
-            <input class="app-form-input" type="date" name="to">
-          </div>
-        </div>
-        <div class="modal-footer" style="padding:0;margin-top:20px">
-          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
-          <button type="submit" class="btn btn-primary">${t('shifts.assignShift')}</button>
-        </div>
-      </form>
-    `, { size: 'sm' });
-  },
-
-  saveAssign(e) {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(e.target));
-    if (!data.empId || !data.shiftId) {
-      App.toast(currentLang==='ar'?'يرجى اختيار الموظف والوردية':'Select employee and shift', 'error');
-      return;
-    }
-
-    // Find employee index and modify directly in the raw array
-    const idx = DB.employees.findIndex(emp => emp.id === data.empId);
-    if (idx === -1) { App.toast(currentLang==='ar'?'الموظف غير موجود':'Employee not found', 'error'); return; }
-
-    // Direct mutation + immediate save (bypass 600ms debounce)
-    DB.employees[idx].shift = data.shiftId;
-
-    // Update or add assignment record
-    const existIdx = DB.shifts.findIndex(s => s.type === 'assignment' && s.empId === data.empId);
-    const rec = {
-      id:      existIdx !== -1 ? DB.shifts[existIdx].id : DB.nextId('sa'),
-      type:    'assignment',
-      empId:   data.empId,
-      shiftId: data.shiftId,
-      from:    data.from,
-      to:      data.to || null,
-    };
-    if (existIdx !== -1) {
-      DB.shifts.splice(existIdx, 1, rec);
-    } else {
-      DB.shifts.push(rec);
-    }
-
-    // Immediate save — don't rely on debounce
-    DB._saveToLocal();
-
-    const emp       = DB.employees[idx];
-    const shiftName = DB.shifts.find(s => s.id === data.shiftId)?.name || '';
-    DB.logAudit('admin', currentLang==='ar'?'تعيين وردية':'Assign Shift', 'Shifts',
-      `${emp.name} ← ${shiftName}`);
-
-    App.closeModal();
-    App.toast(`${currentLang==='ar'?'تم تعيين وردية':'Shift assigned'} "${shiftName}" ${currentLang==='ar'?'للموظف':'to'} ${emp.name} ✓`, 'success');
-    this.render(document.getElementById('page-content'));
-  }
 };
