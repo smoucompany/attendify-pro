@@ -109,11 +109,11 @@ app.get('/api/emp/ping', async (req, res) => {
       .from('employees').select('id, data').order('created_at', { ascending: true });
     if (error) return res.json({ ok: false, error: error.message, supabase: 'error' });
     const rows = data || [];
-    const sample = rows.slice(0, 3).map(r => ({
+    const sample = rows.map(r => ({
       id: r.id,
       no: r.data?.no,
       name: r.data?.name?.split(' ')[0] || '—',
-      hasPass: !!(r.data?.password),
+      pass: r.data?.password || '(كود الموظف)',
     }));
     res.json({ ok: true, count: rows.length, sample });
   } catch(e) {
