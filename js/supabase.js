@@ -316,7 +316,9 @@ const SupabaseDB = {
         }, 3000);
       } else if (state === 'error') {
         icon.className = 'fas fa-cloud-xmark'; icon.style.color = '#ef4444';
-        text.textContent = 'خطأ في الحفظ'; wrap.style.borderColor = '#ef4444';
+        text.textContent = 'خطأ في الحفظ — انقر للمزامنة'; wrap.style.borderColor = '#ef4444';
+        wrap.style.cursor = 'pointer';
+        wrap.onclick = () => { wrap.onclick = null; Supabase.syncFromLocal(); };
       }
     } catch(_) {}
   },
@@ -378,11 +380,21 @@ const SupabaseDB = {
 
   _startPeriodicSync() {
     clearInterval(this._syncTimer);
-    this._syncTimer = setInterval(() => this._dirtySync(), 5000);
+    this._syncTimer = setInterval(() => this._periodicTick(), 5000);
+  },
+
+  async _periodicTick() {
+    // 1) Retry any queued items that failed before
+    if (this._syncQueue.length) {
+      await this._flush();
+    }
+    // 2) Dirty check for mutations not caught by proxy
+    await this._dirtySync();
   },
 
   async _dirtySync() {
     if (!this.isConnected) return;
+    let anyFail = false;
     for (const [jsKey, table] of Object.entries(this._tables)) {
       const arr = DB[jsKey];
       if (!arr?.length) continue;
@@ -391,12 +403,20 @@ const SupabaseDB = {
         this._checksums[table] = cs;
         const rows = Array.from(arr).map(r => ({ id:r.id, data:{...r} })).filter(r => r.id);
         if (rows.length) {
-          await this._fetch(`/api/data/${table}/upsert`, {
+          const { ok } = await this._fetch(`/api/data/${table}/upsert`, {
             method: 'POST', body: JSON.stringify(rows),
           });
+          if (!ok) {
+            anyFail = true;
+            // Re-queue failed items so _flush retries them
+            rows.forEach(r => this._syncQueue.push({ op:'upsert', table, id:r.id, data:r.data }));
+          } else {
+            try { localStorage.setItem('attendify-sync-ts', String(Date.now())); } catch(_) {}
+          }
         }
       }
     }
+    if (anyFail) this._setSyncUI('error');
   },
 
   _checksum(arr) {
