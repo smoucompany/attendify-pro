@@ -37,30 +37,32 @@ app.use((_req, res, next) => {
 
 app.use(express.json({ limit: '5mb' }));
 
-// ── In-memory rate limiter (login endpoint) ───────────────────
-// Vercel: instances are short-lived — this gives per-instance protection
-const _loginAttempts = new Map();
-const _RL_WINDOW = 15 * 60 * 1000; // 15 minutes
-const _RL_MAX    = 10;              // max attempts per window
-
-function _rateLimitLogin(req, res, next) {
-  const ip  = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
-    || req.socket?.remoteAddress || 'unknown';
-  const now = Date.now();
-  let rec   = _loginAttempts.get(ip);
-  if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + _RL_WINDOW };
-  if (rec.count >= _RL_MAX) {
-    const wait = Math.ceil((rec.resetAt - now) / 60000);
-    return res.status(429).json({ error: `محاولات كثيرة جداً. انتظر ${wait} دقيقة ثم حاول مجدداً.` });
-  }
-  rec.count++;
-  _loginAttempts.set(ip, rec);
-  // Cleanup stale entries every 1000 requests to prevent memory growth
-  if (_loginAttempts.size > 1000) {
-    for (const [k, v] of _loginAttempts) { if (now > v.resetAt) _loginAttempts.delete(k); }
-  }
-  next();
+// ── In-memory rate limiters ────────────────────────────────────
+function _makeRateLimiter(windowMs, max) {
+  const store = new Map();
+  return function rl(req, res, next) {
+    const ip  = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    let rec   = store.get(ip);
+    if (!rec || now > rec.resetAt) rec = { count: 0, resetAt: now + windowMs };
+    if (rec.count >= max) {
+      const wait = Math.ceil((rec.resetAt - now) / 60000);
+      return res.status(429).json({ error: `محاولات كثيرة جداً. انتظر ${wait} دقيقة ثم حاول مجدداً.` });
+    }
+    rec.count++;
+    store.set(ip, rec);
+    if (store.size > 1000) {
+      for (const [k, v] of store) { if (now > v.resetAt) store.delete(k); }
+    }
+    next();
+  };
 }
+
+// تسجيل دخول: 10 محاولات / 15 دقيقة
+const _rateLimitLogin   = _makeRateLimiter(15 * 60 * 1000, 10);
+// جلب بيانات الموظف: 60 طلب / دقيقة
+const _rateLimitEmpData = _makeRateLimiter(60 * 1000, 60);
 
 // ── Sanitize env vars (strip BOM / invisible chars) ───────────
 function cleanEnv(key) {
@@ -125,9 +127,14 @@ app.post('/api/auth/login', _rateLimitLogin, async (req, res) => {
   res.json({ token: data.session.access_token, refreshToken: data.session.refresh_token, user: data.user });
 });
 
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', _rateLimitLogin, async (req, res) => {
   const { email, password, name } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'بيانات ناقصة' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'بريد إلكتروني غير صحيح' });
+  if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ error: 'كلمة المرور قصيرة (8 أحرف على الأقل)' });
+  // السماح بالتسجيل فقط عند الإعداد الأول — بعده يُمنع إنشاء حسابات جديدة
+  const { data: existing } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1 });
+  if (existing?.users?.length > 0) return res.status(403).json({ error: 'التسجيل غير مسموح به' });
   const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email, password, email_confirm: true,
     user_metadata: { name: name || email.split('@')[0] },
@@ -275,11 +282,10 @@ app.post('/api/emp/login', _rateLimitLogin, async (req, res) => {
     empRow = rows.find(r => r.data?.no === code || r.data?.no === code.padStart(3, '0'));
   }
 
-  if (!empRow) return res.status(401).json({ error: 'كود الموظف غير صحيح' });
-
-  const emp = empRow.data || {};
+  // رسالة خطأ موحدة — لا تكشف هل الكود موجود أم لا
+  const emp = empRow?.data || {};
   const validPass = emp.password || emp.no;
-  if (password !== validPass) return res.status(401).json({ error: 'كلمة المرور غير صحيحة' });
+  if (!empRow || password !== validPass) return res.status(401).json({ error: 'بيانات الدخول غير صحيحة' });
 
   // إرجاع بيانات الموظف بدون كلمة المرور
   const { password: _pw, ...safeEmp } = emp;
@@ -288,7 +294,7 @@ app.post('/api/emp/login', _rateLimitLogin, async (req, res) => {
 
 // ── Employee Portal: جلب بيانات الموظف الحالي وسجل حضوره ──────
 // يُستخدم بعد تسجيل الدخول لتحديث البيانات من السيرفر
-app.get('/api/emp/data/:empId', _rateLimitLogin, async (req, res) => {
+app.get('/api/emp/data/:empId', _rateLimitEmpData, async (req, res) => {
   const { empId } = req.params;
   if (!empId) return res.status(400).json({ error: 'معرّف الموظف مطلوب' });
 
