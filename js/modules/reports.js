@@ -1413,10 +1413,9 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
         const colCount = headers.length;
         return order.map(did=>{
           const g = groups[did];
-          const deptHdr = `<tr class="dept-grp-hdr"><td colspan="${colCount}">
+          const deptHdr = `<tr class="dept-grp-hdr"><td colspan="${colCount}" style="text-align:center">
             <span class="dept-dot" style="background:${g.deptColor}"></span>
             <strong>${g.deptName}</strong>
-            <span class="dept-count">(${g.rows.length} ${ar?'موظف':'emp.'})</span>
           </td></tr>`;
           const dataRows = g.rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
           return deptHdr + dataRows;
