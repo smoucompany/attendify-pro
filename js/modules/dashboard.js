@@ -106,7 +106,7 @@ const DashboardModule = {
             <h3><i class="fas fa-clock-rotate-left" style="color:var(--accent)"></i> ${t('dashboard.recentActivity')}</h3>
             <button class="btn-text" onclick="App.navigate('attendance')">${t('common.view')} ${t('common.all')}</button>
           </div>
-          <div class="card-body" style="padding:0">
+          <div class="card-body" style="padding:0;max-height:340px;overflow-y:auto;overflow-x:hidden">
             ${this._recentActivity(today)}
           </div>
         </div>

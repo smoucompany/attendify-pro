@@ -1,0 +1,7 @@
+node_modules
+backend
+generate_report.py
+generate_template.py
+attendify_report.pdf
+.env*
+*.log
