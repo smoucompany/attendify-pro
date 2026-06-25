@@ -921,8 +921,14 @@ const ReportsModule = {
       }
 
     } else if (type === 'leave') {
+      const _leaveTypeAr = { annual:'إجازة سنوية', sick:'إجازة مرضية', emergency:'إجازة طارئة', unpaid:'إجازة بدون راتب', maternity:'إجازة أمومة', hajj:'إجازة حج' };
+      const _leaveTypeEn = { annual:'Annual', sick:'Sick', emergency:'Emergency', unpaid:'Unpaid', maternity:'Maternity', hajj:'Hajj' };
       headers = [ar?'الموظف':'Employee', ar?'النوع':'Type', ar?'من':'From', ar?'إلى':'To', ar?'الأيام':'Days', ar?'الحالة':'Status'];
-      rows = DB.leaves.map(l => { const e=DB.getEmployee(l.empId); return [e?.name||'—', l.type, l.from||'—', l.to||'—', l.days||'—', l.status]; });
+      rows = DB.leaves.map(l => {
+        const e = DB.getEmployee(l.empId);
+        const typeLbl = ar ? (_leaveTypeAr[l.type] || l.type) : (_leaveTypeEn[l.type] || l.type);
+        return [e?.name||'—', typeLbl, l.from||'—', l.to||'—', l.days||'—', l.status];
+      });
       rowMeta = DB.leaves.map(l => _deptMeta(l.empId));
 
     } else if (type === 'overtime') {
@@ -996,9 +1002,12 @@ html{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exac
 body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direction:${ar?'rtl':'ltr'};background:#E2E8F0;color:#0F172A;line-height:1.5}
 
 /* ── CSS Variables per template ── */
+/* تنفيذي — Executive */
 [data-tpl="pro"]  { --P:#1B2B4B;--PA:#3B82F6;--PL:#EFF6FF;--TX:#0F172A;--TM:#475569;--BD:#CBD5E1;--BG:#F8FAFC;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
-[data-tpl="slate"]{ --P:#0F172A;--PA:#6366F1;--PL:#EEF2FF;--TX:#0F172A;--TM:#64748B;--BD:#E2E8F0;--BG:#F8FAFC;--BW:#FFFFFF;--OK:#059669;--WR:#D97706;--ER:#DC2626;--IN:#2563EB; }
-[data-tpl="sage"] { --P:#14532D;--PA:#CA8A04;--PL:#FEFCE8;--TX:#0C1A0F;--TM:#3F6954;--BD:#BBF7D0;--BG:#F0FDF4;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
+/* شركات — Corporate */
+[data-tpl="slate"]{ --P:#1e1b4b;--PA:#7c3aed;--PL:#f5f3ff;--TX:#0F172A;--TM:#64748B;--BD:#ddd6fe;--BG:#fafaf9;--BW:#FFFFFF;--OK:#059669;--WR:#D97706;--ER:#DC2626;--IN:#7c3aed; }
+/* حكومي — Government */
+[data-tpl="sage"] { --P:#1a3a2a;--PA:#b45309;--PL:#fffbeb;--TX:#0c1a0f;--TM:#3F6954;--BD:#d4b483;--BG:#fefcf3;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
 /* ── Document shell ── */
 .doc { width: 210mm; margin: 28px auto 56px; background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
 .doc > thead, .doc > tfoot, .doc > tbody { display: table-row-group; }
@@ -1051,9 +1060,11 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
   align-items: center;
   gap: 20px;
 }
-[data-tpl="pro"] .hdr-main  { background: var(--P); }
-[data-tpl="slate"] .hdr-main { background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); }
-[data-tpl="sage"] .hdr-main  { background: linear-gradient(135deg, #14532D 0%, #166534 100%); }
+[data-tpl="pro"]   .hdr-main { background: linear-gradient(135deg, #1B2B4B 0%, #243b6a 100%); }
+[data-tpl="slate"] .hdr-main { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
+[data-tpl="sage"]  .hdr-main { background: linear-gradient(135deg, #1a3a2a 0%, #14532d 60%, #1a3a2a 100%); }
+[data-tpl="sage"]  .hdr-rpt-title { color: #fcd34d; }
+[data-tpl="sage"]  .hdr-accent { background: linear-gradient(90deg, #1a3a2a, #b45309, #1a3a2a); }
 
 /* company block */
 .hdr-co { display: flex; align-items: center; gap: 12px; }
@@ -1098,34 +1109,42 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .doc-body { padding: 14px 14mm 6px; }
 
 /* ── KPI STRIP ── */
-.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
 .kpi-card {
   background: var(--BW); border: 1px solid var(--BD);
-  border-top: 3px solid var(--PA);
-  border-radius: 4px; padding: 10px 12px;
+  border-radius: 8px; padding: 12px 14px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
-[data-tpl="pro"] .kpi-card:nth-child(1) { border-top-color: #3B82F6; }
-[data-tpl="pro"] .kpi-card:nth-child(2) { border-top-color: #10B981; }
-[data-tpl="pro"] .kpi-card:nth-child(3) { border-top-color: #F59E0B; }
-[data-tpl="pro"] .kpi-card:nth-child(4) { border-top-color: #8B5CF6; }
-[data-tpl="slate"] .kpi-card:nth-child(1) { border-top-color: #6366F1; }
-[data-tpl="slate"] .kpi-card:nth-child(2) { border-top-color: #10B981; }
-[data-tpl="slate"] .kpi-card:nth-child(3) { border-top-color: #F59E0B; }
-[data-tpl="slate"] .kpi-card:nth-child(4) { border-top-color: #EC4899; }
-.kpi-n { font-size: 24px; font-weight: 900; color: var(--P); letter-spacing: -0.5px; line-height: 1; }
-.kpi-l { font-size: 8px; color: var(--TM); margin-top: 4px; font-weight: 500; }
+.kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+[data-tpl="pro"] .kpi-card:nth-child(1)::before { background: #3B82F6; }
+[data-tpl="pro"] .kpi-card:nth-child(2)::before { background: #10B981; }
+[data-tpl="pro"] .kpi-card:nth-child(3)::before { background: #F59E0B; }
+[data-tpl="pro"] .kpi-card:nth-child(4)::before { background: #8B5CF6; }
+[data-tpl="slate"] .kpi-card:nth-child(1)::before { background: #7c3aed; }
+[data-tpl="slate"] .kpi-card:nth-child(2)::before { background: #10B981; }
+[data-tpl="slate"] .kpi-card:nth-child(3)::before { background: #F59E0B; }
+[data-tpl="slate"] .kpi-card:nth-child(4)::before { background: #EC4899; }
+[data-tpl="sage"] .kpi-card:nth-child(1)::before { background: #1a3a2a; }
+[data-tpl="sage"] .kpi-card:nth-child(2)::before { background: #b45309; }
+[data-tpl="sage"] .kpi-card:nth-child(3)::before { background: #0369a1; }
+[data-tpl="sage"] .kpi-card:nth-child(4)::before { background: #7c3aed; }
+.kpi-n { font-size: 26px; font-weight: 900; color: var(--P); letter-spacing: -0.5px; line-height: 1; margin-top: 4px; }
+.kpi-l { font-size: 8.5px; color: var(--TM); margin-top: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* ── TABLE ── */
-.tbl-wrap { border: 1px solid var(--BD); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.tbl-wrap { border: 1px solid var(--BD); border-radius: 8px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 .dt { width: 100%; border-collapse: collapse; }
 .dt thead th {
-  padding: 9px 11px;
+  padding: 10px 12px;
   text-align: ${ar?'right':'left'};
-  font-size: 8.5px; font-weight: 700; color: #fff;
-  background: var(--P); letter-spacing: 0.3px; white-space: nowrap;
+  font-size: 9px; font-weight: 700; color: #fff;
+  background: var(--P); letter-spacing: 0.4px; white-space: nowrap;
 }
+.dt thead th:first-child { ${ar?'border-radius: 0 8px 0 0':'border-radius: 8px 0 0 0'}; }
+.dt thead th:last-child  { ${ar?'border-radius: 8px 0 0 0':'border-radius: 0 8px 0 0'}; }
 .dt tbody td {
-  padding: 7.5px 11px;
+  padding: 8px 12px;
   font-size: 9.5px; color: var(--TX);
   border-bottom: 1px solid var(--BD);
   vertical-align: middle;
@@ -1133,8 +1152,8 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .dt tbody tr:nth-child(even) td { background: var(--BG); }
 .dt tbody tr:last-child td { border-bottom: none; }
 .dt tfoot td {
-  padding: 9px 11px;
-  font-size: 9.5px; font-weight: 800; color: var(--PA);
+  padding: 10px 12px;
+  font-size: 9.5px; font-weight: 800; color: #fff;
   background: var(--P);
   border-top: 2px solid var(--PA);
 }
@@ -1161,10 +1180,10 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .bs-leave                { background: #DBEAFE; color: #1D4ED8; }
 
 /* ── SIGNATURE ZONE ── */
-.sig-zone { border-top: 2px solid var(--PA); padding: 14px 14mm; background: var(--BG); }
-.sig-hdr-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.sig-zone { border-top: 3px solid var(--P); padding: 16px 14mm; background: var(--BG); }
+.sig-hdr-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .sig-hdr-row::before,.sig-hdr-row::after { content:''; flex:1; height:1px; background:var(--BD); }
-.sig-hdr-text { font-size: 8px; font-weight: 700; color: var(--P); text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; }
+.sig-hdr-text { font-size: 8px; font-weight: 800; color: var(--P); text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; background:var(--PL); padding:4px 12px; border-radius:4px; }
 .sig-grid { display: grid; gap: 0; }
 .sig-col { text-align: center; padding: 8px 14px; border-inline-end: 1px solid var(--BD); }
 .sig-col:last-child { border-inline-end: none; }
@@ -1271,9 +1290,9 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
   <div class="tb-group">
     <span class="tb-label">${ar?'النموذج':'Template'}</span>
     <div class="tb-seg">
-      <button class="tb-btn on" data-tpl="pro"   onclick="setTpl('pro')">${ar?'احترافي':'Professional'}</button>
-      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')">${ar?'أنيق':'Elegant'}</button>
-      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')">${ar?'رسمي':'Official'}</button>
+      <button class="tb-btn on" data-tpl="pro"   onclick="setTpl('pro')"  >${ar?'تنفيذي':'Executive'}</button>
+      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')">${ar?'شركات':'Corporate'}</button>
+      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')" >${ar?'حكومي':'Official'}</button>
     </div>
   </div>
   <div class="tb-divider"></div>
@@ -1376,10 +1395,13 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
     <table class="dt">
       <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
       <tbody>${(()=>{
+        const _statusAr = { present:'حاضر', late:'متأخر', absent:'غائب', leave:'إجازة', approved:'معتمد', pending:'معلق', rejected:'مرفوض', 'on_leave':'في إجازة', holiday:'إجازة رسمية' };
+        const _statusEn = { present:'Present', late:'Late', absent:'Absent', leave:'On Leave', approved:'Approved', pending:'Pending', rejected:'Rejected', 'on_leave':'On Leave', holiday:'Holiday' };
         const renderCell = cell => {
           const sv = String(cell);
-          const cl = {'present':'bs-present','حاضر':'bs-present','late':'bs-late','متأخر':'bs-late','absent':'bs-absent','غائب':'bs-absent','leave':'bs-leave','إجازة':'bs-leave','approved':'bs-present','معتمد':'bs-present','pending':'bs-late','معلق':'bs-late','rejected':'bs-absent','مرفوض':'bs-absent'}[sv];
-          return `<td>${cl ? `<span class="bs ${cl}">${sv}</span>` : sv}</td>`;
+          const cl = {'present':'bs-present','حاضر':'bs-present','late':'bs-late','متأخر':'bs-late','absent':'bs-absent','غائب':'bs-absent','leave':'bs-leave','إجازة':'bs-leave','approved':'bs-present','معتمد':'bs-present','pending':'bs-late','معلق':'bs-late','rejected':'bs-absent','مرفوض':'bs-absent','on_leave':'bs-leave','holiday':'bs-leave'}[sv];
+          const label = cl ? (ar ? (_statusAr[sv] || sv) : (_statusEn[sv] || sv)) : sv;
+          return `<td>${cl ? `<span class="bs ${cl}">${label}</span>` : sv}</td>`;
         };
         if (!rowMeta.length) return rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
         const groups = {}, order = [];
