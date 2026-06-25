@@ -539,6 +539,7 @@ const PayrollModule = {
       App.closeModal();
       DB.logAudit('admin', `${ar?'معالجة رواتب':'Payroll processed'} ${period}`, 'Payroll',
         `${DB.payroll.length} ${ar?'موظف':'employees'}`);
+      DB.addNotification({ title: 'تم صرف الرواتب', desc: `تمت معالجة رواتب ${DB.payroll.length} موظف لشهر ${period}`, type: 'system', icon: 'fas fa-money-bill-wave', iconBg: 'gradient-success' });
       App.toast(`${t('payroll.toastSuccess')} (${DB.payroll.length} ${ar?'موظف':'employees'}) ✓`, 'success');
       this.render(document.getElementById('page-content'));
     }, 500);

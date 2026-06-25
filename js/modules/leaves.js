@@ -218,6 +218,7 @@ const LeavesModule = {
       }
 
       DB.save();
+      DB.addNotification({ title: 'موافقة على إجازة', desc: `تمت الموافقة على إجازة ${emp?.name||''} لمدة ${days} يوم`, type: 'leave', icon: 'fas fa-calendar-check', iconBg: 'gradient-success' });
       App.toast('تمت الموافقة على الإجازة ✓', 'success');
       App._updateBadges();
       this._renderList();
@@ -234,6 +235,7 @@ const LeavesModule = {
       leave.status     = 'rejected';
       leave.rejectedAt = new Date().toISOString();
       DB.save();
+      DB.addNotification({ title: 'رفض إجازة', desc: `تم رفض طلب إجازة ${emp?.name||''}`, type: 'leave', icon: 'fas fa-calendar-xmark', iconBg: 'gradient-danger' });
       App.toast('تم رفض الإجازة', 'error');
       App._updateBadges();
       this._renderList();
@@ -360,6 +362,8 @@ const LeavesModule = {
     });
 
     DB.save();
+    const empName = DB.getEmployee(data.empId)?.name || '';
+    DB.addNotification({ title: 'طلب إجازة جديد', desc: `${empName} طلب إجازة ${days} يوم — في انتظار الموافقة`, type: 'leave', icon: 'fas fa-calendar-plus', iconBg: 'gradient-warning' });
     App.closeModal();
     App.toast(t('leaves.addLeave') + ' — ' + (currentLang==='ar'?'تم بنجاح':'Submitted'), 'success');
     App._updateBadges();

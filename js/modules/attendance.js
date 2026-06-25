@@ -494,6 +494,10 @@ const AttendanceModule = {
       DB.save();
       const lateNote = isLate ? (currentLang==='ar'?' (متأخر)':' (late)') : '';
       App.toast(`✅ ${currentLang==='ar'?'تم تسجيل حضور':'Checked in:'} ${emp.name} ${nowTime}${lateNote}`, isLate?'warning':'success');
+      if (isLate) {
+        const lateMins = (ch*60+cm) - (sh*60+sm);
+        DB.addNotification({ title: 'موظف متأخر', desc: `${emp.name} تأخر ${lateMins} دقيقة — وصل الساعة ${nowTime}`, type: 'attendance', icon: 'fas fa-clock', iconBg: 'gradient-warning' });
+      }
     } else {
       App.toast(`${emp.name} ${currentLang==='ar'?'سجّل حضوره بالفعل اليوم':'already checked in today'}`, 'info');
     }

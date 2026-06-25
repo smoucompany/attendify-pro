@@ -216,6 +216,20 @@ const DB = {
     };
   },
 
+  // إضافة إشعار جديد تلقائياً
+  addNotification({ title, desc, type = 'system', icon = 'fas fa-bell', iconBg = 'gradient-primary' }) {
+    this.notifications.unshift({
+      id: this.nextId('n'),
+      title, desc, type, icon, iconBg,
+      time: new Date().toISOString(),
+      read: false,
+    });
+    // احتفظ بآخر 50 إشعار فقط
+    if (this.notifications.length > 50) this.notifications.length = 50;
+    this._scheduleSave();
+    if (typeof App !== 'undefined') App._updateBadges();
+  },
+
   _idSeq: 0,
   nextId(prefix) {
     return `${prefix}-${Date.now()}-${++this._idSeq}`;

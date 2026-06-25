@@ -792,6 +792,10 @@ const App = {
     const dot = document.getElementById('notif-dot');
     if (dot) dot.style.display = 'none';
     this.toast('تم تحديد كل الإشعارات كمقروءة', 'success');
+    // تحديث صفحة الإشعارات الكاملة إن كانت مفتوحة
+    if (this.state.currentPage === 'notifications' && typeof NotificationsModule !== 'undefined') {
+      NotificationsModule._renderList();
+    }
   },
 
   // ─── USER MENU ────────────────────────────────────────────
