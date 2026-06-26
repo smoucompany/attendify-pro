@@ -486,6 +486,11 @@ const App = {
     const dot = document.getElementById('notif-dot');
     if (dot) dot.style.display = counts.notifications > 0 ? 'block' : 'none';
 
+    // Start auto-translator MutationObserver if language is not Arabic
+    if (typeof Translator !== 'undefined' && currentLang !== 'ar') {
+      Translator.startObserver(currentLang);
+    }
+
     // Navigate to current hash or dashboard
     const hash = window.location.hash.slice(1) || 'dashboard';
     this._navigate(hash);
@@ -678,6 +683,15 @@ const App = {
     localStorage.setItem('app-lang', lang);
     currentLang = lang;
     applyTranslations();
+
+    // Start/stop MutationObserver based on language
+    if (typeof Translator !== 'undefined') {
+      if (lang === 'ar') {
+        Translator.stopObserver();
+      } else {
+        Translator.startObserver(lang);
+      }
+    }
 
     // Re-render current module so dynamic HTML also gets translated
     if (this.state.user) {
