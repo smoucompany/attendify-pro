@@ -3005,6 +3005,12 @@ function applyTranslations() {
     const names = { ar:'AR', en:'EN', hi:'हि', ur:'UR', fil:'FIL' };
     langLabel.textContent = names[lang] || lang.toUpperCase();
   }
+
+  // Auto-translate static sidebar elements (company name, user job title, etc.)
+  if (lang !== 'ar' && typeof Translator !== 'undefined') {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) Translator.translateEl(sidebar, lang);
+  }
 }
 
 // Set language

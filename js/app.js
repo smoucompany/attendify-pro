@@ -629,6 +629,11 @@ const App = {
           content.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-exclamation-circle"></i></div><div class="empty-title">الصفحة غير موجودة</div><p class="empty-desc">الوحدة <strong>${_esc(page)}</strong> غير متاحة</p></div>`;
         }
 
+        // Auto-translate user-entered Arabic data when language is not Arabic
+        if (currentLang !== 'ar' && typeof Translator !== 'undefined') {
+          Translator.translateEl(content, currentLang);
+        }
+
         // Fade-in after render
         requestAnimationFrame(() => {
           content.style.opacity = '1';
