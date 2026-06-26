@@ -23,7 +23,7 @@ const AttendanceModule = {
         </div>
         <div class="page-header-actions">
           <button class="btn btn-secondary" onclick="AttendanceModule.exportData()"><i class="fas fa-file-excel"></i> ${t('common.export')}</button>
-          <button class="btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white" onclick="AttendanceModule.openFaceCheckin()"><i class="fas fa-face-smile"></i> تسجيل بالوجه</button>
+          <button class="btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white" onclick="AttendanceModule.openFaceCheckin()"><i class="fas fa-face-smile"></i> ${t('attendance.faceCheckin')}</button>
           <button class="btn btn-primary" onclick="AttendanceModule.openManual()"><i class="fas fa-plus"></i> ${t('attendance.addRecord')}</button>
         </div>
       </div>
@@ -60,7 +60,7 @@ const AttendanceModule = {
               <i class="fas fa-face-smile"></i> ${t('attendance.faceRecog')}
             </button>
             <button class="btn-checkin" style="flex:none;padding:8px 12px;font-size:12px" onclick="AttendanceModule.openFingerprintRec()">
-              <i class="fas fa-fingerprint"></i> ${currentLang==='ar'?'بصمة الإصبع':'Fingerprint'}
+              <i class="fas fa-fingerprint"></i> ${t('login.fingerprint')}
             </button>
             <button class="btn-checkin" style="flex:none;padding:8px 12px;font-size:12px" onclick="AttendanceModule.openQRScan()">
               <i class="fas fa-qrcode"></i> ${t('attendance.qrScan')}
@@ -103,7 +103,7 @@ const AttendanceModule = {
           <option value="all">${t('common.all')}</option>
           <option value="present">${t('attendance.present')}</option>
           <option value="late">${t('attendance.late')}</option>
-          <option value="absent">${currentLang==='ar'?'غائب':'Absent'}</option>
+          <option value="absent">${t('attendance.absent')}</option>
         </select>
         <select class="toolbar-select" onchange="AttendanceModule._empFilter=this.value; AttendanceModule._renderTable()">
           <option value="all">${t('common.all')} ${t('nav.employees')}</option>
@@ -113,8 +113,8 @@ const AttendanceModule = {
         <button class="btn btn-secondary btn-sm" onclick="AttendanceModule.exportData()">
           <i class="fas fa-file-csv"></i> CSV
         </button>
-        <button class="btn btn-sm" style="background:#25d366;color:white" onclick="AttendanceModule.sendBulkWA()" title="إرسال WhatsApp للغائبين والمتأخرين">
-          <i class="fab fa-whatsapp"></i> إشعار جماعي
+        <button class="btn btn-sm" style="background:#25d366;color:white" onclick="AttendanceModule.sendBulkWA()" title="${t('attendance.bulkNotifyTitle')}">
+          <i class="fab fa-whatsapp"></i> ${t('attendance.bulkNotify')}
         </button>
       </div>
 
@@ -186,7 +186,7 @@ const AttendanceModule = {
       .filter(row => this._statusFilter === 'all' || row.status === this._statusFilter);
 
     if (!DB.employees.filter(e => e.status !== 'terminated').length) {
-      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div><div class="empty-title">${currentLang==='ar'?'لا يوجد موظفون':'No employees'}</div></div>`;
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div><div class="empty-title">${t('employees.noEmployees')}</div></div>`;
       return;
     }
 
@@ -194,10 +194,10 @@ const AttendanceModule = {
       const map = {
         present:     `<span class="badge badge-success badge-dot">${t('attendance.present')}</span>`,
         late:        `<span class="badge badge-warning badge-dot">${t('attendance.late')}</span>`,
-        absent:      `<span class="badge badge-danger badge-dot">${currentLang==='ar'?'غائب':'Absent'}</span>`,
-        not_arrived: `<span class="badge badge-secondary badge-dot">${currentLang==='ar'?'لم يصل بعد':'Not arrived'}</span>`,
-        holiday:     `<span class="badge badge-info badge-dot">${currentLang==='ar'?'إجازة':'Holiday'}</span>`,
-        on_leave:    `<span class="badge badge-warning badge-dot">${currentLang==='ar'?'في إجازة':'On leave'}</span>`,
+        absent:      `<span class="badge badge-danger badge-dot">${t('attendance.absent')}</span>`,
+        not_arrived: `<span class="badge badge-secondary badge-dot">${t('attendance.notArrived')}</span>`,
+        holiday:     `<span class="badge badge-info badge-dot">${t('attendance.holiday')}</span>`,
+        on_leave:    `<span class="badge badge-warning badge-dot">${t('attendance.onLeave')}</span>`,
       };
       return map[s] || `<span class="badge badge-secondary">${s}</span>`;
     };
@@ -245,7 +245,7 @@ const AttendanceModule = {
                   <td>
                     <div style="display:flex;gap:4px">
                       ${(status==='absent'||status==='not_arrived') ? `
-                        <button class="btn btn-success btn-sm" title="${currentLang==='ar'?'تسجيل حضور':'Check in'}"
+                        <button class="btn btn-success btn-sm" title="${t('attendance.checkIn')}"
                           onclick="AttendanceModule._quickCheckIn('${emp.id}')">
                           <i class="fas fa-clock"></i>
                         </button>` : ''}
@@ -258,7 +258,7 @@ const AttendanceModule = {
                         <button class="btn-icon btn" onclick="AttendanceModule.editRecord('${recId}')" title="${t('common.edit')}"><i class="fas fa-pencil"></i></button>
                         <button class="btn-icon btn" onclick="AttendanceModule.deleteRecord('${recId}')" title="${t('common.delete')}" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
                       ` : `
-                        <button class="btn-icon btn" title="${currentLang==='ar'?'إضافة سجل':'Add record'}"
+                        <button class="btn-icon btn" title="${t('attendance.addRecord')}"
                           onclick="AttendanceModule._quickCheckIn('${emp.id}')">
                           <i class="fas fa-plus" style="color:var(--primary)"></i>
                         </button>
@@ -272,11 +272,11 @@ const AttendanceModule = {
         </table>
       </div>
       <p style="font-size:12px;color:var(--text-muted);margin-top:8px;padding:0 4px">
-        ${t('common.showing')} ${rows.length} ${currentLang==='ar'?'موظف':'employees'} ·
+        ${t('common.showing')} ${rows.length} ${t('common.employees')} ·
         <span style="color:var(--success)">${rows.filter(r=>r.status==='present').length} ${t('attendance.present')}</span> ·
         <span style="color:var(--warning)">${rows.filter(r=>r.status==='late').length} ${t('attendance.late')}</span> ·
-        <span style="color:var(--danger)">${rows.filter(r=>r.status==='absent').length} ${currentLang==='ar'?'غائب':'absent'}</span> ·
-        <span style="color:var(--text-muted)">${rows.filter(r=>r.status==='not_arrived').length} ${currentLang==='ar'?'لم يصل':'not arrived'}</span>
+        <span style="color:var(--danger)">${rows.filter(r=>r.status==='absent').length} ${t('attendance.absent').toLowerCase()}</span> ·
+        <span style="color:var(--text-muted)">${rows.filter(r=>r.status==='not_arrived').length} ${t('attendance.notArrived')}</span>
       </p>
     `;
   },
@@ -777,8 +777,8 @@ const AttendanceModule = {
           })();
         </script>
         <div class="app-form-group">
-          <label>${currentLang==='ar'?'ملاحظات':'Notes'}</label>
-          <input class="app-form-input" type="text" name="notes" placeholder="${currentLang==='ar'?'ملاحظات اختيارية':'Optional notes'}">
+          <label>${t('attendance.notes')}</label>
+          <input class="app-form-input" type="text" name="notes" placeholder="${t('attendance.notesPlaceholder')}">
         </div>
         <div class="modal-footer" style="padding:0;margin-top:20px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
@@ -915,7 +915,7 @@ const AttendanceModule = {
 
     const allTargets = [...absentEmps, ...lateEmps];
     if (!allTargets.length) {
-      App.toast('لا يوجد غائبون أو متأخرون في هذا اليوم', 'info');
+      App.toast(currentLang==='ar'?'لا يوجد غائبون أو متأخرون في هذا اليوم':'No absent or late employees today', 'info');
       return;
     }
 
@@ -1028,7 +1028,7 @@ const AttendanceModule = {
   // ─── FACE RECOGNITION CHECK-IN ───────────────────────────
   openFaceCheckin() {
     if (!Biometrics.canCamera()) {
-      App.toast('الكاميرا غير متاحة على هذا الجهاز', 'error');
+      App.toast(currentLang==='ar'?'الكاميرا غير متاحة على هذا الجهاز':'Camera not available on this device', 'error');
       return;
     }
 
@@ -1054,11 +1054,11 @@ const AttendanceModule = {
     Biometrics.openFaceVerify({
       onSuccess: (matchedName) => {
         const emp = DB.employees.find(e => e.name === matchedName);
-        if (!emp) { App.toast('لم يُعثر على الموظف في النظام', 'error'); return; }
+        if (!emp) { App.toast(currentLang==='ar'?'لم يُعثر على الموظف في النظام':'Employee not found in the system', 'error'); return; }
         this._recordCheckin(emp.id, 'face');
         this._renderTable?.();
       },
-      onFail: () => App.toast('لم يتم التعرف على الوجه — حاول مرة أخرى في ضوء أفضل', 'error'),
+      onFail: () => App.toast(currentLang==='ar'?'لم يتم التعرف على الوجه — حاول مرة أخرى في ضوء أفضل':'Face not recognized — try again in better lighting', 'error'),
     });
   },
 };

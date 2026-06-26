@@ -427,7 +427,7 @@ const App = {
       const formBody = document.querySelector('.login-form-body');
       if (formBody && !document.getElementById('login-form')) { location.reload(); return; }
       const btn = document.getElementById('login-btn');
-      if (btn) { btn.disabled = false; btn.innerHTML = `<span>دخول لوحة الإدارة</span><i class="fas fa-arrow-left btn-arrow"></i>`; }
+      if (btn) { btn.disabled = false; btn.innerHTML = `<span data-i18n="login.adminBtn">${t('login.adminBtn')}</span><i class="fas fa-arrow-left btn-arrow"></i>`; }
       document.getElementById('login-page').style.display = 'flex';
       applyTranslations();
     });
@@ -618,6 +618,9 @@ const App = {
           profile:       () => ProfileModule.render(content),
           roles:         () => { SettingsModule._section = 'roles';  SettingsModule.render(content); },
           backup:        () => { SettingsModule._section = 'backup'; SettingsModule.render(content); },
+          orgchart:      () => typeof OrgChartModule  !== 'undefined' ? OrgChartModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-sitemap"></i></div><div class="empty-title">الهيكل التنظيمي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
+          calendar:      () => typeof CalendarModule  !== 'undefined' ? CalendarModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-calendar-days"></i></div><div class="empty-title">تقويم الفريق</div><p class="empty-desc">الوحدة غير محملة</p></div>',
+          expenses:      () => typeof ExpensesModule  !== 'undefined' ? ExpensesModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-receipt"></i></div><div class="empty-title">المصروفات</div><p class="empty-desc">الوحدة غير محملة</p></div>',
         };
 
         if (modules[page]) {
@@ -667,22 +670,20 @@ const App = {
 
   // ─── LANGUAGE ─────────────────────────────────────────────
   setLanguage(lang) {
-    // Save language preference
     localStorage.setItem('app-lang', lang);
     currentLang = lang;
+    applyTranslations();
 
-    // Preserve current page in hash before reload
-    const page = this.state.currentPage || 'dashboard';
+    // Re-render current module so dynamic HTML also gets translated
     if (this.state.user) {
-      window.location.hash = page;
+      this._navigate(this.state.currentPage || 'dashboard');
     }
-
-    // Reload — cleanest way to apply language across all modules & CSS direction
-    window.location.reload();
   },
 
   toggleLanguage() {
-    this.setLanguage(currentLang === 'ar' ? 'en' : 'ar');
+    const order = ['ar', 'en', 'hi', 'ur', 'fil'];
+    const next = order[(order.indexOf(currentLang) + 1) % order.length];
+    this.setLanguage(next);
   },
 
   // ─── SIDEBAR ──────────────────────────────────────────────

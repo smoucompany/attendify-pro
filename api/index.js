@@ -96,7 +96,7 @@ async function authenticate(req, res, next) {
 const ALLOWED = new Set([
   'company','departments','employees','shifts','attendance',
   'leaves','requests','notifications','payroll','deductions','loans',
-  'locations','roles','audit_logs',
+  'expenses','locations','roles','audit_logs',
 ]);
 
 // ── Health ───────────────────────────────────────────────────
@@ -207,7 +207,7 @@ app.get('/api/data/all', authenticate, async (req, res) => {
   const tables = [
     'company','departments','employees','shifts','attendance',
     'leaves','requests','notifications','payroll','deductions','loans',
-    'locations','roles','audit_logs',
+    'expenses','locations','roles','audit_logs',
   ];
   try {
     const results = await Promise.all(tables.map(async (table) => {

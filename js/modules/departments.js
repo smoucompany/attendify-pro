@@ -47,7 +47,7 @@ const DepartmentsModule = {
       <div class="page-header">
         <div class="page-header-text">
           <h1>${t('departments.title')}</h1>
-          <p>${t('departments.subtitle')} — ${DB.departments.length} ${currentLang==='ar'?'قسم':t('nav.departments')}</p>
+          <p>${t('departments.subtitle')} — ${DB.departments.length} ${t('departments.deptUnit')}</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-primary" onclick="DepartmentsModule.openAdd()"><i class="fas fa-plus"></i> ${t('departments.addDept')}</button>

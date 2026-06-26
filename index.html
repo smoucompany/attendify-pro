@@ -212,8 +212,13 @@
         <!-- Header controls -->
         <div class="login-form-header">
           <div class="lang-switcher-login">
-            <button class="lang-btn active" data-lang="ar" onclick="App.setLanguage('ar')">عربي</button>
-            <button class="lang-btn" data-lang="en" onclick="App.setLanguage('en')">EN</button>
+            <select class="lang-select" onchange="App.setLanguage(this.value)">
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+              <option value="hi">हिंदी</option>
+              <option value="ur">اردو</option>
+              <option value="fil">Filipino</option>
+            </select>
           </div>
           <div class="theme-switcher-login">
             <button onclick="App.toggleTheme()" title="تغيير المظهر">
@@ -226,8 +231,8 @@
 
           <!-- Welcome -->
           <div class="login-welcome">
-            <h2>مرحباً بك</h2>
-            <p>اختر نوع الدخول المناسب لك</p>
+            <h2 data-i18n="login.welcome">مرحباً بك</h2>
+            <p data-i18n="login.subtitle">اختر نوع الدخول المناسب لك</p>
           </div>
 
           <!-- ── ROLE SELECTOR ── -->
@@ -237,8 +242,8 @@
                 <i class="fas fa-shield-halved"></i>
               </div>
               <div class="role-card-text">
-                <span class="role-card-title">لوحة الإدارة</span>
-                <span class="role-card-sub">مدراء · HR · مشرفون</span>
+                <span class="role-card-title" data-i18n="login.adminTitle">لوحة الإدارة</span>
+                <span class="role-card-sub" data-i18n="login.adminSub">مدراء · HR · مشرفون</span>
               </div>
               <i class="fas fa-check role-card-check" id="check-admin"></i>
             </button>
@@ -248,8 +253,8 @@
                 <i class="fas fa-user-tie"></i>
               </div>
               <div class="role-card-text">
-                <span class="role-card-title">بوابة الموظف</span>
-                <span class="role-card-sub">تسجيل حضور · تسجيل إنصراف</span>
+                <span class="role-card-title" data-i18n="login.empTitle">بوابة الموظف</span>
+                <span class="role-card-sub" data-i18n="login.empSub">تسجيل حضور · انصراف</span>
               </div>
               <i class="fas fa-arrow-left role-card-check" id="check-emp" style="display:flex;opacity:0.4;font-size:13px"></i>
             </button>
@@ -281,11 +286,11 @@
                   <span class="checkmark"></span>
                   <span data-i18n="login.remember">تذكرني</span>
                 </label>
-                <a href="#" class="forgot-link" onclick="App.forgotPassword(event)">نسيت كلمة المرور؟</a>
-                <a href="#" class="forgot-link" onclick="App._showSetupForm();event.preventDefault()" id="btn-register-link" style="display:none">إنشاء حساب جديد</a>
+                <a href="#" class="forgot-link" onclick="App.forgotPassword(event)" data-i18n="login.forgot">نسيت كلمة المرور؟</a>
+                <a href="#" class="forgot-link" onclick="App._showSetupForm();event.preventDefault()" id="btn-register-link" style="display:none" data-i18n="login.register">إنشاء حساب جديد</a>
               </div>
               <button type="submit" class="btn-login-submit" id="login-btn">
-                <span>دخول لوحة الإدارة</span>
+                <span data-i18n="login.adminBtn">دخول لوحة الإدارة</span>
                 <i class="fas fa-arrow-left btn-arrow"></i>
               </button>
             </form>
@@ -295,11 +300,11 @@
           <div id="form-employee" style="display:none">
             <form id="emp-login-form-main" onsubmit="LoginSwitch.empLogin(event)">
               <div class="form-group">
-                <label>كود الموظف</label>
+                <label data-i18n="login.empCode">كود الموظف</label>
                 <div class="input-wrapper">
                   <i class="fas fa-hashtag input-icon-left"></i>
                   <input type="text" id="main-emp-code" placeholder="مثال: 001" class="form-input" inputmode="numeric"
-                    autocomplete="off" required>
+                    autocomplete="off" required data-i18n-placeholder="login.empCodePlaceholder">
                 </div>
               </div>
               <div class="form-group">
@@ -313,7 +318,7 @@
                 </div>
               </div>
               <button type="submit" class="btn-login-submit btn-login-emp" id="emp-login-btn-main">
-                <span>دخول بوابة الموظف</span>
+                <span data-i18n="login.empBtn">دخول بوابة الموظف</span>
                 <i class="fas fa-arrow-left btn-arrow"></i>
               </button>
 
@@ -321,11 +326,11 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
                 <button type="button" onclick="LoginSwitch.biometricEmpLogin('fingerprint')" class="btn-biometric">
                   <i class="fas fa-fingerprint"></i>
-                  <span>بصمة الإصبع</span>
+                  <span data-i18n="login.fingerprint">بصمة الإصبع</span>
                 </button>
                 <button type="button" onclick="LoginSwitch.biometricEmpLogin('face')" class="btn-biometric">
                   <i class="fas fa-face-smile"></i>
-                  <span>بصمة الوجه</span>
+                  <span data-i18n="login.face">بصمة الوجه</span>
                 </button>
               </div>
             </form>
@@ -334,7 +339,10 @@
         </div><!-- /login-form-body -->
 
         <div class="login-form-footer">
-          <p>© 2025 Attendify Pro. جميع الحقوق محفوظة</p>
+          <span style="display:inline-flex;align-items:center;gap:6px;color:rgba(6,182,212,0.4);font-size:11px">
+            <i class="fas fa-lock" style="font-size:10px"></i>
+            © 2025 Attendify Pro
+          </span>
         </div>
       </div>
     </div>
@@ -430,6 +438,18 @@
                 <span class="sb-label" data-i18n="nav.departments">الأقسام</span>
               </a>
             </li>
+            <li class="nav-item" data-page="orgchart" data-tooltip="الهيكل التنظيمي">
+              <a href="#orgchart" class="sb-link">
+                <span class="sb-icon" style="--ic:#a78bfa;--ibg:rgba(167,139,250,.15)"><i class="fas fa-sitemap"></i></span>
+                <span class="sb-label" data-i18n="nav.orgchart">الهيكل التنظيمي</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="calendar" data-tooltip="تقويم الفريق">
+              <a href="#calendar" class="sb-link">
+                <span class="sb-icon" style="--ic:#38bdf8;--ibg:rgba(56,189,248,.15)"><i class="fas fa-calendar-days"></i></span>
+                <span class="sb-label" data-i18n="nav.calendar">تقويم الفريق</span>
+              </a>
+            </li>
           </ul>
         </div>
 
@@ -463,6 +483,12 @@
               <a href="#gratuity" class="sb-link">
                 <span class="sb-icon" style="--ic:#f59e0b;--ibg:rgba(245,158,11,.15)"><i class="fas fa-award"></i></span>
                 <span class="sb-label">نهاية الخدمة</span>
+              </a>
+            </li>
+            <li class="nav-item" data-page="expenses" data-tooltip="المصروفات">
+              <a href="#expenses" class="sb-link">
+                <span class="sb-icon" style="--ic:#fb923c;--ibg:rgba(251,146,60,.15)"><i class="fas fa-receipt"></i></span>
+                <span class="sb-label" data-i18n="nav.expenses">المصروفات</span>
               </a>
             </li>
             <li class="nav-item" data-page="reports" data-tooltip="التقارير">
@@ -585,12 +611,17 @@
             <i class="fas fa-moon" id="theme-icon"></i>
           </button>
 
-          <!-- Language Toggle -->
-          <button class="header-btn lang-toggle-btn" onclick="App.toggleLanguage()" title="تغيير اللغة"
-            id="lang-toggle-btn">
-            <i class="fas fa-globe"></i>
-            <span id="lang-label">EN</span>
-          </button>
+          <!-- Language Select -->
+          <div class="header-lang-wrapper">
+            <i class="fas fa-globe" style="font-size:13px;color:var(--text-muted)"></i>
+            <select class="lang-select header-lang-select" onchange="App.setLanguage(this.value)" id="lang-select-header">
+              <option value="ar">العربية</option>
+              <option value="en">English</option>
+              <option value="hi">हिंदी</option>
+              <option value="ur">اردو</option>
+              <option value="fil">Filipino</option>
+            </select>
+          </div>
 
           <!-- Sync Status -->
           <div id="sync-indicator" title="حالة المزامنة — انقر عند الخطأ للمزامنة" style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-muted);padding:4px 10px;border-radius:20px;background:var(--bg-secondary);border:1px solid var(--border);cursor:default;white-space:nowrap">
@@ -695,6 +726,9 @@
   <script src="js/modules/gratuity.js?v=1"></script>
   <script src="js/modules/profile.js?v=10"></script>
   <script src="js/modules/backup.js?v=10"></script>
+  <script src="js/modules/orgchart.js?v=1"></script>
+  <script src="js/modules/calendar.js?v=1"></script>
+  <script src="js/modules/expenses.js?v=1"></script>
   <script src="js/whatsapp.js?v=10"></script>
   <script src="js/biometrics.js?v=10"></script>
   <script src="js/config.js?v=10"></script>

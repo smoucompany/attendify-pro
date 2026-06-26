@@ -219,7 +219,7 @@ const LeavesModule = {
 
       DB.save();
       DB.addNotification({ title: 'موافقة على إجازة', desc: `تمت الموافقة على إجازة ${emp?.name||''} لمدة ${days} يوم`, type: 'leave', icon: 'fas fa-calendar-check', iconBg: 'gradient-success' });
-      App.toast('تمت الموافقة على الإجازة ✓', 'success');
+      App.toast(currentLang==='ar'?'تمت الموافقة على الإجازة ✓':'Leave approved ✓', 'success');
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'موافقة إجازة', 'الإجازات', `${emp?.name} — ${days} يوم`);
@@ -236,7 +236,7 @@ const LeavesModule = {
       leave.rejectedAt = new Date().toISOString();
       DB.save();
       DB.addNotification({ title: 'رفض إجازة', desc: `تم رفض طلب إجازة ${emp?.name||''}`, type: 'leave', icon: 'fas fa-calendar-xmark', iconBg: 'gradient-danger' });
-      App.toast('تم رفض الإجازة', 'error');
+      App.toast(currentLang==='ar'?'تم رفض الإجازة':'Leave rejected', 'error');
       App._updateBadges();
       this._renderList();
       DB.logAudit('admin', 'رفض إجازة', 'الإجازات', emp?.name||'');
@@ -246,16 +246,16 @@ const LeavesModule = {
 
   _offerWA(sendFn) {
     setTimeout(() => {
-      App.openModal('إرسال إشعار WhatsApp؟', `
+      App.openModal(t('leaves.waNotifyTitle'), `
         <div style="text-align:center;padding:16px 0">
           <div style="font-size:52px;margin-bottom:12px"><i class="fab fa-whatsapp" style="color:#25d366"></i></div>
-          <p style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:6px">هل تريد إبلاغ الموظف عبر WhatsApp؟</p>
-          <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">فعّل WhatsApp من الإعدادات للإرسال التلقائي</p>
+          <p style="font-size:15px;font-weight:700;color:var(--text-primary);margin-bottom:6px">${t('leaves.waNotifyQuestion')}</p>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:24px">${t('leaves.waNotifyHint')}</p>
           <div style="display:flex;gap:10px;justify-content:center">
             <button class="btn btn-success" onclick="App.navigate('settings');App.closeModal()">
-              <i class="fas fa-gear"></i> إعداد WhatsApp
+              <i class="fas fa-gear"></i> ${t('leaves.waSetup')}
             </button>
-            <button class="btn btn-secondary" onclick="App.closeModal()">تخطي</button>
+            <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
           </div>
         </div>
       `, { size: 'sm' });
@@ -268,7 +268,7 @@ const LeavesModule = {
     const type  = App.getLeaveTypeLabel(leave?.type);
     if (!leave) return;
 
-    App.openModal(currentLang==='ar'?'تفاصيل الإجازة':'Leave Details', `
+    App.openModal(t('leaves.details'), `
       <div style="text-align:center;margin-bottom:20px">
         <div style="margin:0 auto 10px;width:60px">${App.renderAvatar(emp, 60, 14)}</div>
         <div style="font-size:16px;font-weight:700">${emp?.name}</div>
@@ -281,7 +281,7 @@ const LeavesModule = {
           [t('leaves.fromDate'), App.formatDate(leave.from)],
           [t('leaves.toDate'),   App.formatDate(leave.to)],
           [t('leaves.days'),     leave.days + ' ' + t('leaves.days')],
-          [currentLang==='ar'?'تاريخ الطلب':'Applied On', App.formatDate(leave.appliedOn)],
+          [t('leaves.appliedOn'), App.formatDate(leave.appliedOn)],
         ].map(([label, val]) => `
           <div style="background:var(--bg-input);border-radius:8px;padding:10px">
             <div style="font-size:11px;color:var(--text-muted)">${label}</div>

@@ -22,10 +22,10 @@ const ReportsModule = {
         </div>
         <div class="page-header-actions" style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-secondary" onclick="ReportsModule.openExportModal()">
-            <i class="fas fa-file-export"></i> ${ar?'تصدير':'Export'}
+            <i class="fas fa-file-export"></i> ${t('reports.export')}
           </button>
           <button class="btn btn-secondary" onclick="ReportsModule.printReport()">
-            <i class="fas fa-print"></i> ${ar?'طباعة':'Print'}
+            <i class="fas fa-print"></i> ${t('reports.print')}
           </button>
         </div>
       </div>
@@ -33,12 +33,12 @@ const ReportsModule = {
       <!-- KPI quick-stats bar -->
       <div class="rpt-kpi-bar">
         ${[
-          { v: stats.total,              l: ar?'إجمالي الموظفين':'Total Employees',  i:'fas fa-users',         c:'#6366f1' },
-          { v: stats.present+stats.late, l: ar?'حاضر اليوم':'Present Today',        i:'fas fa-user-check',     c:'#10b981' },
-          { v: stats.late,               l: ar?'متأخرون':'Late',                     i:'fas fa-clock',          c:'#f59e0b' },
-          { v: stats.absent,             l: ar?'غائبون':'Absent',                    i:'fas fa-user-xmark',     c:'#ef4444' },
-          { v: stats.attendanceRate+'%', l: ar?'معدل الحضور':'Attendance Rate',      i:'fas fa-percent',        c:'#8b5cf6' },
-          { v: DB.leaves.filter(l=>l.status==='pending').length, l:ar?'إجازات معلقة':'Pending Leaves', i:'fas fa-calendar', c:'#06b6d4' },
+          { v: stats.total,              l: t('reports.kpiTotalEmployees'),  i:'fas fa-users',         c:'#6366f1' },
+          { v: stats.present+stats.late, l: t('reports.kpiPresentToday'),   i:'fas fa-user-check',     c:'#10b981' },
+          { v: stats.late,               l: t('reports.kpiLate'),            i:'fas fa-clock',          c:'#f59e0b' },
+          { v: stats.absent,             l: t('reports.kpiAbsent'),          i:'fas fa-user-xmark',     c:'#ef4444' },
+          { v: stats.attendanceRate+'%', l: t('reports.kpiAttendanceRate'),  i:'fas fa-percent',        c:'#8b5cf6' },
+          { v: DB.leaves.filter(l=>l.status==='pending').length, l:t('reports.kpiPendingLeaves'), i:'fas fa-calendar', c:'#06b6d4' },
         ].map(k=>`
           <div class="rpt-kpi-item">
             <span class="rpt-kpi-icon" style="background:${k.c}22;color:${k.c}"><i class="${k.i}"></i></span>
@@ -59,7 +59,7 @@ const ReportsModule = {
               <div class="rpt-type-name">${t('reports.'+r.key)}</div>
               <div class="rpt-type-desc">${r.desc}</div>
             </div>
-            <div class="rpt-type-arrow"><i class="fas fa-chevron-${ar?'left':'right'}"></i></div>
+            <div class="rpt-type-arrow"><i class="fas fa-chevron-${currentLang==='ar'?'left':'right'}"></i></div>
           </div>
         `).join('')}
       </div>
@@ -73,7 +73,7 @@ const ReportsModule = {
           <div class="card-header">
             <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700">
               <span style="width:28px;height:28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:12px"><i class="fas fa-chart-bar"></i></span>
-              ${ar?'الحضور حسب القسم':'Attendance by Department'}
+              ${t('reports.attendanceByDept')}
             </h3>
           </div>
           <div class="card-body"><div class="chart-container" style="height:240px"><canvas id="dept-bar-chart"></canvas></div></div>
@@ -82,7 +82,7 @@ const ReportsModule = {
           <div class="card-header">
             <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700">
               <span style="width:28px;height:28px;background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-size:12px"><i class="fas fa-chart-line"></i></span>
-              ${ar?'اتجاه الحضور الشهري':'Monthly Attendance Trend'}
+              ${t('reports.monthlyTrend')}
             </h3>
           </div>
           <div class="card-body"><div class="chart-container" style="height:240px"><canvas id="monthly-chart"></canvas></div></div>
@@ -99,12 +99,12 @@ const ReportsModule = {
   _reportTypes() {
     const ar = currentLang === 'ar';
     return [
-      { key:'attendance', icon:'fas fa-clock',           color:'gradient-primary', desc: ar?'حضور وغياب يومي وشهري للموظفين':'Daily & monthly attendance records' },
-      { key:'late',       icon:'fas fa-clock-rotate-left',color:'gradient-warning', desc: ar?'التأخرات وأسبابها وتكلفتها المالية':'Late arrivals with financial impact' },
-      { key:'overtime',   icon:'fas fa-hourglass-half',  color:'gradient-success', desc: ar?'ساعات العمل الإضافية وتكاليفها':'Overtime hours and associated costs' },
-      { key:'leave',      icon:'fas fa-calendar-minus',  color:'gradient-danger',  desc: ar?'الإجازات المأخوذة والأرصدة المتبقية':'Leave taken and remaining balances' },
-      { key:'payroll',    icon:'fas fa-money-bill-wave', color:'gradient-cyan',    desc: ar?'الرواتب والخصومات والبدلات':'Salaries, deductions & allowances' },
-      { key:'summary',    icon:'fas fa-chart-line',      color:'gradient-rose',    desc: ar?'ملخص شامل لمؤشرات الأداء الرئيسية':'Comprehensive KPI performance summary' },
+      { key:'attendance', icon:'fas fa-clock',           color:'gradient-primary', desc: t('reports.descAttendance') },
+      { key:'late',       icon:'fas fa-clock-rotate-left',color:'gradient-warning', desc: t('reports.descLate') },
+      { key:'overtime',   icon:'fas fa-hourglass-half',  color:'gradient-success', desc: t('reports.descOvertime') },
+      { key:'leave',      icon:'fas fa-calendar-minus',  color:'gradient-danger',  desc: t('reports.descLeave') },
+      { key:'payroll',    icon:'fas fa-money-bill-wave', color:'gradient-cyan',    desc: t('reports.descPayroll') },
+      { key:'summary',    icon:'fas fa-chart-line',      color:'gradient-rose',    desc: t('reports.descSummary') },
     ];
   },
 
@@ -129,7 +129,7 @@ const ReportsModule = {
               <div style="font-size:12px;color:var(--text-muted)">${rpt?.desc||''}</div>
             </div>
           </div>
-          <button class="btn btn-ghost btn-icon" onclick="document.getElementById('report-area').innerHTML='';ReportsModule._activeType=null" title="${ar?'إغلاق':'Close'}">
+          <button class="btn btn-ghost btn-icon" onclick="document.getElementById('report-area').innerHTML='';ReportsModule._activeType=null" title="${t('common.close')}">
             <i class="fas fa-xmark"></i>
           </button>
         </div>
@@ -137,29 +137,29 @@ const ReportsModule = {
         <!-- Filter bar -->
         <div class="rpt-filter-bar">
           <div class="rpt-filter-group">
-            <label>${ar?'من':'From'}</label>
+            <label>${t('common.from')}</label>
             <input class="app-form-input" type="date" id="rpt-from" value="${from}">
           </div>
           <div class="rpt-filter-group">
-            <label>${ar?'إلى':'To'}</label>
+            <label>${t('common.to')}</label>
             <input class="app-form-input" type="date" id="rpt-to" value="${to}">
           </div>
           <div class="rpt-filter-group">
-            <label>${ar?'القسم':'Department'}</label>
+            <label>${t('reports.department')}</label>
             <select class="app-form-input" id="rpt-dept">
-              <option value="all">${ar?'جميع الأقسام':'All Departments'}</option>
+              <option value="all">${t('reports.allDepartments')}</option>
               ${DB.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}
             </select>
           </div>
           <div class="rpt-filter-actions">
             <button class="btn btn-primary" onclick="ReportsModule._buildReport('${type}')">
-              <i class="fas fa-magnifying-glass"></i> ${ar?'عرض التقرير':'Generate'}
+              <i class="fas fa-magnifying-glass"></i> ${t('reports.generate')}
             </button>
             <button class="btn btn-success" onclick="ReportsModule._exportCSVReport('${type}')">
               <i class="fas fa-file-csv"></i> CSV
             </button>
             <button class="btn btn-secondary" onclick="ReportsModule.printReport('${type}')">
-              <i class="fas fa-print"></i> ${ar?'طباعة':'Print'}
+              <i class="fas fa-print"></i> ${t('reports.print')}
             </button>
           </div>
         </div>
@@ -175,7 +175,7 @@ const ReportsModule = {
   _buildReport(type) {
     const content = document.getElementById('report-content');
     if (!content) return;
-    content.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:48px;color:var(--text-muted)"><div class="loading-spinner" style="width:32px;height:32px;margin-${currentLang==='ar'?'left':'right'}:12px"></div> ${currentLang==='ar'?'جارٍ إنشاء التقرير...':'Generating report...'}</div>`;
+    content.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:48px;color:var(--text-muted)"><div class="loading-spinner" style="width:32px;height:32px;margin-${currentLang==='ar'?'left':'right'}:12px"></div> ${t('reports.generating')}</div>`;
 
     setTimeout(() => {
       const from = document.getElementById('rpt-from')?.value;
@@ -259,15 +259,15 @@ const ReportsModule = {
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:total,          l:ar?'إجمالي السجلات':'Total Records',  c:'#6366f1', i:'fas fa-list'},
-        {v:present,        l:ar?'حاضر':'Present',                   c:'#10b981', i:'fas fa-user-check'},
-        {v:late,           l:ar?'متأخر':'Late',                     c:'#f59e0b', i:'fas fa-clock'},
-        {v:absent,         l:ar?'غائب':'Absent',                    c:'#ef4444', i:'fas fa-user-xmark'},
-        {v:onLeave,        l:ar?'إجازة':'On Leave',                 c:'#06b6d4', i:'fas fa-calendar-minus'},
-        {v:pct+'%',        l:ar?'معدل الحضور':'Attendance Rate',    c:'#8b5cf6', i:'fas fa-percent'},
+        {v:total,          l:t('reports.totalRecords'),   c:'#6366f1', i:'fas fa-list'},
+        {v:present,        l:t('reports.present'),        c:'#10b981', i:'fas fa-user-check'},
+        {v:late,           l:t('reports.late'),           c:'#f59e0b', i:'fas fa-clock'},
+        {v:absent,         l:t('reports.absent'),         c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:onLeave,        l:t('reports.onLeave'),        c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:pct+'%',        l:t('reports.attendanceRate'), c:'#8b5cf6', i:'fas fa-percent'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الدخول':'Check-in', ar?'الخروج':'Check-out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'],
+        [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.checkOut'), t('reports.hours'), t('reports.status')],
         records.slice(0,100).map(a => {
           const emp  = DB.getEmployee(a.empId);
           const hrs  = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
@@ -280,7 +280,7 @@ const ReportsModule = {
             App.getStatusBadge(a.status||'present'),
           ];
         }),
-        records.length > 100 ? `<div class="rpt-more-note"><i class="fas fa-info-circle"></i> ${ar?`عرض أول 100 من ${records.length} سجل`:`Showing first 100 of ${records.length} records`}</div>` : ''
+        records.length > 100 ? `<div class="rpt-more-note"><i class="fas fa-info-circle"></i> ${t('reports.showingFirst100').replace('{n}', records.length)}</div>` : ''
       )}
     `;
   },
@@ -321,32 +321,32 @@ const ReportsModule = {
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:lates.length,                  l:ar?'حالات التأخر':'Late Cases',         c:'#f59e0b', i:'fas fa-clock-rotate-left'},
-        {v:Object.keys(empMap).length,    l:ar?'موظفون متأخرون':'Late Employees',    c:'#ef4444', i:'fas fa-user-clock'},
-        {v:totalMin+' '+(ar?'د':'m'),     l:ar?'إجمالي الدقائق':'Total Minutes',     c:'#ef4444', i:'fas fa-stopwatch'},
-        {v:App.formatCurrency(totalCost), l:ar?'إجمالي الخصومات':'Total Deductions', c:'#6366f1', i:'fas fa-money-bill-wave'},
-        {v:lates.length>0?Math.round(totalMin/lates.length)+(ar?' د':' m'):'0',l:ar?'متوسط التأخر/حالة':'Avg per Case', c:'#8b5cf6', i:'fas fa-calculator'},
+        {v:lates.length,                  l:t('reports.lateCases'),      c:'#f59e0b', i:'fas fa-clock-rotate-left'},
+        {v:Object.keys(empMap).length,    l:t('reports.lateEmployees'),  c:'#ef4444', i:'fas fa-user-clock'},
+        {v:totalMin+' '+(currentLang==='ar'?'د':'m'), l:t('reports.totalMinutes'), c:'#ef4444', i:'fas fa-stopwatch'},
+        {v:App.formatCurrency(totalCost), l:t('reports.totalDeductions'),c:'#6366f1', i:'fas fa-money-bill-wave'},
+        {v:lates.length>0?Math.round(totalMin/lates.length)+(currentLang==='ar'?' د':' m'):'0',l:t('reports.avgPerCase'), c:'#8b5cf6', i:'fas fa-calculator'},
       ])}
 
       <!-- ملخص بالموظف -->
       ${Object.keys(empMap).length ? `
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><h3 style="font-size:13px;font-weight:700">${ar?'ملخص التأخرات لكل موظف':'Late Summary per Employee'}</h3></div>
+        <div class="card-header"><h3 style="font-size:13px;font-weight:700">${t('reports.lateSummaryByEmployee')}</h3></div>
         <div class="table-wrapper" style="border:none">
           <table class="data-table">
             <thead><tr>
-              <th>${ar?'الموظف':'Employee'}</th>
-              <th>${ar?'عدد مرات التأخر':'Times Late'}</th>
-              <th>${ar?'إجمالي الدقائق':'Total Minutes'}</th>
-              <th>${ar?'إجمالي الخصم':'Total Deduction'}</th>
+              <th>${t('reports.employee')}</th>
+              <th>${t('reports.timesLate')}</th>
+              <th>${t('reports.totalMinutes')}</th>
+              <th>${t('reports.totalDeduction')}</th>
             </tr></thead>
             <tbody>
               ${Object.entries(empMap).sort((a,b)=>b[1].totalMin-a[1].totalMin).map(([eid, d]) => {
                 const emp = DB.getEmployee(eid);
                 return `<tr>
                   <td><div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600">${emp?.name||'—'}</span></div></td>
-                  <td><span class="badge badge-warning">${d.count} ${ar?'مرة':'times'}</span></td>
-                  <td><span style="color:var(--warning);font-weight:700">${d.totalMin} ${ar?'د':'m'}</span></td>
+                  <td><span class="badge badge-warning">${d.count} ${t('reports.times')}</span></td>
+                  <td><span style="color:var(--warning);font-weight:700">${d.totalMin} ${currentLang==='ar'?'د':'m'}</span></td>
                   <td><span style="color:var(--danger);font-weight:700">${App.formatCurrency(d.totalDed)}</span></td>
                 </tr>`;
               }).join('')}
@@ -357,7 +357,7 @@ const ReportsModule = {
 
       <!-- التفاصيل اليومية -->
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'القسم':'Dept', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)', ar?'الخصم المقدر':'Est. Deduction'],
+        [t('reports.employee'), t('reports.dept'), t('reports.date'), t('reports.checkIn'), t('reports.lateMin'), t('reports.estDeduction')],
         lates.slice(0,100).map(a => {
           const emp  = DB.getEmployee(a.empId);
           const min  = _lateMin(a);
@@ -367,7 +367,7 @@ const ReportsModule = {
             `<span style="font-size:12px;color:var(--text-muted)">${DB.getDepartment(emp?.dept)?.name||'—'}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
             `<span style="color:var(--warning);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>`,
-            `<span class="badge" style="background:rgba(239,68,68,0.1);color:var(--danger);border-radius:8px">+${min} ${ar?'د':'m'}</span>`,
+            `<span class="badge" style="background:rgba(239,68,68,0.1);color:var(--danger);border-radius:8px">+${min} ${currentLang==='ar'?'د':'m'}</span>`,
             `<span style="color:var(--danger);font-weight:700">${ded>0?App.formatCurrency(ded):'—'}</span>`,
           ];
         })
@@ -384,13 +384,13 @@ const ReportsModule = {
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:ots.length,               l:ar?'سجلات إضافي':'OT Records',    c:'#10b981', i:'fas fa-hourglass-half'},
-        {v:totalHrs+' '+(ar?'س':'h'),l:ar?'إجمالي الساعات':'Total Hours', c:'#6366f1', i:'fas fa-clock'},
-        {v:App.formatCurrency(totalCost), l:ar?'إجمالي التكاليف':'Total Cost',  c:'#8b5cf6', i:'fas fa-money-bill'},
-        {v:ots.length>0?Math.round(totalHrs/ots.length)+(ar?' س':' h'):'0', l:ar?'متوسط/سجل':'Avg/Record', c:'#06b6d4', i:'fas fa-calculator'},
+        {v:ots.length,                       l:t('reports.otRecords'),    c:'#10b981', i:'fas fa-hourglass-half'},
+        {v:totalHrs+' '+(currentLang==='ar'?'س':'h'), l:t('reports.totalHours'), c:'#6366f1', i:'fas fa-clock'},
+        {v:App.formatCurrency(totalCost),    l:t('reports.totalCost'),    c:'#8b5cf6', i:'fas fa-money-bill'},
+        {v:ots.length>0?Math.round(totalHrs/ots.length)+(currentLang==='ar'?' س':' h'):'0', l:t('reports.avgPerRecord'), c:'#06b6d4', i:'fas fa-calculator'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'ساعات إضافي':'OT Hours', ar?'المعدل':'Rate', ar?'التكلفة':'Cost'],
+        [t('reports.employee'), t('reports.date'), t('reports.otHours'), t('reports.rate'), t('reports.cost')],
         ots.slice(0,50).map(a => {
           const emp  = DB.getEmployee(a.empId);
           const hrs  = parseInt(a.overtime)||0;
@@ -418,13 +418,13 @@ const ReportsModule = {
 
     container.innerHTML = `
       ${this._miniStats([
-        {v:leaves.length, l:ar?'إجمالي طلبات الإجازة':'Total Requests', c:'#6366f1', i:'fas fa-calendar'},
-        {v:approved,      l:ar?'معتمدة':'Approved',                      c:'#10b981', i:'fas fa-check-circle'},
-        {v:pending,       l:ar?'معلقة':'Pending',                        c:'#f59e0b', i:'fas fa-hourglass'},
-        {v:totalDays,     l:ar?'إجمالي الأيام':'Total Days',             c:'#8b5cf6', i:'fas fa-calendar-days'},
+        {v:leaves.length, l:t('reports.totalRequests'),   c:'#6366f1', i:'fas fa-calendar'},
+        {v:approved,      l:t('reports.approved'),        c:'#10b981', i:'fas fa-check-circle'},
+        {v:pending,       l:t('reports.pending'),         c:'#f59e0b', i:'fas fa-hourglass'},
+        {v:totalDays,     l:t('reports.totalDays'),       c:'#8b5cf6', i:'fas fa-calendar-days'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'نوع الإجازة':'Leave Type', ar?'من':'From', ar?'إلى':'To', ar?'الأيام':'Days', ar?'الحالة':'Status'],
+        [t('reports.employee'), t('reports.leaveType'), t('common.from'), t('common.to'), t('reports.days'), t('reports.status')],
         leaves.map(l => {
           const emp  = DB.getEmployee(l.empId);
           const type = App.getLeaveTypeLabel(l.type);
@@ -433,7 +433,7 @@ const ReportsModule = {
             `<span style="color:${type.color};font-weight:600">${type.label}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted)">${App.formatDate(l.from)}</span>`,
             `<span style="font-family:var(--font-en);color:var(--text-muted)">${App.formatDate(l.to)}</span>`,
-            `<span style="font-weight:700;color:var(--primary)">${l.days} ${ar?'أيام':'days'}</span>`,
+            `<span style="font-weight:700;color:var(--primary)">${l.days} ${t('reports.days')}</span>`,
             App.getStatusBadge(l.status),
           ];
         })
@@ -525,31 +525,31 @@ const ReportsModule = {
 
     container.innerHTML = `
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;background:var(--bg-input);border-radius:8px;padding:10px 14px">
-        <i class="fas fa-calendar"></i> ${ar?'الفترة:':'Period:'} <strong>${from}</strong> ${ar?'إلى':'to'} <strong>${to}</strong>
-        &nbsp;|&nbsp; ${ar?'أيام العمل:':'Working days:'} <strong>${workingDayCount}</strong>
-        &nbsp;|&nbsp; ${ar?'إجمالي الموظفين:':'Employees:'} <strong>${rows.length}</strong>
+        <i class="fas fa-calendar"></i> ${t('reports.period')}: <strong>${from}</strong> ${t('common.to')} <strong>${to}</strong>
+        &nbsp;|&nbsp; ${t('reports.workingDays')}: <strong>${workingDayCount}</strong>
+        &nbsp;|&nbsp; ${t('reports.totalEmployees')}: <strong>${rows.length}</strong>
       </div>
       ${this._miniStats([
-        {v:rows.length,               l:ar?'عدد الموظفين':'Employees',     c:'#6366f1', i:'fas fa-users'},
-        {v:App.formatCurrency(totalBase),  l:ar?'إجمالي الأساسي':'Base Total',    c:'#10b981', i:'fas fa-coins'},
-        {v:App.formatCurrency(totalAllow), l:ar?'إجمالي البدلات':'Allowances',    c:'#8b5cf6', i:'fas fa-plus-circle'},
-        {v:App.formatCurrency(totalDed),   l:ar?'إجمالي الخصومات':'Deductions',   c:'#ef4444', i:'fas fa-minus-circle'},
-        {v:App.formatCurrency(totalOT),    l:ar?'إضافي':'Overtime',               c:'#06b6d4', i:'fas fa-hourglass-half'},
-        {v:App.formatCurrency(totalNet),   l:ar?'إجمالي الصافي':'Net Total',      c:'#14b8a6', i:'fas fa-money-bill-wave'},
+        {v:rows.length,               l:t('reports.employees'),     c:'#6366f1', i:'fas fa-users'},
+        {v:App.formatCurrency(totalBase),  l:t('reports.baseTotal'),     c:'#10b981', i:'fas fa-coins'},
+        {v:App.formatCurrency(totalAllow), l:t('reports.allowances'),    c:'#8b5cf6', i:'fas fa-plus-circle'},
+        {v:App.formatCurrency(totalDed),   l:t('reports.deductions'),    c:'#ef4444', i:'fas fa-minus-circle'},
+        {v:App.formatCurrency(totalOT),    l:t('reports.overtime'),      c:'#06b6d4', i:'fas fa-hourglass-half'},
+        {v:App.formatCurrency(totalNet),   l:t('reports.netTotal'),      c:'#14b8a6', i:'fas fa-money-bill-wave'},
       ])}
       ${this._tableCard(
-        [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'البدلات':'Allowances',
-         ar?'أيام الغياب':'Absent', ar?'التأخر':'Late', ar?'الخصومات':'Deductions',
-         ar?'إضافي':'Overtime', ar?'الصافي':'Net'],
+        [t('reports.employee'), t('reports.base'), t('reports.allowances'),
+         t('reports.absentDays'), t('reports.late'), t('reports.deductions'),
+         t('reports.overtime'), t('reports.net')],
         rows.map(r => [
           `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(r.emp, 28, 8)}<span style="font-weight:600;font-size:13px">${r.emp.name||'—'}</span></div>`,
           `<span style="font-weight:600">${App.formatCurrency(r.base)}</span>`,
           `<span style="color:var(--success)">${App.formatCurrency(r.allow)}</span>`,
           r.absentDays > 0
-            ? `<span class="badge badge-danger">${r.absentDays} ${ar?'يوم':'days'}</span>`
+            ? `<span class="badge badge-danger">${r.absentDays} ${t('reports.days')}</span>`
             : '<span style="color:var(--text-muted)">—</span>',
           r.lateMins > 0
-            ? `<span class="badge badge-warning">${r.lateMins} ${ar?'د':'m'}</span>`
+            ? `<span class="badge badge-warning">${r.lateMins} ${currentLang==='ar'?'د':'m'}</span>`
             : '<span style="color:var(--text-muted)">—</span>',
           r.totalDed > 0
             ? `<span style="color:var(--danger);font-weight:700">-${App.formatCurrency(r.totalDed)}</span>`
@@ -560,7 +560,7 @@ const ReportsModule = {
           `<span style="font-weight:800;color:var(--primary);font-size:13px">${App.formatCurrency(r.net)}</span>`,
         ]),
         `<div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;gap:0;border-top:2px solid var(--primary);padding:12px 16px;background:var(--bg-input)">
-          <div style="font-weight:800;color:var(--text-primary)">${ar?'المجموع':'Total'}</div>
+          <div style="font-weight:800;color:var(--text-primary)">${t('reports.total')}</div>
           <div style="font-weight:700">${App.formatCurrency(totalBase)}</div>
           <div style="font-weight:700;color:var(--success)">${App.formatCurrency(totalAllow)}</div>
           <div>—</div><div>—</div>
@@ -611,35 +611,35 @@ const ReportsModule = {
 
     container.innerHTML = `
       <!-- اليوم -->
-      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">${ar?'الوضع الحالي (اليوم)':'Current Status (Today)'}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase">${t('reports.currentStatusToday')}</div>
       ${this._miniStats([
-        {v:todayStats.total,              l:ar?'إجمالي الموظفين':'Total Employees', c:'#6366f1', i:'fas fa-users'},
-        {v:todayStats.present+todayStats.late, l:ar?'حاضرون اليوم':'Present Today', c:'#10b981', i:'fas fa-user-check'},
-        {v:todayStats.late,               l:ar?'متأخرون':'Late Today',              c:'#f59e0b', i:'fas fa-clock'},
-        {v:todayStats.absent,             l:ar?'غائبون':'Absent Today',             c:'#ef4444', i:'fas fa-user-xmark'},
-        {v:todayStats.onLeave,            l:ar?'في إجازة':'On Leave',              c:'#06b6d4', i:'fas fa-calendar-minus'},
-        {v:todayStats.attendanceRate+'%', l:ar?'معدل الحضور اليوم':'Rate Today',   c:'#8b5cf6', i:'fas fa-percent'},
+        {v:todayStats.total,              l:t('reports.kpiTotalEmployees'), c:'#6366f1', i:'fas fa-users'},
+        {v:todayStats.present+todayStats.late, l:t('reports.kpiPresentToday'), c:'#10b981', i:'fas fa-user-check'},
+        {v:todayStats.late,               l:t('reports.lateToday'),         c:'#f59e0b', i:'fas fa-clock'},
+        {v:todayStats.absent,             l:t('reports.absentToday'),       c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:todayStats.onLeave,            l:t('reports.onLeave'),           c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:todayStats.attendanceRate+'%', l:t('reports.rateToday'),         c:'#8b5cf6', i:'fas fa-percent'},
       ])}
 
       <!-- الشهر الحالي -->
       <div style="font-size:12px;font-weight:700;color:var(--text-muted);margin:16px 0 8px;text-transform:uppercase">
-        ${ar?'إحصائيات الشهر الحالي':'Current Month Statistics'}
-        <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-right:8px">(${from} — ${to}) | ${ar?'أيام العمل:':'Working days:'} ${workDays}</span>
+        ${t('reports.currentMonthStats')}
+        <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-right:8px">(${from} — ${to}) | ${t('reports.workingDays')}: ${workDays}</span>
       </div>
       ${this._miniStats([
-        {v:mPresent,      l:ar?'سجلات حضور':'Present Records',  c:'#10b981', i:'fas fa-user-check'},
-        {v:mLate,         l:ar?'حالات تأخر':'Late Cases',        c:'#f59e0b', i:'fas fa-clock'},
-        {v:mAbsent,       l:ar?'أيام غياب':'Absent Days',        c:'#ef4444', i:'fas fa-user-xmark'},
-        {v:mLeave,        l:ar?'أيام إجازة':'Leave Days',        c:'#06b6d4', i:'fas fa-calendar-minus'},
-        {v:mRate+'%',     l:ar?'معدل الحضور الشهري':'Monthly Rate', c:'#8b5cf6', i:'fas fa-percent'},
-        {v:Math.round(totalOTMins/60)+(ar?' س':' h'), l:ar?'ساعات إضافي':'Overtime Hrs', c:'#a855f7', i:'fas fa-hourglass-half'},
-        {v:pendingL+pendingR, l:ar?'طلبات معلقة':'Pending',      c:'#f43f5e', i:'fas fa-file-circle-exclamation'},
-        {v:App.formatCurrency(totalPay), l:ar?'إجمالي الرواتب':'Total Payroll', c:'#14b8a6', i:'fas fa-money-bill-wave'},
+        {v:mPresent,      l:t('reports.presentRecords'),  c:'#10b981', i:'fas fa-user-check'},
+        {v:mLate,         l:t('reports.lateCases'),       c:'#f59e0b', i:'fas fa-clock'},
+        {v:mAbsent,       l:t('reports.absentDays'),      c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:mLeave,        l:t('reports.leaveDays'),       c:'#06b6d4', i:'fas fa-calendar-minus'},
+        {v:mRate+'%',     l:t('reports.monthlyRate'),     c:'#8b5cf6', i:'fas fa-percent'},
+        {v:Math.round(totalOTMins/60)+(currentLang==='ar'?' س':' h'), l:t('reports.overtimeHrs'), c:'#a855f7', i:'fas fa-hourglass-half'},
+        {v:pendingL+pendingR, l:t('reports.pendingRequests'), c:'#f43f5e', i:'fas fa-file-circle-exclamation'},
+        {v:App.formatCurrency(totalPay), l:t('reports.totalPayroll'), c:'#14b8a6', i:'fas fa-money-bill-wave'},
       ])}
 
       <!-- أعلى الأقسام -->
       <div class="card" style="margin-top:16px">
-        <div class="card-header"><h3 style="font-size:14px;font-weight:700">${ar?'معدل الحضور الشهري حسب القسم':'Monthly Attendance Rate by Department'}</h3></div>
+        <div class="card-header"><h3 style="font-size:14px;font-weight:700">${t('reports.monthlyRateByDept')}</h3></div>
         <div class="card-body" style="padding:0">
           ${DB.departments.map(d=>{
             const dEmps  = DB.employees.filter(e=>e.dept===d.id&&e.status==='active');
@@ -658,7 +658,7 @@ const ReportsModule = {
                 <div style="font-size:12px;font-weight:700;color:${pct>=80?'var(--success)':pct>=60?'var(--warning)':'var(--danger)'};min-width:80px;text-align:center">
                   ${dPres}/${dTotal} <span style="color:var(--text-muted)">(${pct}%)</span>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);min-width:50px;text-align:center">${dEmps.length} ${ar?'موظف':'emp'}</div>
+                <div style="font-size:11px;color:var(--text-muted);min-width:50px;text-align:center">${dEmps.length} ${t('reports.emp')}</div>
               </div>`;
           }).join('')}
         </div>
@@ -685,7 +685,7 @@ const ReportsModule = {
 
   _tableCard(headers, rows, footer='') {
     const ar = currentLang === 'ar';
-    if (!rows.length) return `<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px 20px"><div class="empty-icon"><i class="fas fa-inbox"></i></div><div class="empty-title">${ar?'لا توجد بيانات':'No Data'}</div><p class="empty-sub">${ar?'لا توجد سجلات في النطاق المحدد':'No records found in selected range'}</p></div></div></div>`;
+    if (!rows.length) return `<div class="card"><div class="card-body"><div class="empty-state" style="padding:40px 20px"><div class="empty-icon"><i class="fas fa-inbox"></i></div><div class="empty-title">${t('common.noData')}</div><p class="empty-sub">${t('reports.noRecordsInRange')}</p></div></div></div>`;
     return `
       <div class="card">
         <div class="table-wrapper" style="border:none">
@@ -733,12 +733,12 @@ const ReportsModule = {
     const from = now.toISOString().slice(0,7)+'-01';
     const to   = now.toISOString().slice(0,10);
 
-    App.openModal(ar?'تصدير التقرير':'Export Report', `
+    App.openModal(t('reports.exportReport'), `
       <div style="display:flex;flex-direction:column;gap:20px">
 
         <!-- Report type selector -->
         <div>
-          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:8px">${ar?'نوع التقرير':'Report Type'}</label>
+          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:8px">${t('reports.reportType')}</label>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="exp-type-grid">
             ${this._reportTypes().map(r=>`
               <label class="rpt-exp-type-opt ${r.key===type?'selected':''}" style="cursor:pointer">
@@ -752,20 +752,20 @@ const ReportsModule = {
 
         <!-- Date range -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div><label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">${ar?'من':'From'}</label>
+          <div><label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">${t('common.from')}</label>
             <input class="app-form-input" type="date" id="exp-from" value="${from}"></div>
-          <div><label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">${ar?'إلى':'To'}</label>
+          <div><label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">${t('common.to')}</label>
             <input class="app-form-input" type="date" id="exp-to" value="${to}"></div>
         </div>
 
         <!-- Format -->
         <div>
-          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:8px">${ar?'صيغة التصدير':'Export Format'}</label>
+          <label style="font-size:12px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:8px">${t('reports.exportFormat')}</label>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
             ${[
-              {id:'fmt-csv',  icon:'fas fa-file-csv',  label:'CSV',             sub:ar?'Excel & Google Sheets':'Excel & Google Sheets', color:'#10b981'},
-              {id:'fmt-json', icon:'fas fa-code',       label:'JSON',            sub:ar?'للمطورين':'For developers',    color:'#6366f1'},
-              {id:'fmt-print',icon:'fas fa-print',      label:ar?'طباعة':'Print', sub:ar?'PDF أو ورق':'PDF or paper',   color:'#f59e0b'},
+              {id:'fmt-csv',  icon:'fas fa-file-csv',  label:'CSV',                    sub:'Excel & Google Sheets',         color:'#10b981'},
+              {id:'fmt-json', icon:'fas fa-code',       label:'JSON',                   sub:t('reports.forDevelopers'),      color:'#6366f1'},
+              {id:'fmt-print',icon:'fas fa-print',      label:t('reports.print'),       sub:t('reports.pdfOrPaper'),         color:'#f59e0b'},
             ].map(f=>`
               <label class="rpt-exp-fmt-opt" style="cursor:pointer">
                 <input type="radio" name="exp-fmt" value="${f.id.replace('fmt-','')}" ${f.id==='fmt-csv'?'checked':''} style="display:none"
@@ -781,9 +781,9 @@ const ReportsModule = {
 
         <!-- Actions -->
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn btn-secondary" onclick="App.closeModal()">${ar?'إلغاء':'Cancel'}</button>
+          <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
           <button class="btn btn-primary" onclick="ReportsModule._doExport()">
-            <i class="fas fa-download"></i> ${ar?'تصدير':'Export'}
+            <i class="fas fa-download"></i> ${t('reports.export')}
           </button>
         </div>
       </div>
@@ -858,7 +858,7 @@ const ReportsModule = {
     const _deptMeta = (empId) => {
       const e = DB.getEmployee(empId);
       const d = DB.getDepartment(e?.dept);
-      return { deptId: e?.dept || 'none', deptName: d?.name || (ar ? 'بدون قسم' : 'No Department'), deptColor: d?.hex || '#6366f1' };
+      return { deptId: e?.dept || 'none', deptName: d?.name || t('reports.noDepartment'), deptColor: d?.hex || '#6366f1' };
     };
 
     if (type === 'attendance') {
@@ -866,7 +866,7 @@ const ReportsModule = {
       const recs = (this._cache.type === 'attendance' && this._cache.records)
         ? this._cache.records
         : this._buildFullRecords(from, to, 'all');
-      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'دخول':'In', ar?'خروج':'Out', ar?'مدة العمل':'Hours', ar?'الحالة':'Status'];
+      headers = [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.checkOut'), t('reports.hours'), t('reports.status')];
       rows = recs.map(a => {
         const e   = DB.getEmployee(a.empId);
         const hrs = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
@@ -877,7 +877,7 @@ const ReportsModule = {
     } else if (type === 'late') {
       const lates = (this._cache.type === 'late' && this._cache.records) ? this._cache.records
         : DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
-      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'وقت الدخول':'Check-in', ar?'التأخر (دقيقة)':'Late (min)'];
+      headers = [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.lateMin')];
       rows = lates.map(a => {
         const e   = DB.getEmployee(a.empId);
         const sh  = e?.shift ? DB.shifts.find(s => s.id === e.shift) : null;
@@ -885,7 +885,7 @@ const ReportsModule = {
         const [sh2,sm2] = ws.split(':').map(Number);
         const [ch,cm]   = (a.checkIn||ws).split(':').map(Number);
         const min = Math.max(0, (ch*60+cm)-(sh2*60+sm2));
-        return [e?.name||'—', a.date, a.checkIn||'—', min+' '+(ar?'د':'m')];
+        return [e?.name||'—', a.date, a.checkIn||'—', min+' '+(currentLang==='ar'?'د':'m')];
       });
       rowMeta = lates.map(a => _deptMeta(a.empId));
 
@@ -895,35 +895,35 @@ const ReportsModule = {
       if (cachedRows) {
         const hasAllow = cachedRows.some(r => r.allow > 0);
         const hasOT    = cachedRows.some(r => r.overtimeBonus > 0);
-        headers = [ar?'الموظف':'Employee', ar?'الأساسي':'Base',
-          ...(hasAllow ? [ar?'البدلات':'Allow.'] : []),
-          ar?'أيام الغياب':'Absent', ar?'خصومات':'Deductions',
-          ...(hasOT ? [ar?'إضافي':'OT'] : []),
-          ar?'الصافي':'Net'];
+        headers = [t('reports.employee'), t('reports.base'),
+          ...(hasAllow ? [t('reports.allowances')] : []),
+          t('reports.absentDays'), t('reports.deductions'),
+          ...(hasOT ? [t('reports.overtime')] : []),
+          t('reports.net')];
         rows = cachedRows.map(r => [
           r.emp.name,
           App.formatCurrency(r.base),
           ...(hasAllow ? [App.formatCurrency(r.allow)] : []),
-          r.absentDays > 0 ? `${r.absentDays} ${ar?'يوم':'days'}` : '—',
+          r.absentDays > 0 ? `${r.absentDays} ${t('reports.days')}` : '—',
           r.totalDed > 0 ? `-${App.formatCurrency(r.totalDed)}` : '—',
           ...(hasOT ? [r.overtimeBonus > 0 ? `+${App.formatCurrency(r.overtimeBonus)}` : '—'] : []),
           App.formatCurrency(r.net),
         ]);
-        rowMeta = cachedRows.map(r => { const d=DB.getDepartment(r.emp?.dept); return {deptId:r.emp?.dept||'none',deptName:d?.name||(ar?'بدون قسم':'No Department'),deptColor:d?.hex||'#6366f1'}; });
-        footerRow = [ar?'الإجمالي':'Total', App.formatCurrency(this._cache.totalBase),
+        rowMeta = cachedRows.map(r => { const d=DB.getDepartment(r.emp?.dept); return {deptId:r.emp?.dept||'none',deptName:d?.name||t('reports.noDepartment'),deptColor:d?.hex||'#6366f1'}; });
+        footerRow = [t('reports.total'), App.formatCurrency(this._cache.totalBase),
           ...(hasAllow ? [App.formatCurrency(this._cache.totalAllow)] : []),
           '—', `-${App.formatCurrency(this._cache.totalDed)}`,
           ...(hasOT ? [`+${App.formatCurrency(this._cache.totalOT)}`] : []),
           App.formatCurrency(this._cache.totalNet)];
       } else {
-        headers = [ar?'الموظف':'Employee', ar?'الأساسي':'Base', ar?'الخصومات':'Ded.', ar?'الصافي':'Net'];
+        headers = [t('reports.employee'), t('reports.base'), t('reports.deductions'), t('reports.net')];
         rows = DB.payroll.map(p => { const e=DB.getEmployee(p.empId); return [e?.name||'—', App.formatCurrency(p.base), App.formatCurrency((p.absentDeduction||0)+(p.lateDeduction||0)), App.formatCurrency(p.total)]; });
       }
 
     } else if (type === 'leave') {
       const _leaveTypeAr = { annual:'إجازة سنوية', sick:'إجازة مرضية', emergency:'إجازة طارئة', unpaid:'إجازة بدون راتب', maternity:'إجازة أمومة', hajj:'إجازة حج' };
       const _leaveTypeEn = { annual:'Annual', sick:'Sick', emergency:'Emergency', unpaid:'Unpaid', maternity:'Maternity', hajj:'Hajj' };
-      headers = [ar?'الموظف':'Employee', ar?'النوع':'Type', ar?'من':'From', ar?'إلى':'To', ar?'الأيام':'Days', ar?'الحالة':'Status'];
+      headers = [t('reports.employee'), t('reports.leaveType'), t('common.from'), t('common.to'), t('reports.days'), t('reports.status')];
       rows = DB.leaves.map(l => {
         const e = DB.getEmployee(l.empId);
         const typeLbl = ar ? (_leaveTypeAr[l.type] || l.type) : (_leaveTypeEn[l.type] || l.type);
@@ -933,21 +933,21 @@ const ReportsModule = {
 
     } else if (type === 'overtime') {
       const ots = DB.attendance.filter(a => a.overtime && a.date >= from && a.date <= to);
-      headers = [ar?'الموظف':'Employee', ar?'التاريخ':'Date', ar?'الساعات الإضافية':'OT (hrs)'];
+      headers = [t('reports.employee'), t('reports.date'), t('reports.otHours')];
       rows = ots.map(a => { const e=DB.getEmployee(a.empId); return [e?.name||'—', a.date, `${Math.floor((parseInt(a.overtime)||0)/60)}:${String((parseInt(a.overtime)||0)%60).padStart(2,'0')}`]; });
       rowMeta = ots.map(a => _deptMeta(a.empId));
 
     } else {
       const s = DB.getAttendanceStats();
-      headers = [ar?'المؤشر':'KPI', ar?'القيمة':'Value'];
+      headers = [t('reports.kpiLabel'), t('reports.kpiValue')];
       rows = [
-        [ar?'إجمالي الموظفين':'Total Employees', s.total],
-        [ar?'حاضرون اليوم':'Present Today',      s.present+s.late],
-        [ar?'متأخرون اليوم':'Late Today',         s.late],
-        [ar?'غائبون اليوم':'Absent Today',        s.absent],
-        [ar?'في إجازة':'On Leave',                s.onLeave],
-        [ar?'معدل الحضور':'Attendance Rate',      s.attendanceRate+'%'],
-        [ar?'إجمالي الرواتب':'Total Payroll',     App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.total||0),0))],
+        [t('reports.kpiTotalEmployees'), s.total],
+        [t('reports.kpiPresentToday'),   s.present+s.late],
+        [t('reports.lateToday'),         s.late],
+        [t('reports.absentToday'),       s.absent],
+        [t('reports.onLeave'),           s.onLeave],
+        [t('reports.attendanceRate'),    s.attendanceRate+'%'],
+        [t('reports.totalPayroll'),      App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.total||0),0))],
       ];
     }
 
@@ -976,7 +976,7 @@ const ReportsModule = {
     const fontUrl = name => `${origin}/font/arabic/thmanyahsans-${name}.otf`;
     const savedSigs = DB.company.signatures || [];
     const sigBoxes  = savedSigs.length ? savedSigs
-      : [{ name: adminName, role: ar?'أعدّه':'Prepared By', title: adminEmail, signature: null }];
+      : [{ name: adminName, role: t('reports.preparedBy'), title: adminEmail, signature: null }];
     const logoSm = company.logo
       ? `<img src="${company.logo}" class="ph-logo-img" alt="">`
       : `<div class="ph-logo-ph">${(company.name||'A').charAt(0)}</div>`;
@@ -1087,8 +1087,8 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 /* right: QR + meta */
 .hdr-qr-block { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
 .hdr-qr { width: 60px; height: 60px; background: #fff; padding: 3px; display: block; border-radius: 6px; }
-.hdr-ref  { font-size: 7.5px; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; margin-top: 2px; text-align: ${ar?'right':'left'}; }
-.hdr-date { font-size: 8px; color: rgba(255,255,255,0.4); text-align: ${ar?'right':'left'}; }
+.hdr-ref  { font-size: 7.5px; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; margin-top: 2px; text-align: ${currentLang==='ar'?'right':'left'}; }
+.hdr-date { font-size: 8px; color: rgba(255,255,255,0.4); text-align: ${currentLang==='ar'?'right':'left'}; }
 
 /* ── META STRIP ── */
 .meta-strip {
@@ -1283,31 +1283,31 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
     <div class="tb-logo-icon">◉</div>
     <div>
       <div class="tb-logo-name">Attendify Pro</div>
-      <div class="tb-logo-sub">${ar?'معاينة الطباعة':'Print Preview'}</div>
+      <div class="tb-logo-sub">${t('reports.printPreview')}</div>
     </div>
   </div>
   <div class="tb-divider"></div>
   <div class="tb-group">
-    <span class="tb-label">${ar?'النموذج':'Template'}</span>
+    <span class="tb-label">${t('reports.printTemplate')}</span>
     <div class="tb-seg">
-      <button class="tb-btn on" data-tpl="pro"   onclick="setTpl('pro')"  >${ar?'تنفيذي':'Executive'}</button>
-      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')">${ar?'شركات':'Corporate'}</button>
-      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')" >${ar?'حكومي':'Official'}</button>
+      <button class="tb-btn on" data-tpl="pro"   onclick="setTpl('pro')"  >${t('reports.tplExecutive')}</button>
+      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')">${t('reports.tplCorporate')}</button>
+      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')" >${t('reports.tplOfficial')}</button>
     </div>
   </div>
   <div class="tb-divider"></div>
   <div class="tb-group">
-    <span class="tb-label">${ar?'الاتجاه':'Orientation'}</span>
+    <span class="tb-label">${t('reports.orientation')}</span>
     <div class="tb-seg">
-      <button class="tb-btn on" data-orient="portrait"  onclick="setOrient('portrait')">${ar?'عمودي':'Portrait'}</button>
-      <button class="tb-btn"    data-orient="landscape" onclick="setOrient('landscape')">${ar?'أفقي':'Landscape'}</button>
+      <button class="tb-btn on" data-orient="portrait"  onclick="setOrient('portrait')">${t('reports.portrait')}</button>
+      <button class="tb-btn"    data-orient="landscape" onclick="setOrient('landscape')">${t('reports.landscape')}</button>
     </div>
   </div>
   <div class="tb-divider"></div>
   <div class="tb-group">
     <span class="tb-ref">${rptNo}</span>
-    <button class="tb-btn-action tb-btn-close" onclick="window.close()">${ar?'✕ إغلاق':'✕ Close'}</button>
-    <button class="tb-btn-action tb-btn-print" onclick="window.print()">🖨 ${ar?'طباعة':'Print'}</button>
+    <button class="tb-btn-action tb-btn-close" onclick="window.close()">✕ ${t('common.close')}</button>
+    <button class="tb-btn-action tb-btn-print" onclick="window.print()">🖨 ${t('reports.print')}</button>
   </div>
 </div>
 
@@ -1332,7 +1332,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
       </div>
     </div>
     <div class="hdr-title-block">
-      <div class="hdr-rpt-label">${ar?'تقرير رسمي':'OFFICIAL REPORT'}</div>
+      <div class="hdr-rpt-label">${t('reports.officialReport')}</div>
       <div class="hdr-rpt-title">${t('reports.'+type)}</div>
       <div class="hdr-rpt-range">${from} — ${to}</div>
     </div>
@@ -1358,12 +1358,12 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
       ${company.email   ? `<span>✉ ${_esc(company.email)}</span>`    : ''}
       ${company.website ? `<span>🌐 ${_esc(company.website)}</span>` : ''}
     </div>
-    <div class="ftr-conf">© ${new Date().getFullYear()} ${_esc(company.name||'')} — ${ar?'وثيقة سرية للاستخدام الداخلي فقط':'Confidential — Internal Use Only'}</div>
+    <div class="ftr-conf">© ${new Date().getFullYear()} ${_esc(company.name||'')} — ${t('reports.confidential')}</div>
   </div>
   <div class="ftr-right">
-    <div class="ftr-page">${ar?'صفحة':'Page'} <span class="pg-n"></span></div>
+    <div class="ftr-page">${t('reports.page')} <span class="pg-n"></span></div>
     <div class="ftr-ref">${rptNo}</div>
-    <div class="ftr-by">${ar?'أعدّه':'By'}: ${_esc(adminName)}</div>
+    <div class="ftr-by">${t('reports.by')}: ${_esc(adminName)}</div>
   </div>
 </div>
 </td></tr></tfoot>
@@ -1373,10 +1373,10 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 
 <!-- Meta Strip -->
 <div class="meta-strip">
-  <div class="ms-cell"><div class="ms-lbl">${ar?'نوع التقرير':'Report Type'}</div><div class="ms-val">${t('reports.'+type)}</div></div>
-  <div class="ms-cell"><div class="ms-lbl">${ar?'الفترة':'Period'}</div><div class="ms-val" style="font-size:10px">${from} — ${to}</div></div>
-  <div class="ms-cell"><div class="ms-lbl">${ar?'السجلات':'Records'}</div><div class="ms-val">${rows.length} ${rowMeta.length ? `<span style="font-size:8.5px;font-weight:500;opacity:.65">| ${new Set(rowMeta.map(m=>m.deptId)).size} ${ar?'قسم':'dept.'}</span>` : ''}</div></div>
-  <div class="ms-cell"><div class="ms-lbl">${ar?'أعدّه':'Prepared By'}</div><div class="ms-val" style="font-size:10px">${_esc(adminName)}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${t('reports.reportType')}</div><div class="ms-val">${t('reports.'+type)}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${t('reports.period')}</div><div class="ms-val" style="font-size:10px">${from} — ${to}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${t('reports.records')}</div><div class="ms-val">${rows.length} ${rowMeta.length ? `<span style="font-size:8.5px;font-weight:500;opacity:.65">| ${new Set(rowMeta.map(m=>m.deptId)).size} ${t('reports.dept')}</span>` : ''}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${t('reports.preparedBy')}</div><div class="ms-val" style="font-size:10px">${_esc(adminName)}</div></div>
 </div>
 
 <div class="doc-body">
@@ -1384,10 +1384,10 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
   <!-- KPI Strip -->
   ${type !== 'summary' ? `
   <div class="kpi-strip">
-    <div class="kpi-card"><div class="kpi-n">${activeCount}</div><div class="kpi-l">${ar?'الموظفون النشطون':'Active Employees'}</div></div>
-    <div class="kpi-card"><div class="kpi-n">${rows.length}</div><div class="kpi-l">${ar?'إجمالي السجلات':'Total Records'}</div></div>
-    <div class="kpi-card"><div class="kpi-n">${sStats.attendanceRate}%</div><div class="kpi-l">${ar?'معدل الحضور':'Attendance Rate'}</div></div>
-    <div class="kpi-card"><div class="kpi-n">${sStats.present}</div><div class="kpi-l">${ar?'حاضرون اليوم':'Present Today'}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${activeCount}</div><div class="kpi-l">${t('reports.activeEmployees')}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${rows.length}</div><div class="kpi-l">${t('reports.totalRecords')}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${sStats.attendanceRate}%</div><div class="kpi-l">${t('reports.attendanceRate')}</div></div>
+    <div class="kpi-card"><div class="kpi-n">${sStats.present}</div><div class="kpi-l">${t('reports.kpiPresentToday')}</div></div>
   </div>` : ''}
 
   <!-- Data Table -->
@@ -1406,7 +1406,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
         if (!rowMeta.length) return rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
         const groups = {}, order = [];
         rows.forEach((row,i)=>{
-          const m = rowMeta[i] || { deptId:'none', deptName: ar?'بدون قسم':'No Department', deptColor:'#6366f1' };
+          const m = rowMeta[i] || { deptId:'none', deptName: t('reports.noDepartment'), deptColor:'#6366f1' };
           if (!groups[m.deptId]){ groups[m.deptId]={...m,rows:[]}; order.push(m.deptId); }
           groups[m.deptId].rows.push(row);
         });
@@ -1433,7 +1433,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 <!-- Signature Zone -->
 <div class="sig-zone">
   <div class="sig-hdr-row">
-    <span class="sig-hdr-text">${ar?'توقيعات الاعتماد والمصادقة الرسمية':'OFFICIAL AUTHORIZATION & SIGNATURES'}</span>
+    <span class="sig-hdr-text">${t('reports.officialSignatures')}</span>
   </div>
   <div class="sig-grid" style="grid-template-columns:repeat(${Math.min(sigBoxes.length,4)},1fr)">
     ${sigBoxes.map(s=>`
@@ -1443,7 +1443,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
       ${s.title ? `<div class="sig-title">${_esc(s.title)}</div>` : ''}
       <div class="sig-img-wrap">${s.signature ? `<img src="${s.signature}" style="max-height:34px;max-width:100px;object-fit:contain" alt="">` : ''}</div>
       <div class="sig-line"></div>
-      <div class="sig-stamp">${ar?'الختم':'Stamp'}</div>
+      <div class="sig-stamp">${t('reports.stamp')}</div>
     </div>`).join('')}
   </div>
 </div>
@@ -1486,13 +1486,13 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
         labels: depts.map(d => d.name.length > 8 ? d.name.substring(0,8)+'…' : d.name),
         datasets: [
           {
-            label: ar ? 'حاضر اليوم' : 'Present Today',
+            label: t('reports.kpiPresentToday'),
             data: presentCounts,
             backgroundColor: palette.map(c => c + 'cc'),
             borderRadius: 6, borderSkipped: false,
           },
           {
-            label: ar ? 'إجمالي الموظفين' : 'Total Employees',
+            label: t('reports.kpiTotalEmployees'),
             data: totalCounts,
             backgroundColor: palette.map(c => c + '22'),
             borderColor: palette.map(c => c + '55'),
@@ -1565,7 +1565,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
         datasets: [
           { label: t('attendance.present'), data: present, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.08)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#10b981' },
           { label: t('attendance.late'),    data: late,    borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.05)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#f59e0b' },
-          { label: ar ? 'غائب' : 'Absent', data: absent,  borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.05)',  fill:true, tension:0.4, borderWidth:2, borderDash:[4,4], pointRadius:4, pointBackgroundColor:'#ef4444' },
+          { label: t('reports.absent'),     data: absent,  borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.05)',  fill:true, tension:0.4, borderWidth:2, borderDash:[4,4], pointRadius:4, pointBackgroundColor:'#ef4444' },
         ]
       },
       options: {

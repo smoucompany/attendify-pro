@@ -7,19 +7,19 @@ const SettingsModule = {
   _section: 'company',
 
   _sections: [
-    { key:'company',      icon:'fas fa-building',          label:'الشركة',            labelEn:'Company' },
-    { key:'hours',        icon:'fas fa-clock',             label:'أوقات العمل',        labelEn:'Working Hours' },
-    { key:'attendance',   icon:'fas fa-fingerprint',       label:'إعدادات الحضور',     labelEn:'Attendance' },
-    { key:'leaves',       icon:'fas fa-calendar-minus',    label:'الإجازات',           labelEn:'Leaves' },
-    { key:'payroll',      icon:'fas fa-money-bill-wave',   label:'الرواتب',            labelEn:'Payroll' },
-    { key:'signatures',   icon:'fas fa-signature',         label:'التواقيع',           labelEn:'Signatures' },
-    { key:'portal',       icon:'fas fa-user',              label:'بوابة الموظف',       labelEn:'Employee Portal' },
-    { key:'notifications',icon:'fas fa-bell',              label:'الإشعارات',          labelEn:'Notifications' },
-    { key:'integrations', icon:'fas fa-plug',              label:'التكاملات',          labelEn:'Integrations' },
-    { key:'security',     icon:'fas fa-shield-halved',     label:'الأمان',             labelEn:'Security' },
-    { key:'appearance',   icon:'fas fa-palette',           label:'المظهر',             labelEn:'Appearance' },
-    { key:'backup',       icon:'fas fa-cloud-arrow-up',    label:'النسخ الاحتياطي',    labelEn:'Backup & Data' },
-    { key:'roles',        icon:'fas fa-user-shield',       label:'الأدوار والصلاحيات', labelEn:'Roles & Permissions' },
+    { key:'company',       icon:'fas fa-building'        },
+    { key:'hours',         icon:'fas fa-clock'           },
+    { key:'attendance',    icon:'fas fa-fingerprint'     },
+    { key:'leaves',        icon:'fas fa-calendar-minus'  },
+    { key:'payroll',       icon:'fas fa-money-bill-wave' },
+    { key:'signatures',    icon:'fas fa-signature'       },
+    { key:'portal',        icon:'fas fa-user'            },
+    { key:'notifications', icon:'fas fa-bell'            },
+    { key:'integrations',  icon:'fas fa-plug'            },
+    { key:'security',      icon:'fas fa-shield-halved'   },
+    { key:'appearance',    icon:'fas fa-palette'         },
+    { key:'backup',        icon:'fas fa-cloud-arrow-up'  },
+    { key:'roles',         icon:'fas fa-user-shield'     },
   ],
 
   render(container) {
@@ -27,7 +27,7 @@ const SettingsModule = {
       <div class="page-header">
         <div class="page-header-text">
           <h1>${t('settings.title')}</h1>
-          <p>${currentLang==='ar'?'إدارة شاملة لجميع إعدادات المنصة':'Complete platform configuration management'}</p>
+          <p>${t('settings.subtitleDesc')}</p>
         </div>
       </div>
       <div class="settings-grid">
@@ -37,7 +37,7 @@ const SettingsModule = {
             <div class="settings-nav-item ${this._section===s.key?'active':''}" data-key="${s.key}"
               onclick="SettingsModule.switchSection('${s.key}')">
               <i class="${s.icon}"></i>
-              <span>${currentLang==='ar'?s.label:s.labelEn}</span>
+              <span>${t('settings.tab.' + s.key)}</span>
             </div>
           `).join('')}
           <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
@@ -68,12 +68,12 @@ const SettingsModule = {
     // Modules with their own render() — delegate directly (guard against missing modules)
     if (this._section === 'backup') {
       if (typeof BackupModule !== 'undefined') { BackupModule.render(el); }
-      else { el.innerHTML = '<div class="empty-state"><p>وحدة النسخ الاحتياطي غير متاحة</p></div>'; }
+      else { el.innerHTML = `<div class="empty-state"><p>${t('settings.backupUnavailable')}</p></div>`; }
       return;
     }
     if (this._section === 'roles') {
       if (typeof RolesModule !== 'undefined') { RolesModule.render(el); }
-      else { el.innerHTML = '<div class="empty-state"><p>وحدة الصلاحيات غير متاحة</p></div>'; }
+      else { el.innerHTML = `<div class="empty-state"><p>${t('settings.rolesUnavailable')}</p></div>`; }
       return;
     }
 
@@ -141,13 +141,13 @@ const SettingsModule = {
     const co = DB.company;
     return `
       <!-- Logo & Identity -->
-      ${this._group('الهوية والشعار','معلومات الشركة الأساسية والشعار',`
+      ${this._group(t('settings.identityTitle'),t('settings.identityDesc'),`
         <div class="settings-item" style="align-items:flex-start;gap:20px;flex-wrap:wrap">
           <div style="display:flex;gap:20px;flex-wrap:wrap">
             <!-- Logo -->
             <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">شعار الشركة</div>
-              <div id="logo-preview" style="width:90px;height:90px;border-radius:20px;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;overflow:hidden;cursor:pointer" onclick="document.getElementById('logo-file-input').click()" title="اضغط لتغيير الشعار">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">${t('settings.companyLogo')}</div>
+              <div id="logo-preview" style="width:90px;height:90px;border-radius:20px;background:linear-gradient(135deg,var(--primary),#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:white;overflow:hidden;cursor:pointer" onclick="document.getElementById('logo-file-input').click()" title="${t('settings.clickToChangeLogo')}">
                 ${co.logo && co.logo.startsWith('data:')
                   ? `<img src="${co.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`
                   : `<i class="fas fa-building" style="font-size:32px;opacity:.8"></i>`}
@@ -155,17 +155,17 @@ const SettingsModule = {
               <input type="file" id="logo-file-input" accept="image/*" style="display:none" onchange="SettingsModule.uploadLogo(this)">
               <div style="display:flex;gap:6px">
                 <button class="btn btn-secondary btn-sm" onclick="document.getElementById('logo-file-input').click()">
-                  <i class="fas fa-upload"></i> رفع
+                  <i class="fas fa-upload"></i> ${t('settings.upload')}
                 </button>
                 ${co.logo ? `<button class="btn btn-danger btn-sm" onclick="SettingsModule.removeLogo()"><i class="fas fa-trash"></i></button>` : ''}
               </div>
-              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, JPG, SVG<br>حجم أقصى 2MB</div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, JPG, SVG<br>${t('settings.maxSize2MB')}</div>
             </div>
 
             <!-- Favicon -->
             <div style="display:flex;flex-direction:column;align-items:center;gap:10px">
-              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">أيقونة الموقع (Favicon)</div>
-              <div id="fav-preview" style="width:64px;height:64px;border-radius:14px;background:var(--bg-input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer" onclick="document.getElementById('fav-file-input').click()" title="اضغط لتغيير الأيقونة">
+              <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:2px">${t('settings.favicon')}</div>
+              <div id="fav-preview" style="width:64px;height:64px;border-radius:14px;background:var(--bg-input);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer" onclick="document.getElementById('fav-file-input').click()" title="${t('settings.clickToChangeIcon')}">
                 ${co.favicon
                   ? `<img src="${co.favicon}" style="width:48px;height:48px;object-fit:contain">`
                   : `<i class="fas fa-globe" style="font-size:22px;color:var(--text-muted);opacity:.5"></i>`}
@@ -173,41 +173,41 @@ const SettingsModule = {
               <input type="file" id="fav-file-input" accept="image/png,image/x-icon,image/svg+xml,image/jpeg" style="display:none" onchange="SettingsModule.uploadFavicon(this)">
               <div style="display:flex;gap:6px">
                 <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fav-file-input').click()">
-                  <i class="fas fa-upload"></i> رفع
+                  <i class="fas fa-upload"></i> ${t('settings.upload')}
                 </button>
                 ${co.favicon ? `<button class="btn btn-danger btn-sm" onclick="SettingsModule.removeFavicon()"><i class="fas fa-trash"></i></button>` : ''}
               </div>
-              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, ICO, SVG<br>32×32 أو 64×64 مثالي</div>
+              <div style="font-size:10px;color:var(--text-muted);text-align:center">PNG, ICO, SVG<br>${t('settings.faviconIdeal')}</div>
             </div>
           </div>
           <div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:12px">
             <div class="app-form-row">
               <div class="app-form-group">
-                <label>الاسم بالعربية</label>
+                <label>${t('settings.nameAr')}</label>
                 <input class="app-form-input" id="co-name" value="${co.name}">
               </div>
               <div class="app-form-group">
-                <label>الاسم بالإنجليزية</label>
+                <label>${t('settings.nameEn')}</label>
                 <input class="app-form-input" id="co-name-en" value="${co.nameEn}" dir="ltr">
               </div>
             </div>
             <div class="app-form-row">
               <div class="app-form-group">
-                <label>البريد الإلكتروني</label>
+                <label>${t('common.email')}</label>
                 <input class="app-form-input" id="co-email" type="email" value="${co.email}" dir="ltr">
               </div>
               <div class="app-form-group">
-                <label>رقم الهاتف</label>
+                <label>${t('common.phone')}</label>
                 <input class="app-form-input" id="co-phone" value="${co.phone}" dir="ltr">
               </div>
             </div>
             <div class="app-form-row">
               <div class="app-form-group">
-                <label>الموقع الإلكتروني</label>
+                <label>${t('settings.website')}</label>
                 <input class="app-form-input" id="co-web" value="${co.website||''}" dir="ltr">
               </div>
               <div class="app-form-group">
-                <label>العنوان</label>
+                <label>${t('settings.address')}</label>
                 <input class="app-form-input" id="co-addr" value="${co.address||''}">
               </div>
             </div>
@@ -216,10 +216,10 @@ const SettingsModule = {
       `)}
 
       <!-- Regional -->
-      ${this._group('الإعدادات الإقليمية','المنطقة الزمنية والعملة واللغة',`
+      ${this._group(t('settings.regionalTitle'),t('settings.regionalDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>المنطقة الزمنية</label>
+            <label>${t('settings.timezone')}</label>
             ${this._select('co-tz',[
               {v:'Asia/Riyadh',l:'Asia/Riyadh — GMT+3'},
               {v:'Asia/Dubai',l:'Asia/Dubai — GMT+4'},
@@ -229,7 +229,7 @@ const SettingsModule = {
             ], co.timezone)}
           </div>
           <div class="app-form-group">
-            <label>العملة</label>
+            <label>${t('settings.currency')}</label>
             ${this._select('co-curr',[
               {v:'SAR',l:'SAR — ريال سعودي ﷼'},
               {v:'AED',l:'AED — درهم إماراتي'},
@@ -239,7 +239,7 @@ const SettingsModule = {
             ], co.currency)}
           </div>
           <div class="app-form-group">
-            <label>تنسيق التاريخ</label>
+            <label>${t('settings.dateFormat')}</label>
             ${this._select('co-datefmt',[
               {v:'DD/MM/YYYY',l:'DD/MM/YYYY'},
               {v:'MM/DD/YYYY',l:'MM/DD/YYYY'},
@@ -250,7 +250,7 @@ const SettingsModule = {
       `)}
 
       <!-- Branches -->
-      ${this._group('الفروع والمواقع',`${co.branches.length} فروع مسجلة`,`
+      ${this._group(t('settings.branchesTitle'),`${co.branches.length} ${t('settings.branchesRegistered')}`,`
         ${co.branches.map((b,i)=>`
           <div class="settings-item">
             <div class="settings-item-info">
@@ -272,7 +272,7 @@ const SettingsModule = {
         `).join('')}
         <div class="settings-item" style="border:none">
           <button class="btn btn-outline-primary btn-sm" onclick="SettingsModule.addBranch()">
-            <i class="fas fa-plus"></i> إضافة فرع جديد
+            <i class="fas fa-plus"></i> ${t('settings.addBranch')}
           </button>
         </div>
       `,`<span class="badge badge-primary">${co.branches.length}</span>`)}
@@ -289,13 +289,13 @@ const SettingsModule = {
     });
     DB.saveCompany();
     SettingsModule._updateSidebarLogo();
-    App.toast('تم حفظ بيانات الشركة بنجاح','success');
+    App.toast(t('settings.toastCompanySaved'),'success');
   },
 
   uploadLogo(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { App.toast('حجم الشعار يجب أن يكون أقل من 2MB', 'warning'); return; }
+    if (file.size > 2 * 1024 * 1024) { App.toast(t('settings.logoSizeError'), 'warning'); return; }
     const reader = new FileReader();
     reader.onload = e => {
       DB.company.logo = e.target.result; // base64
@@ -304,7 +304,7 @@ const SettingsModule = {
       const preview = document.getElementById('logo-preview');
       if (preview) preview.innerHTML = `<img src="${DB.company.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:20px">`;
       this._updateSidebarLogo();
-      App.toast('تم رفع الشعار بنجاح ✓', 'success');
+      App.toast(t('settings.toastLogoSaved'), 'success');
       // Re-render to show the remove button
       this._renderSection();
     };
@@ -315,14 +315,14 @@ const SettingsModule = {
     DB.company.logo = '';
     DB.saveCompany();
     this._updateSidebarLogo();
-    App.toast('تم حذف الشعار', 'info');
+    App.toast(t('settings.toastLogoDeleted'), 'info');
     this._renderSection();
   },
 
   uploadFavicon(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 1 * 1024 * 1024) { App.toast('حجم الأيقونة يجب أن يكون أقل من 1MB', 'warning'); return; }
+    if (file.size > 1 * 1024 * 1024) { App.toast(t('settings.faviconSizeError'), 'warning'); return; }
     const reader = new FileReader();
     reader.onload = e => {
       DB.company.favicon = e.target.result;
@@ -330,7 +330,7 @@ const SettingsModule = {
       this._applyFavicon(e.target.result);
       const preview = document.getElementById('fav-preview');
       if (preview) preview.innerHTML = `<img src="${e.target.result}" style="width:48px;height:48px;object-fit:contain">`;
-      App.toast('تم رفع أيقونة الموقع بنجاح ✓', 'success');
+      App.toast(t('settings.toastFaviconSaved'), 'success');
       this._renderSection();
     };
     reader.readAsDataURL(file);
@@ -340,7 +340,7 @@ const SettingsModule = {
     DB.company.favicon = '';
     DB.saveCompany();
     this._applyFavicon(null);
-    App.toast('تم حذف أيقونة الموقع', 'info');
+    App.toast(t('settings.toastFaviconDeleted'), 'info');
     this._renderSection();
   },
 
@@ -360,10 +360,10 @@ const SettingsModule = {
   },
 
   deleteBranch(id) {
-    App.confirm('هل تريد حذف هذا الفرع؟', () => {
+    App.confirm(t('settings.confirmDeleteBranch'), () => {
       DB.company.branches = DB.company.branches.filter(b => b.id !== id);
       DB.saveCompany();
-      App.toast('تم حذف الفرع', 'success');
+      App.toast(t('settings.toastBranchDeleted'), 'success');
       this._renderSection();
     });
   },
@@ -382,10 +382,10 @@ const SettingsModule = {
   },
 
   addBranch() {
-    App.openModal('إضافة فرع جديد',`
+    App.openModal(t('settings.addBranchTitle'),`
       <form onsubmit="SettingsModule.saveBranch(event)">
-        <div class="app-form-group"><label>اسم الفرع</label><input class="app-form-input" name="name" required></div>
-        <div class="app-form-group"><label>المدينة</label><input class="app-form-input" name="city" required></div>
+        <div class="app-form-group"><label>${t('settings.branchName')}</label><input class="app-form-input" name="name" required></div>
+        <div class="app-form-group"><label>${t('settings.branchCity')}</label><input class="app-form-input" name="city" required></div>
         <div class="modal-footer" style="padding:0;margin-top:16px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${t('common.save')}</button>
@@ -399,15 +399,15 @@ const SettingsModule = {
     DB.company.branches.push({id:`b${Date.now()}`,name:d.name,city:d.city});
     DB.saveCompany();
     App.closeModal();
-    App.toast('تم إضافة الفرع','success');
+    App.toast(t('settings.toastBranchAdded'),'success');
     this._renderSection();
   },
   editBranch(id) {
     const b = DB.company.branches.find(x=>x.id===id);
-    App.openModal('تعديل الفرع',`
+    App.openModal(t('settings.editBranchTitle'),`
       <form onsubmit="SettingsModule.updateBranch(event,'${id}')">
-        <div class="app-form-group"><label>اسم الفرع</label><input class="app-form-input" name="name" value="${b.name}" required></div>
-        <div class="app-form-group"><label>المدينة</label><input class="app-form-input" name="city" value="${b.city}" required></div>
+        <div class="app-form-group"><label>${t('settings.branchName')}</label><input class="app-form-input" name="name" value="${b.name}" required></div>
+        <div class="app-form-group"><label>${t('settings.branchCity')}</label><input class="app-form-input" name="city" value="${b.city}" required></div>
         <div class="modal-footer" style="padding:0;margin-top:16px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${t('common.save')}</button>
@@ -422,7 +422,7 @@ const SettingsModule = {
     if(b){b.name=d.name;b.city=d.city;}
     DB.saveCompany();
     App.closeModal();
-    App.toast('تم تحديث الفرع','success');
+    App.toast(t('settings.toastBranchUpdated'),'success');
     this._renderSection();
   },
 
@@ -432,8 +432,8 @@ const SettingsModule = {
   _hours() {
     const co = DB.company;
     const days = [
-      {k:'sat',l:'السبت'},{k:'sun',l:'الأحد'},{k:'mon',l:'الإثنين'},
-      {k:'tue',l:'الثلاثاء'},{k:'wed',l:'الأربعاء'},{k:'thu',l:'الخميس'},{k:'fri',l:'الجمعة'},
+      {k:'sat',l:t('day.sat')},{k:'sun',l:t('day.sun')},{k:'mon',l:t('day.mon')},
+      {k:'tue',l:t('day.tue')},{k:'wed',l:t('day.wed')},{k:'thu',l:t('day.thu')},{k:'fri',l:t('day.fri')},
     ];
     const periods = co.workPeriods || [];
     const totalMins = periods.reduce((sum, p) => sum + this._periodMins(p), 0);
@@ -442,25 +442,25 @@ const SettingsModule = {
     return `
       <!-- Work Periods -->
       ${this._group(
-        'فترات العمل اليومية',
-        `إجمالي ساعات العمل: <strong style="color:var(--primary)">${totalHrs} ساعة</strong> يومياً — بدون استراحة · بدون أوفر تايم`,
+        t('settings.workPeriods'),
+        `${t('settings.totalWorkHours')}: <strong style="color:var(--primary)">${totalHrs} ${t('settings.hoursUnit')}</strong> ${t('settings.dailyNoBrk')}`,
         `
         <div id="periods-list">
           ${periods.map((p, i) => this._periodRow(p, i)).join('')}
         </div>
         <button class="btn btn-outline-primary btn-sm" style="margin-top:8px" onclick="SettingsModule.addPeriod()">
-          <i class="fas fa-plus"></i> إضافة فترة عمل
+          <i class="fas fa-plus"></i> ${t('settings.addPeriod')}
         </button>
         <div style="margin-top:14px;padding:12px 14px;background:var(--primary-bg);border-radius:10px;font-size:12px;color:var(--primary);display:flex;align-items:center;gap:8px">
           <i class="fas fa-circle-info"></i>
-          <span>كل فترة تُحسب من وقت الحضور إلى وقت الانصراف مباشرةً — لا استراحة ولا وقت إضافي</span>
+          <span>${t('settings.periodCalcNote')}</span>
         </div>
         `,
-        `<span class="badge badge-primary">${periods.length} ${periods.length===1?'فترة':'فترات'}</span>`
+        `<span class="badge badge-primary">${periods.length} ${t('settings.periodUnit')}</span>`
       )}
 
       <!-- Work Days -->
-      ${this._group('أيام العمل الرسمية','حدد أيام الدوام الأسبوعي',`
+      ${this._group(t('settings.workDays'),t('settings.selectWorkDays'),`
         <div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0">
           ${days.map(d=>`
             <button id="day-${d.k}" class="btn btn-sm ${co.workDays.includes(d.k)?'btn-primary':'btn-secondary'}"
@@ -472,50 +472,50 @@ const SettingsModule = {
       `)}
 
       <!-- Late Threshold only — no overtime, no break -->
-      ${this._group('إعدادات التأخر','الحد الزمني المسموح قبل احتساب الموظف متأخراً',`
+      ${this._group(t('settings.lateSettings'),t('settings.lateSettingsDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>مهلة التأخر (دقيقة)</label>
+            <label>${t('settings.lateThreshold')}</label>
             <input class="app-form-input" type="number" id="late-threshold" value="${co.lateThreshold}" min="0" max="60" style="max-width:140px">
-            <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">الدقائق المسموح بها بعد بداية الفترة</span>
+            <span style="font-size:11px;color:var(--text-muted);margin-top:4px;display:block">${t('settings.lateMinutesHint')}</span>
           </div>
           <div class="app-form-group">
-            ${this._row('خصم التأخر من الراتب','احتساب التأخر ضمن الخصومات الشهرية',this._toggle('deduct-late',true))}
+            ${this._row(t('settings.deductLate'),t('settings.deductLateDesc'),this._toggle('deduct-late',true))}
           </div>
         </div>
 
         <!-- Disabled features info box -->
         <div style="margin-top:4px;border-radius:12px;border:1px solid var(--border);overflow:hidden">
           <div style="padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text-muted)">
-            الميزات المعطّلة لهذا النظام
+            ${t('settings.disabledFeatures')}
           </div>
           ${[
-            {icon:'fa-mug-hot',    l:'استراحة منتصف اليوم',  d:'لا توجد استراحة مجدولة في يوم العمل'},
-            {icon:'fa-clock',      l:'الوقت الإضافي (أوفر تايم)', d:'لا يُحسب أي وقت إضافي بعد انتهاء الفترة'},
-            {icon:'fa-money-bill', l:'بدل الوقت الإضافي',    d:'لا يُضاف أي بدل لأوفر تايم على الراتب'},
+            {icon:'fa-mug-hot',    lKey:'settings.featureBreak',    dKey:'settings.featureBreakDesc'},
+            {icon:'fa-clock',      lKey:'settings.featureOvertime',  dKey:'settings.featureOvertimeDesc'},
+            {icon:'fa-money-bill', lKey:'settings.featureOtAllow',   dKey:'settings.featureOtAllowDesc'},
           ].map(f=>`
             <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border)">
               <div style="width:32px;height:32px;border-radius:8px;background:var(--danger-bg,rgba(239,68,68,0.08));color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">
                 <i class="fas ${f.icon}"></i>
               </div>
               <div style="flex:1">
-                <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">${f.l}</div>
-                <div style="font-size:11px;color:var(--text-muted)">${f.d}</div>
+                <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">${t(f.lKey)}</div>
+                <div style="font-size:11px;color:var(--text-muted)">${t(f.dKey)}</div>
               </div>
-              <span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-bg,rgba(239,68,68,0.08));padding:3px 10px;border-radius:6px">معطّل</span>
+              <span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-bg,rgba(239,68,68,0.08));padding:3px 10px;border-radius:6px">${t('settings.disabled')}</span>
             </div>
           `).join('')}
         </div>
       `)}
 
       <!-- Holidays -->
-      ${this._group('العطلات الرسمية','إدارة أيام العطل الرسمية',`
+      ${this._group(t('settings.holidays'),t('settings.holidaysDesc'),`
         <div id="holidays-list">
           ${(DB.company.holidays||[]).map(h=>`
             <div class="settings-item" id="holiday-${h.id}">
               <div class="settings-item-info">
                 <div class="settings-item-label">${h.name}</div>
-                <div class="settings-item-desc">${h.date} — ${h.days} ${h.days===1?'يوم':'أيام'}</div>
+                <div class="settings-item-desc">${h.date} — ${h.days} ${t('leaves.days')}</div>
               </div>
               <button class="btn btn-danger btn-sm" onclick="SettingsModule.removeHoliday('${h.id}')">
                 <i class="fas fa-trash"></i>
@@ -525,7 +525,7 @@ const SettingsModule = {
         </div>
         <div class="settings-item" style="border:none">
           <button class="btn btn-outline-primary btn-sm" onclick="SettingsModule.addHoliday()">
-            <i class="fas fa-plus"></i> إضافة عطلة رسمية
+            <i class="fas fa-plus"></i> ${t('settings.addHoliday')}
           </button>
         </div>
       `)}
@@ -544,17 +544,17 @@ const SettingsModule = {
           ${isOvernight ? '🌙' : i+1}
         </div>
         <div class="app-form-group" style="margin:0;flex:1.5">
-          <label style="font-size:11px;margin-bottom:4px">اسم الفترة</label>
+          <label style="font-size:11px;margin-bottom:4px">${t('settings.periodName')}</label>
           <input class="app-form-input" style="padding:7px 10px" value="${p.label}"
             onchange="DB.company.workPeriods[${i}].label=this.value">
         </div>
         <div class="app-form-group" style="margin:0;flex:1">
-          <label style="font-size:11px;margin-bottom:4px">من</label>
+          <label style="font-size:11px;margin-bottom:4px">${t('common.from')}</label>
           <input class="app-form-input" type="time" style="padding:7px 10px" value="${p.start}"
             onchange="DB.company.workPeriods[${i}].start=this.value;SettingsModule._refreshTotal()">
         </div>
         <div class="app-form-group" style="margin:0;flex:1">
-          <label style="font-size:11px;margin-bottom:4px">إلى</label>
+          <label style="font-size:11px;margin-bottom:4px">${t('common.to')}</label>
           <input class="app-form-input" type="time" style="padding:7px 10px" value="${p.end}"
             onchange="DB.company.workPeriods[${i}].end=this.value;SettingsModule._refreshTotal()">
         </div>
@@ -578,8 +578,11 @@ const SettingsModule = {
     let diff = (eh*60+em) - (sh*60+sm);
     if (diff <= 0) diff += 24*60; // وردية ليلية تتعدى منتصف الليل
     const h = Math.floor(diff/60), m = diff%60;
-    const overnight = end <= start ? ' <span style="font-size:10px;color:#8b5cf6;font-weight:700">🌙ليلي</span>' : '';
-    return (m ? `${h}س ${m}د` : `${h} ساعة`) + overnight;
+    const overnightLabel = currentLang === 'ar' ? 'ليلي' : 'Night';
+    const overnight = end <= start ? ` <span style="font-size:10px;color:#8b5cf6;font-weight:700">🌙${overnightLabel}</span>` : '';
+    const hLabel = currentLang === 'ar' ? 'س' : 'h';
+    const mLabel = currentLang === 'ar' ? 'د' : 'm';
+    return (m ? `${h}${hLabel} ${m}${mLabel}` : `${h} ${hLabel}`) + overnight;
   },
 
   _periodMins(p) {
@@ -595,7 +598,8 @@ const SettingsModule = {
     const totalMins = periods.reduce((sum, p) => sum + this._periodMins(p), 0);
     const totalHrs = (totalMins/60).toFixed(1);
     const header = document.querySelector('.settings-group-header p strong');
-    if (header) header.textContent = `${totalHrs} ساعة`;
+    const hUnit = currentLang === 'ar' ? 'ساعة' : 'h';
+    if (header) header.textContent = `${totalHrs} ${hUnit}`;
     // Refresh all duration displays
     periods.forEach((p, i) => {
       const el = document.getElementById(`dur-${p.id}`);
@@ -605,7 +609,8 @@ const SettingsModule = {
 
   addPeriod() {
     const periods = DB.company.workPeriods;
-    const newP = { id: `wp${Date.now()}`, label: `فترة ${periods.length+1}`, start: '08:00', end: '14:00' };
+    const periodLabel = currentLang === 'ar' ? `فترة ${periods.length+1}` : `Period ${periods.length+1}`;
+    const newP = { id: `wp${Date.now()}`, label: periodLabel, start: '08:00', end: '14:00' };
     periods.push(newP);
     DB.saveCompany();
     const list = document.getElementById('periods-list');
@@ -644,16 +649,16 @@ const SettingsModule = {
       DB.company.workEnd   = periods[periods.length-1].end;
     }
     DB.saveCompany();
-    App.toast('تم حفظ أوقات العمل بنجاح', 'success');
+    App.toast(t('settings.toastHoursSaved'), 'success');
   },
 
   addHoliday() {
-    App.openModal('إضافة عطلة رسمية',`
+    App.openModal(t('settings.addHolidayTitle'),`
       <form onsubmit="SettingsModule.saveHoliday(event)">
-        <div class="app-form-group"><label>اسم العطلة</label><input class="app-form-input" name="name" required></div>
+        <div class="app-form-group"><label>${t('settings.holidayName')}</label><input class="app-form-input" name="name" required></div>
         <div class="app-form-row">
-          <div class="app-form-group"><label>تاريخ البداية</label><input class="app-form-input" type="date" name="date" required></div>
-          <div class="app-form-group"><label>عدد الأيام</label><input class="app-form-input" type="number" name="days" value="1" min="1"></div>
+          <div class="app-form-group"><label>${t('settings.holidayDate')}</label><input class="app-form-input" type="date" name="date" required></div>
+          <div class="app-form-group"><label>${t('settings.holidayDays')}</label><input class="app-form-input" type="number" name="days" value="1" min="1"></div>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:16px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
@@ -674,9 +679,8 @@ const SettingsModule = {
     };
     DB.company.holidays.push(holiday);
     DB.saveCompany();
-    DB.logAudit('admin', 'إضافة عطلة رسمية', 'Settings', holiday.name);
     App.closeModal();
-    App.toast(`تم إضافة عطلة: ${holiday.name}`, 'success');
+    App.toast(`${t('settings.toastHolidayAdded')}: ${holiday.name}`, 'success');
     this._renderSection();
   },
 
@@ -684,7 +688,7 @@ const SettingsModule = {
     DB.company.holidays = (DB.company.holidays||[]).filter(h => h.id !== id);
     DB.saveCompany();
     document.getElementById(`holiday-${id}`)?.remove();
-    App.toast('تم حذف العطلة', 'success');
+    App.toast(t('settings.toastHolidayDeleted'), 'success');
   },
 
   _getLeaveTypes() {
@@ -712,32 +716,32 @@ const SettingsModule = {
       if (carryEl) lt.carry = carryEl.classList.contains('on');
     });
     DB.saveCompany();
-    App.toast('تم حفظ أنواع الإجازات ✓', 'success');
+    App.toast(t('settings.toastLeaveTypesSaved'), 'success');
   },
 
   editLeaveType(key) {
-    const lt = this._getLeaveTypes().find(t => t.key === key);
+    const lt = this._getLeaveTypes().find(x => x.key === key);
     if (!lt) return;
-    App.openModal('تعديل نوع الإجازة', `
+    App.openModal(t('settings.editLeaveTypeTitle'), `
       <form onsubmit="SettingsModule._saveLeaveType(event,'${key}')">
-        <div class="app-form-group"><label>اسم الإجازة</label><input class="app-form-input" name="l" value="${lt.l}" required></div>
+        <div class="app-form-group"><label>${t('settings.leaveName')}</label><input class="app-form-input" name="l" value="${lt.l}" required></div>
         <div class="app-form-row">
-          <div class="app-form-group"><label>الرصيد السنوي (يوم)</label><input class="app-form-input" type="number" name="days" value="${lt.days}" min="0"></div>
-          <div class="app-form-group"><label>اللون</label><input class="app-form-input" type="color" name="color" value="${lt.color}"></div>
+          <div class="app-form-group"><label>${t('settings.leaveBalance')}</label><input class="app-form-input" type="number" name="days" value="${lt.days}" min="0"></div>
+          <div class="app-form-group"><label>${t('common.color','اللون')}</label><input class="app-form-input" type="color" name="color" value="${lt.color}"></div>
         </div>
         <div class="app-form-row">
           <div class="app-form-group" style="flex-direction:row;align-items:center;gap:10px">
-            <label>براتب</label>
+            <label>${t('settings.withSalary')}</label>
             <div class="toggle-switch ${lt.paid?'on':''}" id="edit-paid" onclick="this.classList.toggle('on')"></div>
           </div>
           <div class="app-form-group" style="flex-direction:row;align-items:center;gap:10px">
-            <label>قابلة للترحيل</label>
+            <label>${t('settings.carryOver')}</label>
             <div class="toggle-switch ${lt.carry?'on':''}" id="edit-carry" onclick="this.classList.toggle('on')"></div>
           </div>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:16px">
-          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ</button>
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${t('common.save')}</button>
         </div>
       </form>
     `, {size:'sm'});
@@ -746,7 +750,7 @@ const SettingsModule = {
   _saveLeaveType(e, key) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    const lt = this._getLeaveTypes().find(t => t.key === key);
+    const lt = this._getLeaveTypes().find(x => x.key === key);
     if (lt) {
       lt.l     = data.l;
       lt.days  = parseInt(data.days)||0;
@@ -754,23 +758,23 @@ const SettingsModule = {
       lt.paid  = document.getElementById('edit-paid')?.classList.contains('on') || false;
       lt.carry = document.getElementById('edit-carry')?.classList.contains('on') || false;
       DB.saveCompany();
-      App.toast('تم تحديث نوع الإجازة ✓', 'success');
+      App.toast(t('settings.toastLeaveTypesSaved'), 'success');
       App.closeModal();
       this._renderSection();
     }
   },
 
   addLeaveType() {
-    App.openModal('إضافة نوع إجازة جديد', `
+    App.openModal(t('settings.addLeaveType'), `
       <form onsubmit="SettingsModule._saveNewLeaveType(event)">
-        <div class="app-form-group"><label>اسم الإجازة</label><input class="app-form-input" name="l" placeholder="مثال: إجازة دراسية" required></div>
+        <div class="app-form-group"><label>${t('settings.leaveName')}</label><input class="app-form-input" name="l" required></div>
         <div class="app-form-row">
-          <div class="app-form-group"><label>الرصيد السنوي (يوم)</label><input class="app-form-input" type="number" name="days" value="5" min="0"></div>
-          <div class="app-form-group"><label>اللون</label><input class="app-form-input" type="color" name="color" value="#6366f1"></div>
+          <div class="app-form-group"><label>${t('settings.leaveBalance')}</label><input class="app-form-input" type="number" name="days" value="5" min="0"></div>
+          <div class="app-form-group"><label>${t('common.color','اللون')}</label><input class="app-form-input" type="color" name="color" value="#6366f1"></div>
         </div>
         <div class="modal-footer" style="padding:0;margin-top:16px">
-          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> إضافة</button>
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-plus"></i> ${t('common.add')}</button>
         </div>
       </form>
     `, {size:'sm'});
@@ -790,15 +794,15 @@ const SettingsModule = {
     });
     DB.saveCompany();
     App.closeModal();
-    App.toast('تم إضافة نوع الإجازة ✓', 'success');
+    App.toast(t('settings.toastLeaveTypesSaved'), 'success');
     this._renderSection();
   },
 
   deleteLeaveType(key) {
-    App.confirm('هل تريد حذف هذا النوع؟', () => {
-      DB.company.leaveTypes = this._getLeaveTypes().filter(t => t.key !== key);
+    App.confirm(t('settings.toastHolidayDeleted'), () => {
+      DB.company.leaveTypes = this._getLeaveTypes().filter(x => x.key !== key);
       DB.saveCompany();
-      App.toast('تم حذف نوع الإجازة', 'success');
+      App.toast(t('settings.toastLeaveTypesSaved'), 'success');
       this._renderSection();
     });
   },
@@ -808,8 +812,7 @@ const SettingsModule = {
     DB.employees.forEach(emp => { emp.password = defaultPass; });
     DB.adminCredentials.password = defaultPass;
     DB.save();
-    DB.logAudit('admin', 'إعادة تعيين كلمات المرور', 'Security', `${DB.employees.length} موظف`);
-    App.toast(`تم تعيين كلمة المرور الافتراضية: ${defaultPass}`, 'success', 5000);
+    App.toast(`${t('settings.toastSettingsSaved')}: ${defaultPass}`, 'success', 5000);
   },
 
   /* ══════════════════════════════════════════
@@ -817,13 +820,13 @@ const SettingsModule = {
   ══════════════════════════════════════════ */
   _attendance() {
     return `
-      ${this._group('طرق تسجيل الحضور','تفعيل أو تعطيل طرق التسجيل المتاحة',`
+      ${this._group(t('attendance.method'), t('settings.attendanceRulesDesc'),`
         ${[
-          {icon:'fas fa-face-smile',   color:'#6366f1', l:'التعرف على الوجه',       d:`face-api.js — يتطلب تسجيل وجه الموظف من ملفه الشخصي`,                                               on:true},
-          {icon:'fas fa-fingerprint',  color:'#10b981', l:'بصمة الإصبع / الجهاز',  d:`WebAuthn — يعمل مع Windows Hello و Touch ID و Face ID و Android Fingerprint`,                           on: typeof PublicKeyCredential !== 'undefined'},
-          {icon:'fas fa-qrcode',       color:'#f59e0b', l:'مسح QR Code',             d:'رمز QR شخصي لكل موظف',                                                                                     on:true},
-          {icon:'fas fa-map-pin',      color:'#3b82f6', l:'GPS والسياج الجغرافي',    d:`Geolocation API — يحدد المسافة من موقع الشركة (${DB.company.gpsLat?'✅ تم تحديد الموقع':'⚠️ حدد موقع الشركة في الإعدادات'})`, on:true},
-          {icon:'fas fa-keyboard',     color:'#06b6d4', l:'الإدخال اليدوي',           d:'إدخال الوقت يدوياً من الإدارة',                                                                           on:true},
+          {icon:'fas fa-face-smile',   color:'#6366f1', l:t('attendance.faceRecog'),  d:currentLang==='ar'?`face-api.js — يتطلب تسجيل وجه الموظف من ملفه الشخصي`:`face-api.js — requires employee face registration`, on:true},
+          {icon:'fas fa-fingerprint',  color:'#10b981', l:t('login.fingerprint'),     d:`WebAuthn — Windows Hello / Touch ID / Face ID`,                                                             on: typeof PublicKeyCredential !== 'undefined'},
+          {icon:'fas fa-qrcode',       color:'#f59e0b', l:t('attendance.qrScan'),     d:currentLang==='ar'?'رمز QR شخصي لكل موظف':'Personal QR code per employee',                                  on:true},
+          {icon:'fas fa-map-pin',      color:'#3b82f6', l:t('nav.gps'),               d:`Geolocation API (${DB.company.gpsLat?(currentLang==='ar'?'✅ تم تحديد الموقع':'✅ Location set'):(currentLang==='ar'?'⚠️ حدد موقع الشركة في الإعدادات':'⚠️ Set company location in settings')})`, on:true},
+          {icon:'fas fa-keyboard',     color:'#06b6d4', l:t('attendance.manual'),     d:currentLang==='ar'?'إدخال الوقت يدوياً من الإدارة':'Manual time entry by admin',                           on:true},
         ].map(m=>`
           <div class="settings-item">
             <div class="settings-item-info">
@@ -840,39 +843,39 @@ const SettingsModule = {
         `).join('')}
       `)}
 
-      ${this._group('قواعد الحضور','ضبط سياسات الحضور والانصراف',`
+      ${this._group(t('settings.attendanceRules'),t('settings.attendanceRulesDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>السماح بالتسجيل المبكر (دقيقة)</label>
+            <label>${t('settings.earlyCheckin')}</label>
             <input class="app-form-input" type="number" value="30" min="0">
-            <span style="font-size:11px;color:var(--text-muted)">قبل وقت الحضور الرسمي</span>
+            <span style="font-size:11px;color:var(--text-muted)">${t('settings.earlyCheckinHint')}</span>
           </div>
           <div class="app-form-group">
-            <label>الانصراف المبكر (دقيقة)</label>
+            <label>${t('settings.earlyCheckout')}</label>
             <input class="app-form-input" type="number" value="15" min="0">
-            <span style="font-size:11px;color:var(--text-muted)">الحد المسموح للانصراف قبل الوقت</span>
+            <span style="font-size:11px;color:var(--text-muted)">${t('settings.earlyCheckoutHint')}</span>
           </div>
           <div class="app-form-group">
-            <label>الحد الأقصى لساعات العمل اليومية</label>
+            <label>${t('settings.maxWorkHours')}</label>
             <input class="app-form-input" type="number" value="12" min="8">
           </div>
         </div>
         <div style="margin-top:8px">
-          ${this._row('اشتراط تسجيل الانصراف','يعتبر غائباً إذا لم يسجل انصراف',this._toggle('require-out',true))}
-          ${this._row('التسجيل خارج النطاق الجغرافي','السماح بالتسجيل خارج نطاق الشركة',this._toggle('allow-remote',false))}
-          ${this._row('إشعار التأخر فوري','إرسال إشعار فور تجاوز وقت الحضور',this._toggle('instant-late',true))}
-          ${this._row('الحضور من الجوال','السماح بالتسجيل عبر تطبيق الجوال',this._toggle('mobile-att',true))}
+          ${this._row(t('settings.requireCheckout'),t('settings.requireCheckoutDesc'),this._toggle('require-out',true))}
+          ${this._row(t('settings.allowRemote'),t('settings.allowRemoteDesc'),this._toggle('allow-remote',false))}
+          ${this._row(t('settings.instantLate'),t('settings.instantLateDesc'),this._toggle('instant-late',true))}
+          ${this._row(t('settings.mobileAttendance'),t('settings.mobileAttendanceDesc'),this._toggle('mobile-att',true))}
         </div>
       `)}
 
-      ${this._group('مناطق GPS','إضافة وإدارة نطاقات السياج الجغرافي لتسجيل الحضور',`
+      ${this._group(t('settings.gpsZones'),t('settings.gpsZonesDesc'),`
         <div id="gps-zones-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
           ${SettingsModule._renderGpsZones()}
         </div>
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule.addGpsZone()">
-          <i class="fas fa-plus"></i> إضافة منطقة GPS جديدة
+          <i class="fas fa-plus"></i> ${t('settings.addGpsZone')}
         </button>
-        ${this._row('تحقق مزدوج (GPS + Face)','يتطلب التحقق من الموقع والوجه معاً',this._toggle('dual-verify',false))}
+        ${this._row(t('settings.dualVerify'),t('settings.dualVerifyDesc'),this._toggle('dual-verify',false))}
       `)}
 
       ${this._saveBtn("SettingsModule.saveAttendanceSettings()")}
@@ -883,7 +886,7 @@ const SettingsModule = {
     if (!DB.locations.length) {
       return `<div style="text-align:center;padding:24px;background:var(--bg-input);border-radius:12px;color:var(--text-muted);font-size:13px">
         <i class="fas fa-map-pin" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4"></i>
-        لا توجد مناطق GPS — أضف منطقة للبدء
+        ${t('settings.noGpsZones')}
       </div>`;
     }
     return DB.locations.map((loc, i) => `
@@ -892,43 +895,43 @@ const SettingsModule = {
           <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0">
             <i class="fas fa-map-pin"></i>
           </div>
-          <input class="app-form-input" type="text" placeholder="اسم المنطقة (مثال: المقر الرئيسي)"
+          <input class="app-form-input" type="text" placeholder="${t('settings.gpsZoneNamePlaceholder')}"
             value="${loc.name||''}" onchange="SettingsModule._updateZoneField('${loc.id}','name',this.value)"
             style="flex:1;min-width:160px;font-weight:700">
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <label style="font-size:11px;color:var(--text-muted)">مفعّل</label>
+            <label style="font-size:11px;color:var(--text-muted)">${t('settings.active')}</label>
             <div class="toggle-switch ${loc.active!==false?'active':''}" onclick="SettingsModule._toggleZoneActive('${loc.id}',this)"
               style="width:36px;height:20px;border-radius:10px;cursor:pointer;transition:.2s;background:${loc.active!==false?'var(--primary)':'var(--border)'}">
               <div style="width:16px;height:16px;border-radius:50%;background:#fff;margin-top:2px;transition:.2s;margin-inline-start:${loc.active!==false?'18px':'2px'}"></div>
             </div>
           </div>
-          <button onclick="SettingsModule._deleteZone('${loc.id}')" title="حذف"
+          <button onclick="SettingsModule._deleteZone('${loc.id}')" title="${t('common.delete')}"
             style="width:30px;height:30px;border-radius:8px;border:none;background:var(--danger-bg,#fee2e2);color:var(--danger,#ef4444);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">
             <i class="fas fa-trash"></i>
           </button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
           <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">خط العرض (Lat)</label>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">${t('settings.latitude')}</label>
             <input class="app-form-input" type="number" step="0.000001" placeholder="24.7136"
               value="${loc.lat||''}" onchange="SettingsModule._updateZoneField('${loc.id}','lat',parseFloat(this.value))"
               style="font-size:13px;padding:8px 10px">
           </div>
           <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">خط الطول (Lng)</label>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">${t('settings.longitude')}</label>
             <input class="app-form-input" type="number" step="0.000001" placeholder="46.6753"
               value="${loc.lng||''}" onchange="SettingsModule._updateZoneField('${loc.id}','lng',parseFloat(this.value))"
               style="font-size:13px;padding:8px 10px">
           </div>
           <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">النطاق (متر)</label>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">${t('settings.radius')}</label>
             <input class="app-form-input" type="number" min="30" max="5000" placeholder="200"
               value="${loc.radius||200}" onchange="SettingsModule._updateZoneField('${loc.id}','radius',parseInt(this.value))"
               style="font-size:13px;padding:8px 10px">
           </div>
         </div>
         <button type="button" class="btn btn-outline-primary btn-sm" onclick="SettingsModule._detectZoneGPS('${loc.id}')">
-          <i class="fas fa-crosshairs"></i> تحديد من موقعي الحالي
+          <i class="fas fa-crosshairs"></i> ${t('settings.detectMyLocation')}
         </button>
         <span id="gzone-status-${loc.id}" style="font-size:11px;color:var(--text-muted);margin-inline-start:10px">
           ${loc.lat && loc.lng ? `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}</span>` : ''}
@@ -984,14 +987,14 @@ const SettingsModule = {
     DB.save();
     const list = document.getElementById('gps-zones-list');
     if (list) list.innerHTML = this._renderGpsZones();
-    App.toast('تم حذف المنطقة', 'success');
+    App.toast(currentLang==='ar'?'تم حذف المنطقة':'Zone deleted', 'success');
   },
 
   _detectZoneGPS(id) {
     const status = document.getElementById(`gzone-status-${id}`);
-    if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ التحديد...';
+    if (status) status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${currentLang==='ar'?'جارٍ التحديد...':'Locating...'}`;
     if (!navigator.geolocation) {
-      if (status) status.innerHTML = '<span style="color:var(--danger)">المتصفح لا يدعم GPS</span>';
+      if (status) status.innerHTML = `<span style="color:var(--danger)">${currentLang==='ar'?'المتصفح لا يدعم GPS':'GPS not supported by this browser'}</span>`;
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -1007,11 +1010,14 @@ const SettingsModule = {
           if (inputs[0]) inputs[0].value = lat.toFixed(6);
           if (inputs[1]) inputs[1].value = lng.toFixed(6);
         }
-        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${lat.toFixed(4)}, ${lng.toFixed(4)} — دقة ±${Math.round(pos.coords.accuracy)}م</span>`;
-        App.toast(`تم تحديد موقع المنطقة ✓`, 'success');
+        const accLabel = currentLang === 'ar' ? `دقة ±${Math.round(pos.coords.accuracy)}م` : `±${Math.round(pos.coords.accuracy)}m accuracy`;
+        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${lat.toFixed(4)}, ${lng.toFixed(4)} — ${accLabel}</span>`;
+        App.toast(t('settings.toastSettingsSaved'), 'success');
       },
       (err) => {
-        const msgs = { 1:'رُفض إذن الموقع', 2:'تعذّر التحديد', 3:'انتهت المهلة' };
+        const msgs = currentLang === 'ar'
+          ? { 1:'رُفض إذن الموقع', 2:'تعذّر التحديد', 3:'انتهت المهلة' }
+          : { 1:'Location permission denied', 2:'Could not determine location', 3:'Timed out' };
         if (status) status.innerHTML = `<span style="color:var(--danger)"><i class="fas fa-triangle-exclamation"></i> ${msgs[err.code]||err.message}</span>`;
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -1021,14 +1027,14 @@ const SettingsModule = {
   saveAttendanceSettings() {
     DB.saveCompany();
     DB.save();
-    App.toast('تم حفظ إعدادات الحضور والـ GPS بنجاح', 'success');
+    App.toast(t('settings.toastSettingsSaved'), 'success');
   },
 
   detectCompanyGPS() {
     const status = document.getElementById('gps-status');
-    if (status) status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ تحديد الموقع...';
+    if (status) status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${currentLang==='ar'?'جارٍ تحديد الموقع...':'Locating...'}`;
     if (!navigator.geolocation) {
-      if (status) status.innerHTML = '<span style="color:var(--danger)">المتصفح لا يدعم GPS</span>';
+      if (status) status.innerHTML = `<span style="color:var(--danger)">${currentLang==='ar'?'المتصفح لا يدعم GPS':'GPS not supported by this browser'}</span>`;
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -1043,11 +1049,14 @@ const SettingsModule = {
         DB.company.gpsLon = lon;
         if (!DB.company.gpsRadius) DB.company.gpsRadius = 200;
         DB.saveCompany();
-        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> تم التحديد: ${lat.toFixed(4)}, ${lon.toFixed(4)} — دقة ±${Math.round(pos.coords.accuracy)}م</span>`;
-        App.toast('تم تحديد موقع الشركة بنجاح', 'success');
+        const locLabel = currentLang==='ar'?`تم التحديد: ${lat.toFixed(4)}, ${lon.toFixed(4)} — دقة ±${Math.round(pos.coords.accuracy)}م`:`Set: ${lat.toFixed(4)}, ${lon.toFixed(4)} — ±${Math.round(pos.coords.accuracy)}m`;
+        if (status) status.innerHTML = `<span style="color:var(--success)"><i class="fas fa-circle-check"></i> ${locLabel}</span>`;
+        App.toast(currentLang==='ar'?'تم تحديد موقع الشركة بنجاح':'Company location set successfully', 'success');
       },
       (err) => {
-        const msgs = { 1:'تم رفض إذن الموقع — فعّل الإذن من المتصفح', 2:'تعذّر تحديد الموقع', 3:'انتهت مهلة الطلب' };
+        const msgs = currentLang==='ar'
+          ? { 1:'تم رفض إذن الموقع — فعّل الإذن من المتصفح', 2:'تعذّر تحديد الموقع', 3:'انتهت مهلة الطلب' }
+          : { 1:'Location permission denied — enable in browser', 2:'Could not determine location', 3:'Request timed out' };
         if (status) status.innerHTML = `<span style="color:var(--danger)"><i class="fas fa-triangle-exclamation"></i> ${msgs[err.code]||err.message}</span>`;
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -1060,16 +1069,16 @@ const SettingsModule = {
   _leavesSettings() {
     const types = this._getLeaveTypes();
     return `
-      ${this._group('أنواع الإجازات','تكوين أنواع الإجازات والرصيد السنوي',`
+      ${this._group(t('leaves.leaveTypes'),t('settings.leaveTypesDesc'),`
         <div class="table-wrapper" style="border:none;border-radius:0">
           <table class="data-table">
             <thead>
               <tr>
-                <th>نوع الإجازة</th>
-                <th>الرصيد السنوي</th>
-                <th>براتب</th>
-                <th>قابلة للترحيل</th>
-                <th>الإجراءات</th>
+                <th>${t('leaves.type')}</th>
+                <th>${t('settings.annualBalance')}</th>
+                <th>${t('settings.withSalary')}</th>
+                <th>${t('settings.carryOver')}</th>
+                <th>${t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1083,7 +1092,7 @@ const SettingsModule = {
                   </td>
                   <td>
                     <input class="app-form-input" type="number" id="lt-days-${lt.key}" value="${lt.days}" style="width:80px;padding:6px 10px">
-                    <span style="font-size:12px;color:var(--text-muted)"> يوم</span>
+                    <span style="font-size:12px;color:var(--text-muted)"> ${t('leaves.days')}</span>
                   </td>
                   <td>${this._toggle(`lt-paid-${lt.key}`,lt.paid)}</td>
                   <td>${this._toggle(`lt-carry-${lt.key}`,lt.carry)}</td>
@@ -1097,30 +1106,30 @@ const SettingsModule = {
           </table>
         </div>
         <button class="btn btn-outline-primary btn-sm" style="margin-top:8px" onclick="SettingsModule.addLeaveType()">
-          <i class="fas fa-plus"></i> إضافة نوع جديد
+          <i class="fas fa-plus"></i> ${t('settings.addLeaveType')}
         </button>
       `)}
 
-      ${this._group('سياسة الموافقة','تحديد مسار اعتماد طلبات الإجازة',`
-        ${this._row('الموافقة التلقائية','قبول طلبات الإجازة تلقائياً دون مراجعة',this._toggle('auto-approve',false))}
-        ${this._row('الموافقة من المدير المباشر','يتطلب موافقة مدير القسم أولاً',this._toggle('mgr-approve',true))}
-        ${this._row('الموافقة من الموارد البشرية','يتطلب موافقة إضافية من HR',this._toggle('hr-approve',true))}
-        ${this._row('إشعار الفريق عند الإجازة','إعلام زملاء القسم بإجازة الموظف',this._toggle('team-notif',true))}
+      ${this._group(t('settings.approvalPolicy'),t('settings.approvalPolicyDesc'),`
+        ${this._row(t('settings.autoApprove'),t('settings.autoApproveDesc'),this._toggle('auto-approve',false))}
+        ${this._row(t('settings.managerApprove'),t('settings.managerApproveDesc'),this._toggle('mgr-approve',true))}
+        ${this._row(t('settings.hrApprove'),t('settings.hrApproveDesc'),this._toggle('hr-approve',true))}
+        ${this._row(t('settings.teamNotify'),t('settings.teamNotifyDesc'),this._toggle('team-notif',true))}
         <div class="app-form-group" style="margin-top:12px">
-          <label>المدة الدنيا لتقديم الطلب (أيام)</label>
+          <label>${t('settings.minRequestDays')}</label>
           <input class="app-form-input" type="number" value="2" min="0" style="width:100px">
         </div>
       `)}
 
-      ${this._group('ترحيل الرصيد',`قواعد ترحيل رصيد الإجازات للسنة القادمة`,`
+      ${this._group(t('settings.carryOver'),t('settings.carryOverDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>الحد الأقصى للترحيل (يوم)</label>
+            <label>${t('settings.maxCarryOver')}</label>
             <input class="app-form-input" type="number" value="10" min="0">
           </div>
           <div class="app-form-group">
-            <label>انتهاء صلاحية الرصيد المرحّل</label>
-            ${this._select('carry-exp',[{v:'3',l:'3 أشهر'},{v:'6',l:'6 أشهر'},{v:'12',l:'سنة كاملة'},{v:'0',l:'لا ينتهي'}],'6')}
+            <label>${t('settings.carryExpiry')}</label>
+            ${this._select('carry-exp',[{v:'3',l:t('settings.months3')},{v:'6',l:t('settings.months6')},{v:'12',l:t('settings.year1')},{v:'0',l:t('settings.noExpiry')}],'6')}
           </div>
         </div>
       `)}
@@ -1134,44 +1143,44 @@ const SettingsModule = {
   ══════════════════════════════════════════ */
   _payrollSettings() {
     return `
-      ${this._group('دورة صرف الرواتب','تحديد موعد ومنهجية صرف الرواتب',`
+      ${this._group(t('settings.payrollCycle'),t('settings.payrollCycleDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>دورة الرواتب</label>
-            ${this._select('pay-cycle',[{v:'monthly',l:'شهري'},{v:'biweekly',l:'نصف شهري'},{v:'weekly',l:'أسبوعي'}], DB.company.payrollCycle || 'monthly')}
+            <label>${t('settings.cycleLabel')}</label>
+            ${this._select('pay-cycle',[{v:'monthly',l:t('settings.cycleMonthly')},{v:'biweekly',l:t('settings.cycleBiweekly')},{v:'weekly',l:t('settings.cycleWeekly')}], DB.company.payrollCycle || 'monthly')}
           </div>
           <div class="app-form-group">
-            <label>يوم الصرف (من الشهر)</label>
+            <label>${t('settings.payDay')}</label>
             <input class="app-form-input" id="pay-day" type="number" value="${DB.company.salaryDay ?? 28}" min="1" max="31">
           </div>
           <div class="app-form-group">
-            <label>العملة الافتراضية</label>
+            <label>${t('settings.defaultCurrency')}</label>
             ${this._select('pay-curr',[{v:'SAR',l:'SAR — ريال'},{v:'USD',l:'USD — دولار'},{v:'AED',l:'AED — درهم'}], DB.company.payrollCurrency || 'SAR')}
           </div>
         </div>
-        ${this._row('معالجة الرواتب تلقائياً','صرف الرواتب تلقائياً في الموعد',this._toggle('auto-payroll', !!DB.company.autoPayroll))}
-        ${this._row('بدل التأخر من الراتب','خصم قيمة التأخرات تلقائياً',this._toggle('late-deduct', DB.company.lateDeduct !== false))}
-        ${this._row('إضافة الأوفر تايم تلقائياً','احتساب الوقت الإضافي في الراتب',this._toggle('auto-ot-pay', DB.company.autoOtPay !== false))}
+        ${this._row(t('settings.autoPayroll'),t('settings.autoPayrollDesc'),this._toggle('auto-payroll', !!DB.company.autoPayroll))}
+        ${this._row(t('settings.lateDeductPayroll'),t('settings.lateDeductPayrollDesc'),this._toggle('late-deduct', DB.company.lateDeduct !== false))}
+        ${this._row(t('settings.autoOtPay'),t('settings.autoOtPayDesc'),this._toggle('auto-ot-pay', DB.company.autoOtPay !== false))}
       `)}
 
-      ${this._group('مكونات الراتب','تفعيل وتعطيل بنود الراتب',`
+      ${this._group(t('settings.payrollComponents'),t('settings.payrollComponentsDesc'),`
         ${(() => {
           const pc = DB.company.payrollComponents || {};
           return [
-            {l:'الراتب الأساسي',       d:'المرتب الثابت الشهري',              key:null,              fixed:true},
-            {l:'بدل السكن',            d:'حسب سياسة الشركة',                  key:'housing',         fixed:false},
-            {l:'بدل المواصلات',        d:'بدل التنقل اليومي',                 key:'transport',       fixed:false},
-            {l:'بدل الاتصالات',        d:'رسوم الهاتف والإنترنت',             key:'phone',           fixed:false},
-            {l:'بدل الطبيعة الخاصة',  d:'مقابل المهن ذات الطبيعة الخاصة',   key:'special',         fixed:false},
-            {l:'العلاوة السنوية',      d:'زيادة الأجر السنوية',               key:'annualBonus',     fixed:false},
-            {l:'مكافأة الأداء',        d:'بونص ربع سنوي أو سنوي',            key:'performanceBonus',fixed:false},
+            {lKey:'settings.basicSalary',       dKey:'settings.basicSalaryDesc',              key:null,              fixed:true},
+            {lKey:'settings.housingAllowance',   dKey:'settings.housingAllowanceDesc',          key:'housing',         fixed:false},
+            {lKey:'settings.transportAllowance', dKey:'settings.transportAllowanceDesc',        key:'transport',       fixed:false},
+            {lKey:'settings.phoneAllowance',     dKey:'settings.phoneAllowanceDesc',            key:'phone',           fixed:false},
+            {lKey:'settings.specialAllowance',   dKey:'settings.specialAllowanceDesc',          key:'special',         fixed:false},
+            {lKey:'settings.annualBonus',        dKey:'settings.annualBonusDesc',               key:'annualBonus',     fixed:false},
+            {lKey:'settings.performanceBonus',   dKey:'settings.performanceBonusDesc',          key:'performanceBonus',fixed:false},
           ].map(c=>`
             <div class="settings-item">
               <div class="settings-item-info">
-                <div class="settings-item-label">${c.l} ${c.fixed?'<span style="font-size:10px;background:var(--primary-bg);color:var(--primary);padding:2px 6px;border-radius:4px;font-weight:600">إلزامي</span>':''}</div>
-                <div class="settings-item-desc">${c.d}</div>
+                <div class="settings-item-label">${t(c.lKey)} ${c.fixed?`<span style="font-size:10px;background:var(--primary-bg);color:var(--primary);padding:2px 6px;border-radius:4px;font-weight:600">${t('settings.mandatory')}</span>`:''}</div>
+                <div class="settings-item-desc">${t(c.dKey)}</div>
               </div>
-              ${c.fixed ? '<span style="font-size:12px;color:var(--text-muted)">مفعّل دائماً</span>' : this._toggle('pc-'+c.key, !!pc[c.key])}
+              ${c.fixed ? `<span style="font-size:12px;color:var(--text-muted)">${t('settings.alwaysEnabled')}</span>` : this._toggle('pc-'+c.key, !!pc[c.key])}
             </div>
           `).join('');
         })()}
@@ -1205,7 +1214,7 @@ const SettingsModule = {
     });
 
     DB.saveCompany();
-    App.toast('تم حفظ إعدادات الرواتب بنجاح ✓', 'success');
+    App.toast(t('settings.toastSettingsSaved'), 'success');
   },
 
   /* ══════════════════════════════════════════
@@ -1214,38 +1223,38 @@ const SettingsModule = {
   _portal() {
     const ps = DB.company.portalSettings || {};
     return `
-      ${this._group('تفعيل بوابة الموظف','التحكم في ميزات البوابة الذاتية للموظفين',`
-        ${this._row('تفعيل البوابة','السماح للموظفين بالدخول لبوابتهم الشخصية',this._toggle('ps-enabled',  ps.enabled  !== false))}
-        ${this._row('تسجيل الحضور من البوابة','السماح بتسجيل الحضور عبر البوابة',this._toggle('ps-checkin',  ps.checkin  !== false))}
-        ${this._row('طلب الإجازات من البوابة','السماح بتقديم طلبات الإجازة',this._toggle('ps-leaves',   ps.leaves   !== false))}
-        ${this._row('عرض كشف الراتب','تمكين الموظف من رؤية راتبه وبنوده',this._toggle('ps-payslip',  ps.payslip  !== false))}
-        ${this._row('عرض السجل الشخصي','الاطلاع على بيانات الملف الشخصي',this._toggle('ps-profile',  ps.profile  !== false))}
-        ${this._row('مراسلة الإدارة','إرسال رسائل للموارد البشرية',this._toggle('ps-msg',      !!ps.msg))}
+      ${this._group(t('settings.portalEnable'),t('settings.portalEnableDesc'),`
+        ${this._row(t('settings.portalEnabled'),t('settings.portalEnabledDesc'),this._toggle('ps-enabled',  ps.enabled  !== false))}
+        ${this._row(t('settings.portalCheckin'),t('settings.portalCheckinDesc'),this._toggle('ps-checkin',  ps.checkin  !== false))}
+        ${this._row(t('settings.portalLeaves'),t('settings.portalLeavesDesc'),this._toggle('ps-leaves',   ps.leaves   !== false))}
+        ${this._row(t('settings.portalPayslip'),t('settings.portalPayslipDesc'),this._toggle('ps-payslip',  ps.payslip  !== false))}
+        ${this._row(t('settings.portalProfile'),t('settings.portalProfileDesc'),this._toggle('ps-profile',  ps.profile  !== false))}
+        ${this._row(t('settings.portalMsg'),t('settings.portalMsgDesc'),this._toggle('ps-msg',      !!ps.msg))}
       `)}
 
-      ${this._group('إعدادات كلمة مرور الموظف','قواعد كلمة السر لبوابة الموظف',`
+      ${this._group(t('settings.passwordSettings'),t('settings.passwordSettingsDesc'),`
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>كلمة المرور الافتراضية</label>
-            ${this._select('portal-defpass',[{v:'code',l:'كود الموظف'},{v:'phone4',l:'آخر 4 أرقام من الجوال'},{v:'custom',l:'تحديد يدوي'}],'code')}
+            <label>${t('settings.defaultPassword')}</label>
+            ${this._select('portal-defpass',[{v:'code',l:t('settings.passOptionCode')},{v:'phone4',l:t('settings.passOptionPhone4')},{v:'custom',l:t('settings.passOptionCustom')}],'code')}
           </div>
           <div class="app-form-group">
-            <label>الحد الأدنى لطول الكلمة</label>
+            <label>${t('settings.minPasswordLength')}</label>
             <input class="app-form-input" type="number" value="6" min="4">
           </div>
         </div>
-        ${this._row('إلزام تغيير الكلمة عند أول دخول','يُجبر الموظف على تغيير كلمة المرور',this._toggle('ps-forceChange', ps.forceChange !== false))}
+        ${this._row(t('settings.forcePasswordChange'),t('settings.forcePasswordChangeDesc'),this._toggle('ps-forceChange', ps.forceChange !== false))}
       `)}
 
-      ${this._group('إعادة تعيين كلمات المرور','تطبيق إعادة ضبط جماعية لكلمات المرور',`
+      ${this._group(t('settings.resetPasswords'),t('settings.resetPasswordsDesc'),`
         <div style="background:var(--warning-bg,rgba(245,158,11,0.08));border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
           <i class="fas fa-triangle-exclamation" style="color:var(--warning);margin-top:2px"></i>
           <div style="font-size:13px;color:var(--text-secondary)">
-            ستؤدي هذه العملية إلى إعادة تعيين كلمات مرور جميع الموظفين إلى القيمة الافتراضية
+            ${t('settings.resetPasswordsWarning')}
           </div>
         </div>
-        <button class="btn btn-warning btn-sm" onclick="if(confirm('هل أنت متأكد من إعادة تعيين كلمات مرور جميع الموظفين؟')) SettingsModule.resetAllPasswords()">
-          <i class="fas fa-key"></i> إعادة تعيين جميع كلمات المرور
+        <button class="btn btn-warning btn-sm" onclick="if(confirm('${t('settings.resetPasswordsConfirm')}')) SettingsModule.resetAllPasswords()">
+          <i class="fas fa-key"></i> ${t('settings.resetAllPasswords')}
         </button>
       `)}
 
@@ -1261,7 +1270,7 @@ const SettingsModule = {
       if (el) ps[k] = el.classList.contains('on');
     });
     DB.saveCompany();
-    App.toast('تم حفظ إعدادات بوابة الموظف بنجاح ✓', 'success');
+    App.toast(t('settings.toastSettingsSaved'), 'success');
   },
 
   /* ══════════════════════════════════════════
@@ -1269,24 +1278,24 @@ const SettingsModule = {
   ══════════════════════════════════════════ */
   _notifications() {
     const events = [
-      {l:'التأخر عن الدوام',     d:'إشعار فور انتهاء مهلة التأخر',       on:true},
-      {l:'الغياب',               d:'إشعار عند غياب الموظف دون إذن',       on:true},
-      {l:'طلب إجازة جديد',       d:'إشعار عند تقديم موظف طلب إجازة',     on:true},
-      {l:'الموافقة على الإجازة', d:'إشعار للموظف عند قبول إجازته',        on:true},
-      {l:'رفض الإجازة',          d:'إشعار للموظف عند رفض إجازته',         on:true},
-      {l:'معالجة الرواتب',       d:'إشعار عند إصدار كشوف الرواتب',        on:true},
-      {l:'تقارير الحضور اليومية',d:'ملخص يومي بحالة الحضور',              on:true},
+      {id:'late-duty',    l:t('settings.evLate'),          d:t('settings.evLateDesc'),          on:true},
+      {id:'absence',      l:t('settings.evAbsence'),       d:t('settings.evAbsenceDesc'),       on:true},
+      {id:'leave-req',    l:t('settings.evLeaveReq'),      d:t('settings.evLeaveReqDesc'),      on:true},
+      {id:'leave-apr',    l:t('settings.evLeaveApproved'), d:t('settings.evLeaveApprovedDesc'), on:true},
+      {id:'leave-rej',    l:t('settings.evLeaveRejected'), d:t('settings.evLeaveRejectedDesc'), on:true},
+      {id:'payroll-proc', l:t('settings.evPayroll'),       d:t('settings.evPayrollDesc'),       on:true},
+      {id:'daily-report', l:t('settings.evDailyReport'),   d:t('settings.evDailyReportDesc'),   on:true},
     ];
 
     return `
-      ${this._group('إعدادات واتساب التلقائي','ربط UltraMsg API للإرسال الفوري بدون أي تدخل',`
+      ${this._group(t('settings.waApiSettings'),t('settings.waApiSettingsDesc'),`
         <div id="wa-api-section">${WhatsApp.renderApiSettings()}</div>
       `)}
 
-      ${this._group('قوالب رسائل WhatsApp','تخصيص نصوص الرسائل التلقائية المرسلة للموظفين',`
+      ${this._group(t('settings.waTemplates'),t('settings.waTemplatesDesc'),`
         <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
           <i class="fas fa-info-circle"></i>
-          المتغيرات المتاحة: <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{name}</code>
+          ${t('settings.availableVars')}: <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{name}</code>
           <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{date}</code>
           <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{minutes}</code>
           <code style="background:var(--bg);padding:2px 6px;border-radius:4px">{from}</code>
@@ -1296,34 +1305,34 @@ const SettingsModule = {
         </div>
 
         ${[
-          { key:'absence',         label:'🔴 إشعار غياب' },
-          { key:'late',            label:'🟡 إشعار تأخير' },
-          { key:'warning',         label:'⚠️ إنذار رسمي' },
-          { key:'leaveApproved',   label:'✅ موافقة إجازة' },
-          { key:'leaveRejected',   label:'❌ رفض إجازة' },
-          { key:'requestApproved', label:'✅ موافقة طلب' },
-          { key:'requestRejected', label:'❌ رفض طلب' },
-          { key:'salaryReady',     label:'💰 إشعار الراتب' },
-        ].map(t=>`
+          { key:'absence',         label:t('settings.tplAbsence') },
+          { key:'late',            label:t('settings.tplLate') },
+          { key:'warning',         label:t('settings.tplWarning') },
+          { key:'leaveApproved',   label:t('settings.tplLeaveApproved') },
+          { key:'leaveRejected',   label:t('settings.tplLeaveRejected') },
+          { key:'requestApproved', label:t('settings.tplRequestApproved') },
+          { key:'requestRejected', label:t('settings.tplRequestRejected') },
+          { key:'salaryReady',     label:t('settings.tplSalaryReady') },
+        ].map(tpl=>`
           <div class="app-form-group">
-            <label>${t.label}</label>
-            <textarea class="app-form-input" id="wa-tpl-${t.key}" rows="3" style="resize:vertical;font-size:12px;line-height:1.7">${WhatsApp.templates[t.key]?.text||''}</textarea>
+            <label>${tpl.label}</label>
+            <textarea class="app-form-input" id="wa-tpl-${tpl.key}" rows="3" style="resize:vertical;font-size:12px;line-height:1.7">${WhatsApp.templates[tpl.key]?.text||''}</textarea>
           </div>
         `).join('')}
 
         <button class="btn btn-primary" onclick="SettingsModule.saveWATemplates()">
-          <i class="fas fa-save"></i> حفظ القوالب
+          <i class="fas fa-save"></i> ${t('settings.saveTemplates')}
         </button>
       `)}
 
-      ${this._group('أحداث الإشعارات','اختر الأحداث التي تستدعي إرسال إشعار WhatsApp تلقائياً',`
+      ${this._group(t('settings.notifEvents'),t('settings.notifEventsDesc'),`
         ${events.map(ev=>`
           <div class="settings-item">
             <div class="settings-item-info">
               <div class="settings-item-label">${ev.l}</div>
               <div class="settings-item-desc">${ev.d}</div>
             </div>
-            ${this._toggle('ev-'+ev.l, ev.on)}
+            ${this._toggle('ev-'+ev.id, ev.on)}
           </div>
         `).join('')}
       `)}
@@ -1332,21 +1341,29 @@ const SettingsModule = {
 
   toggleWA(on) {
     WhatsApp.config.enabled = on;
-    App.toast(on ? 'تم تفعيل إشعارات WhatsApp ✅' : 'تم تعطيل إشعارات WhatsApp', on ? 'success' : 'info');
+    App.toast(on
+      ? (currentLang==='ar' ? 'تم تفعيل إشعارات WhatsApp ✅' : 'WhatsApp notifications enabled ✅')
+      : (currentLang==='ar' ? 'تم تعطيل إشعارات WhatsApp' : 'WhatsApp notifications disabled'),
+      on ? 'success' : 'info');
   },
 
   toggleWAToken() { /* not used in wa.me mode */ },
 
   saveWAConfig() {
-    App.toast('لا حاجة لإعدادات — الخدمة مجانية وتعمل تلقائياً ✅', 'success');
+    App.toast(currentLang==='ar'?'لا حاجة لإعدادات — الخدمة مجانية وتعمل تلقائياً ✅':'No configuration needed — free service, works automatically ✅', 'success');
   },
 
   async testWA() {
     const phone = document.getElementById('wa-test-phone')?.value?.trim();
-    if (!phone) { App.toast('أدخل رقم الهاتف للاختبار', 'warning'); return; }
-    const msg = `مرحباً من Attendify Pro 👋\nهذه رسالة اختبار لتأكيد عمل الإشعارات.\n\n${DB.company.name || 'فريق الموارد البشرية'}`;
+    if (!phone) { App.toast(currentLang==='ar'?'أدخل رقم الهاتف للاختبار':'Enter a phone number to test', 'warning'); return; }
+    const msg = currentLang==='ar'
+      ? `مرحباً من Attendify Pro 👋\nهذه رسالة اختبار لتأكيد عمل الإشعارات.\n\n${DB.company.name || 'فريق الموارد البشرية'}`
+      : `Hello from Attendify Pro 👋\nThis is a test message to confirm notifications work.\n\n${DB.company.nameEn || DB.company.name || 'HR Team'}`;
     const ok = await WhatsApp.send(phone, msg);
-    if (ok) App.toast(WhatsApp.isApiReady() ? '✅ أُرسلت الرسالة تلقائياً' : '✅ تم فتح واتساب — اضغط إرسال', 'success');
+    if (ok) App.toast(WhatsApp.isApiReady()
+      ? (currentLang==='ar'?'✅ أُرسلت الرسالة تلقائياً':'✅ Message sent automatically')
+      : (currentLang==='ar'?'✅ تم فتح واتساب — اضغط إرسال':'✅ WhatsApp opened — tap Send'),
+      'success');
   },
 
   saveWATemplates() {
@@ -1360,7 +1377,7 @@ const SettingsModule = {
     });
     Object.assign(WhatsApp.templates, updated);
     localStorage.setItem('wa-templates', JSON.stringify(WhatsApp.templates));
-    App.toast('تم حفظ قوالب WhatsApp ✅', 'success');
+    App.toast(currentLang==='ar'?'تم حفظ قوالب WhatsApp ✅':'WhatsApp templates saved ✅', 'success');
   },
 
   /* ══════════════════════════════════════════
@@ -1519,10 +1536,11 @@ const SettingsModule = {
       smtp:`<div class="app-form-group"><label>SMTP Host</label><input class="app-form-input" dir="ltr" value="smtp.gmail.com"></div><div class="app-form-row"><div class="app-form-group"><label>Port</label><input class="app-form-input" dir="ltr" value="587"></div><div class="app-form-group"><label>Security</label><select class="app-form-input app-form-select"><option>TLS</option><option>SSL</option></select></div></div><div class="app-form-group"><label>Username</label><input class="app-form-input" dir="ltr" placeholder="noreply@company.com"></div><div class="app-form-group"><label>Password</label><input class="app-form-input" type="password"></div>`,
       twilio:`<div class="app-form-group"><label>Account SID</label><input class="app-form-input" dir="ltr" placeholder="ACxxxxxx"></div><div class="app-form-group"><label>Auth Token</label><input class="app-form-input" type="password"></div><div class="app-form-group"><label>From Number</label><input class="app-form-input" dir="ltr" placeholder="+1234567890"></div>`,
     };
-    App.openModal(`إعداد ${name}`, `
-      <form onsubmit="event.preventDefault();App.closeModal();App.toast('تم حفظ الإعدادات','success')">
+    const setupLabel = currentLang==='ar'?'إعداد':'Setup';
+    App.openModal(`${setupLabel} ${name}`, `
+      <form onsubmit="event.preventDefault();App.closeModal();App.toast(t('settings.toastSettingsSaved'),'success')">
         ${configs[type]||`<div class="app-form-group"><label>API Endpoint</label><input class="app-form-input" dir="ltr"></div><div class="app-form-group"><label>Secret Key</label><input class="app-form-input" type="password"></div>`}
-        <button type="button" class="btn btn-secondary btn-sm" onclick="SettingsModule.testWebhook(this.closest('form'))"><i class="fas fa-plug"></i> اختبار الاتصال</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="SettingsModule.testWebhook(this.closest('form'))"><i class="fas fa-plug"></i> ${currentLang==='ar'?'اختبار الاتصال':'Test Connection'}</button>
         <div class="modal-footer" style="padding:0;margin-top:16px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
           <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${t('common.save')}</button>
@@ -1548,27 +1566,27 @@ const SettingsModule = {
     if (inp) { inp.value = key; inp.type = 'text'; }
     const eye = document.getElementById('api-eye');
     if (eye) eye.className = 'fas fa-eye-slash';
-    App.toast('تم توليد مفتاح API جديد ✓', 'success');
+    App.toast(currentLang==='ar'?'تم توليد مفتاح API جديد ✓':'New API key generated ✓', 'success');
   },
 
   copyApiKey() {
     const inp = document.getElementById('api-key');
     const val = inp?.value || localStorage.getItem('attendify-api-key');
-    if (!val) { App.toast('لا يوجد مفتاح — أنشئ مفتاحاً أولاً', 'warning'); return; }
-    navigator.clipboard?.writeText(val).then(() => App.toast('تم نسخ المفتاح ✓', 'success'))
-      .catch(() => { if (inp) { inp.select(); document.execCommand('copy'); App.toast('تم النسخ', 'success'); } });
+    if (!val) { App.toast(currentLang==='ar'?'لا يوجد مفتاح — أنشئ مفتاحاً أولاً':'No key — generate one first', 'warning'); return; }
+    navigator.clipboard?.writeText(val).then(() => App.toast(currentLang==='ar'?'تم نسخ المفتاح ✓':'Key copied ✓', 'success'))
+      .catch(() => { if (inp) { inp.select(); document.execCommand('copy'); App.toast(currentLang==='ar'?'تم النسخ':'Copied', 'success'); } });
   },
 
   async testWebhook(form) {
     const urlEl = form?.querySelector('input[placeholder*="webhook"], input[dir="ltr"]');
     const url = urlEl?.value?.trim();
-    if (!url) { App.toast('أدخل Webhook URL أولاً', 'warning'); return; }
-    App.toast('جارٍ اختبار الاتصال...', 'info', 3000);
+    if (!url) { App.toast(currentLang==='ar'?'أدخل Webhook URL أولاً':'Enter a Webhook URL first', 'warning'); return; }
+    App.toast(currentLang==='ar'?'جارٍ اختبار الاتصال...':'Testing connection...', 'info', 3000);
     try {
       await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({test:true, from:'Attendify Pro', timestamp: new Date().toISOString()}) });
-      App.toast('تم الاتصال بنجاح ✓', 'success');
+      App.toast(currentLang==='ar'?'تم الاتصال بنجاح ✓':'Connected successfully ✓', 'success');
     } catch {
-      App.toast('تعذّر الاتصال — تحقق من الرابط', 'error');
+      App.toast(currentLang==='ar'?'تعذّر الاتصال — تحقق من الرابط':'Connection failed — check the URL', 'error');
     }
   },
 
@@ -1577,9 +1595,10 @@ const SettingsModule = {
   async supabaseSave() {
     const url = sanitizeUrl(document.getElementById('sb-url')?.value?.trim());
     const key = sanitizeText(document.getElementById('sb-key')?.value?.trim());
-    if (!url || !key) { App.toast('أدخل الرابط والمفتاح أولاً','warning'); return; }
-    App.toast('جارٍ الاتصال بـ Supabase...','info');
-    document.getElementById('sb-status-badge').innerHTML = '<span class="badge badge-warning badge-dot">جارٍ الاتصال...</span>';
+    if (!url || !key) { App.toast(currentLang==='ar'?'أدخل الرابط والمفتاح أولاً':'Enter URL and key first','warning'); return; }
+    App.toast(currentLang==='ar'?'جارٍ الاتصال بـ Supabase...':'Connecting to Supabase...','info');
+    const connectingLabel = currentLang==='ar'?'جارٍ الاتصال...':'Connecting...';
+    document.getElementById('sb-status-badge').innerHTML = `<span class="badge badge-warning badge-dot">${connectingLabel}</span>`;
     const ok = await SupabaseDB.saveConfig(url, key);
     // Refresh integrations section to show updated status
     setTimeout(() => this.switchSection('integrations'), 800);
@@ -1595,7 +1614,7 @@ const SettingsModule = {
 
   supabaseDisconnect() {
     App.confirm(
-      'هل تريد قطع الاتصال بـ Supabase؟ ستظل البيانات محفوظة محلياً.',
+      currentLang==='ar'?'هل تريد قطع الاتصال بـ Supabase؟ ستظل البيانات محفوظة محلياً.':'Disconnect from Supabase? Your data will remain saved locally.',
       () => {
         SupabaseDB.clearConfig();
         setTimeout(() => this.switchSection('integrations'), 300);
@@ -1734,7 +1753,7 @@ const SettingsModule = {
     const maEl=document.getElementById('pass-max-attempts'); if(maEl) ss.passMaxAttempts=parseInt(maEl.value)||5;
     const ipEl=document.getElementById('allowed-ips');    if(ipEl) ss.allowedIPs=ipEl.value;
     DB.saveCompany();
-    App.toast('تم حفظ إعدادات الأمان بنجاح ✓', 'success');
+    App.toast(t('settings.toastSettingsSaved'), 'success');
   },
 
   /* ══════════════════════════════════════════
@@ -2014,7 +2033,7 @@ const SettingsModule = {
     const driveEmail = document.getElementById('backup-drive-email')?.value?.trim();
     if (bs.loc === 'drive') {
       if (!driveEmail || !driveEmail.includes('@')) {
-        App.toast('أدخل بريد Google الإلكتروني أولاً', 'warning'); return;
+        App.toast(currentLang==='ar'?'أدخل بريد Google الإلكتروني أولاً':'Enter a Google email first', 'warning'); return;
       }
       bs.driveEmail    = driveEmail;
       bs.driveFolderId = document.getElementById('backup-drive-folder')?.value?.trim() || '';
@@ -2030,7 +2049,7 @@ const SettingsModule = {
     }
 
     DB.saveCompany();
-    App.toast('تم حفظ إعدادات النسخ الاحتياطي بنجاح ✓', 'success');
+    App.toast(t('settings.toastSettingsSaved'), 'success');
   },
 
   // ── HELPER METHODS ───────────────────────────────────────
@@ -2039,7 +2058,7 @@ const SettingsModule = {
     document.documentElement.style.setProperty('--primary', hex);
     document.documentElement.style.setProperty('--primary-dark', hex);
     localStorage.setItem('attendify-color', hex);
-    App.toast(`تم تطبيق اللون: ${label}`, 'success');
+    App.toast(`${currentLang==='ar'?'تم تطبيق اللون':'Color applied'}: ${label}`, 'success');
   },
 
   applyFontSize(size, label, btn) {
@@ -2047,7 +2066,7 @@ const SettingsModule = {
     localStorage.setItem('attendify-font-size', size);
     document.querySelectorAll('.btn-sm').forEach(b => b.classList.remove('btn-primary'));
     if (btn) { btn.classList.remove('btn-secondary'); btn.classList.add('btn-primary'); }
-    App.toast(`تم تطبيق الحجم: ${label}`, 'success');
+    App.toast(`${currentLang==='ar'?'تم تطبيق الحجم':'Size applied'}: ${label}`, 'success');
   },
 
   exportSection(type) {
@@ -2098,7 +2117,10 @@ const SettingsModule = {
     a.download = `attendify-backup-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-    App.toast(`تم تصدير ${DB.employees.length} موظف و${DB.attendance.length} سجل حضور ✓`, 'success');
+    App.toast(currentLang==='ar'
+      ? `تم تصدير ${DB.employees.length} موظف و${DB.attendance.length} سجل حضور ✓`
+      : `Exported ${DB.employees.length} employees and ${DB.attendance.length} attendance records ✓`,
+      'success');
   },
 
   deleteOldLogs() {
@@ -2112,7 +2134,10 @@ const SettingsModule = {
     for (let i = DB.attendance.length - 1; i >= 0; i--) {
       if ((DB.attendance[i].date || '') < cutoffStr) { DB.attendance.splice(i, 1); deleted2++; }
     }
-    App.toast(`تم حذف ${deleted} سجل مراجعة و${deleted2} سجل حضور قديم ✓`, 'success');
+    App.toast(currentLang==='ar'
+      ? `تم حذف ${deleted} سجل مراجعة و${deleted2} سجل حضور قديم ✓`
+      : `Deleted ${deleted} audit logs and ${deleted2} old attendance records ✓`,
+      'success');
   },
 
   /* ══════════════════════════════════════════
@@ -2125,23 +2150,29 @@ const SettingsModule = {
 
   _signatures() {
     const sigs = this._getSigs();
-    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b' };
+    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b', 'Prepared':'#6366f1', 'Reviewed':'#f59e0b', 'Approved':'#10b981', 'Custom':'#64748b' };
+    const sigTitle = currentLang==='ar' ? 'التواقيع والاعتماد' : 'Signatures & Approval';
+    const sigDesc  = currentLang==='ar' ? 'تواقيع المسؤولين التي تظهر في التقارير المطبوعة' : 'Approver signatures shown in printed reports';
+    const noSigsMsg = currentLang==='ar' ? 'لا توجد تواقيع بعد — اضغط "إضافة" لإنشاء أول توقيع' : 'No signatures yet — click "Add" to create the first one';
+    const addBtnLabel = currentLang==='ar' ? 'إضافة معتمد جديد' : 'Add Approver';
+    const sigInfoHint = currentLang==='ar'
+      ? 'تظهر التواقيع أسفل التقارير المطبوعة في خانات <strong>أعدّه / راجعه / اعتمده</strong>. يمكن إضافة أي عدد من المعتمدين ولكن يُفضل ثلاثة كحد أقصى للطباعة.'
+      : 'Signatures appear at the bottom of printed reports under <strong>Prepared / Reviewed / Approved</strong>. You can add any number, but three is ideal for printing.';
 
     return `
       ${this._group(
-        'التواقيع والاعتماد',
-        'تواقيع المسؤولين التي تظهر في التقارير المطبوعة',
+        sigTitle, sigDesc,
         `
         <div id="sigs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:14px">
           ${sigs.length ? sigs.map(s => this._sigCard(s)).join('') : `
             <div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text-muted);font-size:13px">
               <i class="fas fa-signature" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3"></i>
-              لا توجد تواقيع بعد — اضغط "إضافة" لإنشاء أول توقيع
+              ${noSigsMsg}
             </div>
           `}
         </div>
         <button class="btn btn-outline-primary btn-sm" onclick="SettingsModule.openSigEditor()">
-          <i class="fas fa-plus"></i> إضافة معتمد جديد
+          <i class="fas fa-plus"></i> ${addBtnLabel}
         </button>
         `,
         `<span class="badge badge-primary">${sigs.length}</span>`
@@ -2149,24 +2180,23 @@ const SettingsModule = {
 
       <div style="background:var(--primary-bg);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;margin-top:4px">
         <i class="fas fa-circle-info" style="color:var(--primary);margin-top:2px"></i>
-        <div style="font-size:12px;color:var(--text-secondary)">
-          تظهر التواقيع أسفل التقارير المطبوعة في خانات <strong>أعدّه / راجعه / اعتمده</strong>. يمكن إضافة أي عدد من المعتمدين ولكن يُفضل ثلاثة كحد أقصى للطباعة.
-        </div>
+        <div style="font-size:12px;color:var(--text-secondary)">${sigInfoHint}</div>
       </div>
     `;
   },
 
   _sigCard(s) {
-    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b' };
+    const roleColors = { 'أعدّه':'#6366f1', 'راجعه':'#f59e0b', 'اعتمده':'#10b981', 'مخصص':'#64748b', 'Prepared':'#6366f1', 'Reviewed':'#f59e0b', 'Approved':'#10b981', 'Custom':'#64748b' };
     const col = roleColors[s.role] || '#64748b';
+    const noSigLabel = currentLang==='ar' ? 'لا يوجد توقيع' : 'No signature';
     return `
       <div class="card stagger-item" style="border-top:3px solid ${col};min-width:0" id="sigcard-${s.id}">
         <div class="card-body" style="padding:14px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;background:${col}18;color:${col}">${_esc(s.role)}</span>
             <div style="display:flex;gap:4px">
-              <button class="btn-icon btn" onclick="SettingsModule.openSigEditor('${s.id}')" title="تعديل"><i class="fas fa-pencil"></i></button>
-              <button class="btn-icon btn" onclick="SettingsModule.deleteSig('${s.id}')" title="حذف"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
+              <button class="btn-icon btn" onclick="SettingsModule.openSigEditor('${s.id}')" title="${t('common.edit')}"><i class="fas fa-pencil"></i></button>
+              <button class="btn-icon btn" onclick="SettingsModule.deleteSig('${s.id}')" title="${t('common.delete')}"><i class="fas fa-trash" style="color:var(--danger)"></i></button>
             </div>
           </div>
           <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:2px">${_esc(s.name)}</div>
@@ -2174,7 +2204,7 @@ const SettingsModule = {
           <div style="height:64px;border-radius:8px;border:1px dashed var(--border);background:var(--bg-input);display:flex;align-items:center;justify-content:center;overflow:hidden">
             ${s.signature
               ? `<img src="${s.signature}" style="max-height:60px;max-width:100%;object-fit:contain">`
-              : `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-signature"></i> لا يوجد توقيع</span>`}
+              : `<span style="font-size:11px;color:var(--text-muted)"><i class="fas fa-signature"></i> ${noSigLabel}</span>`}
           </div>
         </div>
       </div>`;
@@ -2183,26 +2213,27 @@ const SettingsModule = {
   openSigEditor(id) {
     const sigs = this._getSigs();
     const s    = id ? sigs.find(x => x.id === id) : null;
-    const roles= ['أعدّه','راجعه','اعتمده','مخصص'];
+    const isAr = currentLang === 'ar';
+    const roles = isAr ? ['أعدّه','راجعه','اعتمده','مخصص'] : ['Prepared','Reviewed','Approved','Custom'];
+    const modalTitle = id ? (isAr?'تعديل معتمد':'Edit Approver') : (isAr?'إضافة معتمد جديد':'Add Approver');
 
-    App.openModal(id ? 'تعديل معتمد' : 'إضافة معتمد جديد', `
+    App.openModal(modalTitle, `
       <form onsubmit="SettingsModule.saveSig(event,'${id||''}')">
-        <!-- Info row -->
         <div class="app-form-row">
           <div class="app-form-group">
-            <label>الاسم <span style="color:var(--danger)">*</span></label>
-            <input class="app-form-input" name="name" value="${_esc(s?.name||'')}" placeholder="مثال: أحمد محمد" required>
+            <label>${t('common.name')} <span style="color:var(--danger)">*</span></label>
+            <input class="app-form-input" name="name" value="${_esc(s?.name||'')}" required>
           </div>
           <div class="app-form-group">
-            <label>الدور <span style="color:var(--danger)">*</span></label>
+            <label>${isAr?'الدور':'Role'} <span style="color:var(--danger)">*</span></label>
             <select class="app-form-input app-form-select" name="role">
               ${roles.map(r=>`<option value="${r}" ${s?.role===r?'selected':''}>${r}</option>`).join('')}
             </select>
           </div>
         </div>
         <div class="app-form-group">
-          <label>المسمى الوظيفي</label>
-          <input class="app-form-input" name="title" value="${_esc(s?.title||'')}" placeholder="مثال: مدير الموارد البشرية">
+          <label>${t('common.position')}</label>
+          <input class="app-form-input" name="title" value="${_esc(s?.title||'')}">
         </div>
 
         <!-- Signature tabs -->
@@ -2211,12 +2242,12 @@ const SettingsModule = {
             <button type="button" id="sig-tab-draw"
               style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:var(--primary);color:white"
               onclick="SettingsModule._switchSigTab('draw')">
-              <i class="fas fa-pen-nib"></i> رسم حر
+              <i class="fas fa-pen-nib"></i> ${isAr?'رسم حر':'Free Draw'}
             </button>
             <button type="button" id="sig-tab-upload"
               style="flex:1;padding:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:var(--bg-input);color:var(--text-secondary)"
               onclick="SettingsModule._switchSigTab('upload')">
-              <i class="fas fa-upload"></i> رفع صورة
+              <i class="fas fa-upload"></i> ${isAr?'رفع صورة':'Upload Image'}
             </button>
           </div>
 
@@ -2226,29 +2257,29 @@ const SettingsModule = {
               <canvas id="sig-canvas" width="460" height="160"
                 style="display:block;width:100%;height:160px;cursor:crosshair;touch-action:none"></canvas>
               <div style="position:absolute;top:6px;inset-inline-end:8px;display:flex;gap:5px">
-                <select id="sig-color" onchange="SettingsModule._updatePen()" title="لون"
+                <select id="sig-color" onchange="SettingsModule._updatePen()"
                   style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer">
-                  <option value="#1e293b">🖊 أسود</option>
-                  <option value="#1e40af">🖊 أزرق</option>
-                  <option value="#991b1b">🖊 أحمر</option>
+                  <option value="#1e293b">🖊 ${isAr?'أسود':'Black'}</option>
+                  <option value="#1e40af">🖊 ${isAr?'أزرق':'Blue'}</option>
+                  <option value="#991b1b">🖊 ${isAr?'أحمر':'Red'}</option>
                 </select>
-                <select id="sig-size" onchange="SettingsModule._updatePen()" title="سماكة"
+                <select id="sig-size" onchange="SettingsModule._updatePen()"
                   style="font-size:11px;padding:3px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer">
-                  <option value="2">رفيع</option>
-                  <option value="3" selected>متوسط</option>
-                  <option value="5">سميك</option>
+                  <option value="2">${isAr?'رفيع':'Thin'}</option>
+                  <option value="3" selected>${isAr?'متوسط':'Medium'}</option>
+                  <option value="5">${isAr?'سميك':'Thick'}</option>
                 </select>
                 <button type="button" onclick="SettingsModule._clearCanvas()"
                   style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;color:var(--danger)">
-                  <i class="fas fa-eraser"></i> مسح
+                  <i class="fas fa-eraser"></i> ${isAr?'مسح':'Clear'}
                 </button>
               </div>
-              <div style="position:absolute;bottom:6px;inset-inline-start:10px;font-size:10px;color:#94a3b8;pointer-events:none">ارسم توقيعك هنا</div>
+              <div style="position:absolute;bottom:6px;inset-inline-start:10px;font-size:10px;color:#94a3b8;pointer-events:none">${isAr?'ارسم توقيعك هنا':'Draw your signature here'}</div>
             </div>
             ${s?.signature ? `
               <div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--bg-input);display:flex;align-items:center;gap:8px">
                 <img src="${s.signature}" style="height:40px;max-width:120px;object-fit:contain;border-radius:4px">
-                <span style="font-size:11px;color:var(--text-muted)">التوقيع المحفوظ حالياً — ارسم جديداً للتحديث</span>
+                <span style="font-size:11px;color:var(--text-muted)">${isAr?'التوقيع المحفوظ حالياً — ارسم جديداً للتحديث':'Current saved signature — draw a new one to update'}</span>
               </div>` : ''}
           </div>
 
@@ -2261,15 +2292,15 @@ const SettingsModule = {
               ondragleave="this.style.borderColor='var(--border)'"
               ondrop="SettingsModule._dropSig(event)">
               <i class="fas fa-cloud-upload-alt" style="font-size:28px;color:var(--primary);opacity:.5;display:block;margin-bottom:8px"></i>
-              <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">اضغط أو اسحب صورة التوقيع</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">PNG, JPG, SVG — شفاف الخلفية أفضل</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">${isAr?'اضغط أو اسحب صورة التوقيع':'Click or drag signature image'}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px">PNG, JPG, SVG — ${isAr?'شفاف الخلفية أفضل':'transparent background preferred'}</div>
             </div>
             <input type="file" id="sig-file-input" accept="image/*" style="display:none" onchange="SettingsModule._loadSigFile(this)">
             <div id="sig-upload-preview" style="display:none;margin-top:10px;text-align:center;padding:12px;border-radius:10px;background:var(--bg-input)">
               <img id="sig-upload-img" style="max-height:80px;max-width:240px;object-fit:contain">
               <div style="margin-top:8px">
                 <button type="button" class="btn btn-danger btn-sm" onclick="SettingsModule._clearUpload()">
-                  <i class="fas fa-trash"></i> إزالة
+                  <i class="fas fa-trash"></i> ${t('common.delete')}
                 </button>
               </div>
             </div>
@@ -2277,8 +2308,8 @@ const SettingsModule = {
         </div>
 
         <div class="modal-footer" style="padding:0;margin-top:16px">
-          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إلغاء</button>
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> حفظ التوقيع</button>
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> ${isAr?'حفظ التوقيع':'Save Signature'}</button>
         </div>
       </form>
     `, { size: 'md' });
@@ -2354,7 +2385,7 @@ const SettingsModule = {
   _loadSigFile(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { App.toast('حجم الصورة يجب أن يكون أقل من 2MB', 'warning'); return; }
+    if (file.size > 2 * 1024 * 1024) { App.toast(currentLang==='ar'?'حجم الصورة يجب أن يكون أقل من 2MB':'Image size must be less than 2MB', 'warning'); return; }
     const reader = new FileReader();
     reader.onload = e => {
       const preview = document.getElementById('sig-upload-preview');
@@ -2388,7 +2419,7 @@ const SettingsModule = {
   saveSig(e, id) {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(e.target));
-    if (!data.name.trim()) { App.toast('الاسم مطلوب', 'error'); return; }
+    if (!data.name.trim()) { App.toast(currentLang==='ar'?'الاسم مطلوب':'Name is required', 'error'); return; }
 
     // Determine signature image source: draw vs upload
     const isUpload  = document.getElementById('sig-panel-upload')?.style.display !== 'none';
@@ -2423,16 +2454,19 @@ const SettingsModule = {
 
     DB.saveCompany();
     App.closeModal();
-    App.toast(`تم ${id?'تحديث':'إضافة'} توقيع ${data.name} ✓`, 'success');
+    App.toast(currentLang==='ar'
+      ? `تم ${id?'تحديث':'إضافة'} توقيع ${data.name} ✓`
+      : `Signature ${id?'updated':'added'}: ${data.name} ✓`,
+      'success');
     this._renderSection();
   },
 
   deleteSig(id) {
-    App.confirm('هل تريد حذف هذا التوقيع نهائياً؟', () => {
+    App.confirm(currentLang==='ar'?'هل تريد حذف هذا التوقيع نهائياً؟':'Delete this signature permanently?', () => {
       DB.company.signatures = this._getSigs().filter(s => s.id !== id);
       DB.saveCompany();
       document.getElementById(`sigcard-${id}`)?.remove();
-      App.toast('تم حذف التوقيع', 'info');
+      App.toast(currentLang==='ar'?'تم حذف التوقيع':'Signature deleted', 'info');
       this._renderSection();
     });
   },
@@ -2441,10 +2475,11 @@ const SettingsModule = {
     ['employees','attendance','leaves','requests','payroll','shifts','locations','audit','notifications','departments'].forEach(k => {
       if (Array.isArray(DB[k])) DB[k].length = 0;
     });
-    DB.company = { name:'',nameEn:'',logo:'',address:'',phone:'',email:'',website:'',timezone:'Asia/Riyadh',currency:'SAR',workStart:'08:00',workEnd:'17:00',lateThreshold:15,breakEnabled:false,overtimeEnabled:false,workPeriods:[{id:'wp1',label:'فترة العمل',start:'08:00',end:'17:00'}],workDays:['sat','sun','mon','tue','wed','thu'],branches:[],holidays:[] };
+    const defaultPeriodLabel = currentLang === 'ar' ? 'فترة العمل' : 'Work Period';
+    DB.company = { name:'',nameEn:'',logo:'',address:'',phone:'',email:'',website:'',timezone:'Asia/Riyadh',currency:'SAR',workStart:'08:00',workEnd:'17:00',lateThreshold:15,breakEnabled:false,overtimeEnabled:false,workPeriods:[{id:'wp1',label:defaultPeriodLabel,start:'08:00',end:'17:00'}],workDays:['sat','sun','mon','tue','wed','thu'],branches:[],holidays:[] };
     DB.adminCredentials = { email:'', password:'' };
     localStorage.clear();
-    App.toast('تم إعادة تعيين النظام — سيتم إعادة التحميل...', 'info', 2000);
+    App.toast(currentLang==='ar'?'تم إعادة تعيين النظام — سيتم إعادة التحميل...':'System reset — reloading...', 'info', 2000);
     setTimeout(() => location.reload(), 2000);
   },
 };

@@ -12,7 +12,7 @@ const NotificationsModule = {
       <div class="page-header">
         <div class="page-header-text">
           <h1>${t('notifications.title')}</h1>
-          <p>${t('notifications.subtitle')} — ${unread} ${currentLang==='ar'?'غير مقروءة':'unread'}</p>
+          <p>${t('notifications.subtitle')} — ${unread} ${t('notifications.unread')}</p>
         </div>
         <div class="page-header-actions">
           <button class="btn btn-secondary" onclick="App.markAllRead()"><i class="fas fa-check-double"></i> ${t('notif.markAllRead')}</button>
@@ -23,19 +23,19 @@ const NotificationsModule = {
       <!-- Channel Settings -->
       <div class="grid-3" style="margin-bottom:24px">
         ${[
-          {icon:'fas fa-envelope',   color:'gradient-primary', name:'البريد الإلكتروني', nameEn:'Email',    status:true  },
-          {icon:'fab fa-whatsapp',   color:'gradient-success', name:'واتساب',            nameEn:'WhatsApp', status:true  },
-          {icon:'fas fa-mobile-alt', color:'gradient-cyan',    name:'رسائل SMS',         nameEn:'SMS',      status:false },
-          {icon:'fas fa-desktop',    color:'gradient-indigo',  name:'إشعارات المتصفح',   nameEn:'Browser',  status:true  },
-          {icon:'fas fa-bell',       color:'gradient-warning', name:'إشعارات التطبيق',   nameEn:'In-App',   status:true  },
-          {icon:'fas fa-print',      color:'gradient-rose',    name:'تقارير تلقائية',    nameEn:'Auto Reports',status:false},
+          {icon:'fas fa-envelope',   color:'gradient-primary', nameKey:'notifications.channelEmail',   nameEn:'Email',       status:true  },
+          {icon:'fab fa-whatsapp',   color:'gradient-success', nameKey:'notifications.channelWhatsapp',nameEn:'WhatsApp',    status:true  },
+          {icon:'fas fa-mobile-alt', color:'gradient-cyan',    nameKey:'notifications.channelSms',     nameEn:'SMS',         status:false },
+          {icon:'fas fa-desktop',    color:'gradient-indigo',  nameKey:'notifications.channelBrowser', nameEn:'Browser',     status:true  },
+          {icon:'fas fa-bell',       color:'gradient-warning', nameKey:'notifications.channelInApp',   nameEn:'In-App',      status:true  },
+          {icon:'fas fa-print',      color:'gradient-rose',    nameKey:'notifications.channelAuto',    nameEn:'Auto Reports',status:false },
         ].map(ch => `
           <div class="card stagger-item">
             <div class="card-body" style="display:flex;align-items:center;gap:12px">
               <div class="stat-icon ${ch.color}" style="width:40px;height:40px;font-size:16px"><i class="${ch.icon}"></i></div>
               <div style="flex:1">
-                <div style="font-size:13.5px;font-weight:600;color:var(--text-primary)">${currentLang==='ar'?ch.name:ch.nameEn}</div>
-                <div style="font-size:11px;color:var(--text-muted)">${ch.status?(currentLang==='ar'?'مفعّل':'Active'):(currentLang==='ar'?'معطّل':'Disabled')}</div>
+                <div style="font-size:13.5px;font-weight:600;color:var(--text-primary)">${t(ch.nameKey)}</div>
+                <div style="font-size:11px;color:var(--text-muted)">${ch.status?t('notifications.channelEnabled'):t('notifications.channelDisabled')}</div>
               </div>
               <div class="toggle-switch ${ch.status?'on':''}" onclick="this.classList.toggle('on'); NotificationsModule.saveChannelState('${ch.nameEn}',this.classList.contains('on'))"></div>
             </div>
@@ -46,7 +46,7 @@ const NotificationsModule = {
       <!-- Filter Tabs + List -->
       <div class="card">
         <div class="card-header">
-          <h3><i class="fas fa-bell" style="color:var(--primary)"></i> ${currentLang==='ar'?'جميع الإشعارات':'All Notifications'}</h3>
+          <h3><i class="fas fa-bell" style="color:var(--primary)"></i> ${t('notifications.allNotifications')}</h3>
           <div class="notif-filter-tabs" style="padding:0;border:none">
             ${['all','attendance','leave','system'].map(f=>`
               <button class="notif-tab ${this._filter===f?'active':''}" onclick="NotificationsModule._filter='${f}'; NotificationsModule._renderList()">${t('notif.'+f)}</button>
@@ -98,7 +98,17 @@ const NotificationsModule = {
   },
 
   _pageName(page) {
-    const map = { leaves:'الإجازات', attendance:'الحضور', requests:'الطلبات', payroll:'الرواتب', loans:'السلف', gratuity:'نهاية الخدمة', employees:'الموظفون', reports:'التقارير', dashboard:'لوحة التحكم' };
+    const map = {
+      leaves:     t('nav.leaves'),
+      attendance: t('nav.attendance'),
+      requests:   t('nav.requests'),
+      payroll:    t('nav.payroll'),
+      loans:      t('loans.title'),
+      gratuity:   t('gratuity.title'),
+      employees:  t('nav.employees'),
+      reports:    t('nav.reports'),
+      dashboard:  t('nav.dashboard'),
+    };
     return map[page] || page;
   },
 

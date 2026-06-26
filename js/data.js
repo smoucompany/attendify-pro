@@ -91,6 +91,9 @@ const DB = {
   // ─── LOANS / ADVANCES ────────────────────────────────────
   loans: [],
 
+  // ─── EXPENSES ─────────────────────────────────────────────
+  expenses: [],
+
   // ─── AUDIT LOGS ───────────────────────────────────────────
   audit: [],
 
@@ -334,6 +337,7 @@ const DB = {
         payroll:       Array.from(this.payroll),
         deductions:    Array.from(this.deductions),
         loans:         Array.from(this.loans),
+        expenses:      Array.from(this.expenses || []),
         locations:     Array.from(this.locations),
         roles:         Array.from(this.roles),
         audit:         Array.from(this.audit).slice(0, 300),
@@ -359,7 +363,7 @@ const DB = {
       if (snap.adminCreds) Object.assign(this.adminCredentials, snap.adminCreds);
 
       const arrays = ['departments','employees','shifts','attendance','leaves',
-                      'requests','notifications','payroll','deductions','loans','locations','roles','audit'];
+                      'requests','notifications','payroll','deductions','loans','expenses','locations','roles','audit'];
       arrays.forEach(k => {
         if (Array.isArray(snap[k]) && snap[k].length) {
           this[k].length = 0;

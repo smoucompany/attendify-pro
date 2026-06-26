@@ -111,7 +111,7 @@ const PayrollModule = {
                     </td>
                     <td style="font-weight:600">${App.formatCurrency(p.base)}</td>
                     <td style="color:${(p.absentDays||0)>0?'var(--danger)':'var(--text-muted)'}">
-                      ${(p.absentDays||0)>0 ? `<strong>${p.absentDays}</strong> ${ar?'يوم':'d'}` : '—'}
+                      ${(p.absentDays||0)>0 ? `<strong>${p.absentDays}</strong> ${t('common.dayAbbr')}` : '—'}
                     </td>
                     <td style="color:var(--danger)">${ded>0?'-'+App.formatCurrency(ded):'<span style="color:var(--text-muted)">—</span>'}</td>
                     <td style="font-weight:800;color:var(--primary);font-size:14px">${App.formatCurrency(p.total)}</td>
@@ -124,7 +124,7 @@ const PayrollModule = {
                 <td style="color:var(--primary);font-size:15px;letter-spacing:.3px;white-space:nowrap">${t('common.total')}</td>
                 <td style="color:var(--text-primary);font-size:17px">${App.formatCurrency(totalBase)}</td>
                 <td style="color:${totalAbsent>0?'#ef4444':'var(--text-muted)'};font-size:17px">
-                  ${totalAbsent>0 ? `${totalAbsent} ${ar?'يوم':'d'}` : '—'}
+                  ${totalAbsent>0 ? `${totalAbsent} ${t('common.dayAbbr')}` : '—'}
                 </td>
                 <td style="color:#ef4444;font-size:17px">-${App.formatCurrency(totalDeductions)}</td>
                 <td style="color:#6366f1;font-size:22px;font-weight:900;letter-spacing:-.5px">${App.formatCurrency(totalNet)}</td>
@@ -216,7 +216,7 @@ const PayrollModule = {
               <i class="fas fa-minus-circle"></i> ${t('payroll.deductions')}
             </div>
             ${(payroll.base||0) === 0 ? `<div style="color:#f59e0b;font-size:11px;padding:4px 0;display:flex;align-items:center;gap:4px"><i class="fas fa-exclamation-triangle"></i> ${t('payroll.noBaseSalaryWarn')}</div>` : ''}
-            ${(payroll.absentDays||0) > 0 ? this._payslipRow(`${t('payroll.absentDeduction')} (${payroll.absentDays} ${ar?'أيام':'days'})`, payroll.absentDeduction||0, '#ef4444', true) : ''}
+            ${(payroll.absentDays||0) > 0 ? this._payslipRow(`${t('payroll.absentDeduction')} (${payroll.absentDays} ${t('leaves.days')})`, payroll.absentDeduction||0, '#ef4444', true) : ''}
             ${(payroll.lateDeduction||0) > 0 ? this._payslipRow(t('payroll.lateDeductLabel'), payroll.lateDeduction, '#f59e0b', true) : ''}
             ${customDeds.map(d => {
               const tp = DeductionsModule._types[d.type] || DeductionsModule._types.other;
@@ -296,7 +296,7 @@ const PayrollModule = {
         <i class="fas fa-triangle-exclamation"></i>
         <div>
           <div style="font-weight:700">${t('payroll.confirmTitle')}</div>
-          <div style="font-size:12px">${t('payroll.confirmDesc')} ${DB.payroll.length} ${ar?'موظف':'employees'} ${ar?'بإجمالي':'with total'} ${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))}</div>
+          <div style="font-size:12px">${t('payroll.confirmDesc')} ${DB.payroll.length} ${t('payroll.employeeUnit')} ${t('payroll.withTotal')} ${App.formatCurrency(DB.payroll.reduce((s,p)=>s+p.total,0))}</div>
         </div>
       </div>
       <div id="payroll-progress" style="display:none;margin-top:16px">

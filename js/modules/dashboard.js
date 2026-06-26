@@ -41,17 +41,17 @@ const DashboardModule = {
           const monthStart = todayStr.slice(0, 7) + '-01';
           const newThisMonth = DB.employees.filter(e => e.hireDate && e.hireDate >= monthStart).length;
           const newLabel = newThisMonth > 0
-            ? `+${newThisMonth} ${currentLang==='ar'?'هذا الشهر':'this month'}`
-            : (currentLang==='ar'?'لا إضافات هذا الشهر':'no new this month');
+            ? `+${newThisMonth} ${t('dashboard.thisMonth')}`
+            : t('dashboard.noNewThisMonth');
           return this._statCard('primary', 'fas fa-users', stats.total, t('dashboard.totalEmployees'), newLabel, newThisMonth > 0 ? 'up' : 'neutral', 'gradient-primary', 'employees');
         })()}
-        ${this._statCard('success', 'fas fa-user-check', stats.present + stats.late, t('dashboard.presentToday'), `${stats.attendanceRate}% ${currentLang==='ar'?'نسبة الحضور':'attendance rate'}`, 'up', 'gradient-success', 'attendance')}
-        ${this._statCard('warning', 'fas fa-calendar-minus', stats.onLeave, t('dashboard.onLeave'), `${currentLang==='ar'?'إجازة مؤكدة':'confirmed leaves'}`, 'neutral', 'gradient-warning', 'leaves')}
-        ${this._statCard('danger',  'fas fa-clock', stats.late, t('dashboard.lateArrivals'), `${currentLang==='ar'?'اليوم':'today'}`, stats.late > 3 ? 'down' : 'neutral', 'gradient-danger', 'attendance')}
-        ${this._statCard('info',    'fas fa-user-xmark', stats.absent, t('dashboard.absent'), `${currentLang==='ar'?'غياب اليوم':'absent today'}`, 'down', 'gradient-info', 'attendance')}
-        ${this._statCard('primary', 'fas fa-percent', stats.attendanceRate + '%', t('dashboard.attendanceRate'), currentLang==='ar'?'مقارنة بالأمس':'vs yesterday', 'up', 'gradient-indigo', 'reports')}
-        ${this._statCard('success', 'fas fa-hourglass-half', monthOvertimeHrs, t('dashboard.overtimeHours'), `${todayOvertimeHrs} ${currentLang==='ar'?'ساعة إضافية اليوم':'overtime hrs today'}`, todayOvertimeMin > 0 ? 'up' : 'neutral', 'gradient-cyan', 'attendance')}
-        ${this._statCard('warning', 'fas fa-file-circle-question', counts.leaves + counts.requests, t('dashboard.pendingRequests'), currentLang==='ar'?'تنتظر موافقتك':'awaiting approval', 'neutral', 'gradient-rose', 'requests')}
+        ${this._statCard('success', 'fas fa-user-check', stats.present + stats.late, t('dashboard.presentToday'), `${stats.attendanceRate}% ${t('dashboard.attendanceRateLabel')}`, 'up', 'gradient-success', 'attendance')}
+        ${this._statCard('warning', 'fas fa-calendar-minus', stats.onLeave, t('dashboard.onLeave'), t('dashboard.confirmedLeaves'), 'neutral', 'gradient-warning', 'leaves')}
+        ${this._statCard('danger',  'fas fa-clock', stats.late, t('dashboard.lateArrivals'), t('common.today'), stats.late > 3 ? 'down' : 'neutral', 'gradient-danger', 'attendance')}
+        ${this._statCard('info',    'fas fa-user-xmark', stats.absent, t('dashboard.absent'), t('dashboard.absentToday'), 'down', 'gradient-info', 'attendance')}
+        ${this._statCard('primary', 'fas fa-percent', stats.attendanceRate + '%', t('dashboard.attendanceRate'), t('dashboard.vsYesterday'), 'up', 'gradient-indigo', 'reports')}
+        ${this._statCard('success', 'fas fa-hourglass-half', monthOvertimeHrs, t('dashboard.overtimeHours'), `${todayOvertimeHrs} ${t('dashboard.overtimeTodayLabel')}`, todayOvertimeMin > 0 ? 'up' : 'neutral', 'gradient-cyan', 'attendance')}
+        ${this._statCard('warning', 'fas fa-file-circle-question', counts.leaves + counts.requests, t('dashboard.pendingRequests'), t('dashboard.awaitingApproval'), 'neutral', 'gradient-rose', 'requests')}
       </div>
 
       <!-- QUICK ACTIONS -->
@@ -101,12 +101,12 @@ const DashboardModule = {
       <!-- BOTTOM ROW -->
       <div class="grid-2">
         <!-- Recent Activity -->
-        <div class="card">
-          <div class="card-header">
+        <div class="card" style="display:flex;flex-direction:column;max-height:460px">
+          <div class="card-header" style="flex-shrink:0">
             <h3><i class="fas fa-clock-rotate-left" style="color:var(--accent)"></i> ${t('dashboard.recentActivity')}</h3>
             <button class="btn-text" onclick="App.navigate('attendance')">${t('common.view')} ${t('common.all')}</button>
           </div>
-          <div class="card-body" style="padding:0;max-height:340px;overflow-y:auto;overflow-x:hidden">
+          <div style="padding:0;overflow-y:scroll;overflow-x:hidden;flex:1;min-height:0">
             ${this._recentActivity(today)}
           </div>
         </div>
@@ -116,7 +116,7 @@ const DashboardModule = {
           <!-- Pending Leaves -->
           <div class="card">
             <div class="card-header">
-              <h3><i class="fas fa-calendar-minus" style="color:var(--warning)"></i> ${t('leaves.title')} ${currentLang==='ar'?'المعلقة':'Pending'}</h3>
+              <h3><i class="fas fa-calendar-minus" style="color:var(--warning)"></i> ${t('leaves.title')} ${t('dashboard.pendingLabel')}</h3>
               <button class="btn-text" onclick="App.navigate('leaves')">${t('common.view')} ${t('common.all')}</button>
             </div>
             <div class="card-body" style="padding:8px">
@@ -147,7 +147,7 @@ const DashboardModule = {
           <!-- Weekly Attendance Summary -->
           <div class="card">
             <div class="card-header">
-              <h3><i class="fas fa-chart-bar" style="color:var(--success)"></i> ${currentLang==='ar'?'ملخص الأسبوع':'Weekly Summary'}</h3>
+              <h3><i class="fas fa-chart-bar" style="color:var(--success)"></i> ${t('dashboard.weeklySummary')}</h3>
             </div>
             <div class="card-body">
               ${(() => {
@@ -279,7 +279,7 @@ const DashboardModule = {
             pointBackgroundColor: '#f59e0b', pointRadius: 4, pointHoverRadius: 6, borderWidth: 2.5,
           },
           {
-            label: currentLang === 'ar' ? 'غائب' : 'Absent',
+            label: t('dashboard.absent'),
             data: trend.map(d => d.absent || 0),
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239,68,68,0.05)',
@@ -323,7 +323,7 @@ const DashboardModule = {
 
     const depts    = allDepts.filter(d => d.count > 0).slice(0, 8);
     const data     = depts.length ? depts.map(d => d.count) : [1];
-    const labels   = depts.length ? depts.map(d => d.name)  : [currentLang==='ar'?'لا يوجد موظفون':'No employees'];
+    const labels   = depts.length ? depts.map(d => d.name)  : [t('departments.noEmployees')];
     const bgColors = depts.length ? depts.map(d => d.color)  : ['#e2e8f0'];
 
     const chart = new Chart(canvas, {
@@ -346,7 +346,7 @@ const DashboardModule = {
           legend: { display: false },
           tooltip: { rtl: currentLang === 'ar', bodyFont: { family: font }, titleFont: { family: font },
             callbacks: {
-              label: ctx => ` ${ctx.label}: ${ctx.raw} ${currentLang==='ar'?'موظف':'emp'}`,
+              label: ctx => ` ${ctx.label}: ${ctx.raw} ${t('common.employees')}`,
             }
           }
         }
@@ -365,7 +365,7 @@ const DashboardModule = {
             <span style="font-size:13px;font-weight:700;color:var(--text-primary)">${d.count}</span>
           </div>
         `).join('')
-        : `<p style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px">${currentLang==='ar'?'لا يوجد موظفون في الأقسام':'No employees assigned to departments'}</p>`;
+        : `<p style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px">${t('dashboard.noEmpInDepts')}</p>`;
     }
   }
 };

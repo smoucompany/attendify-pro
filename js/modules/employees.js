@@ -572,8 +572,8 @@ const EmployeesModule = {
         ${[
           ['fas fa-hashtag',      t('employees.employeeId'), emp.no],
           ['fas fa-building',     t('common.department'),   dept?.name||'—'],
-          ['fas fa-location-dot', 'مكان العمل',             emp.workLocation||'—'],
-          ['fas fa-building-user','جهة العمل',              emp.workEntity||'—'],
+          ['fas fa-location-dot', t('employees.workLocation'), emp.workLocation||'—'],
+          ['fas fa-building-user', t('employees.workEntity'), emp.workEntity||'—'],
           ['fas fa-envelope',     t('common.email'),        emp.email],
           ['fas fa-phone',        t('common.phone'),        emp.phone],
           ['fas fa-calendar',     t('employees.hireDate'),  App.formatDate(emp.hireDate)],
@@ -591,13 +591,13 @@ const EmployeesModule = {
 
       <!-- Quick navigation to related modules -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">انتقل إلى</div>
+        <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">${t('employees.navigateTo')}</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
           ${[
-            { icon:'fa-clock-rotate-left', label:'الحضور',    color:'#10b981', bg:'rgba(16,185,129,.1)',   page:'attendance' },
-            { icon:'fa-calendar-minus',    label:'الإجازات',  color:'#f59e0b', bg:'rgba(245,158,11,.1)',   page:'leaves'     },
-            { icon:'fa-money-bill-wave',   label:'الرواتب',   color:'#6366f1', bg:'rgba(99,102,241,.1)',   page:'payroll'    },
-            { icon:'fa-hand-holding-dollar',label:'السلف',   color:'#8b5cf6', bg:'rgba(139,92,246,.1)',   page:'loans'      },
+            { icon:'fa-clock-rotate-left', label:t('nav.attendance'), color:'#10b981', bg:'rgba(16,185,129,.1)',   page:'attendance' },
+            { icon:'fa-calendar-minus',    label:t('nav.leaves'),     color:'#f59e0b', bg:'rgba(245,158,11,.1)',   page:'leaves'     },
+            { icon:'fa-money-bill-wave',   label:t('nav.payroll'),    color:'#6366f1', bg:'rgba(99,102,241,.1)',   page:'payroll'    },
+            { icon:'fa-hand-holding-dollar',label:t('loans.typeAdvance'), color:'#8b5cf6', bg:'rgba(139,92,246,.1)',   page:'loans'      },
           ].map(a => `
             <button onclick="App.closeModal(); EmployeesModule._goEmpPage('${id}','${emp.name}','${a.page}')"
               style="padding:10px 4px;border-radius:10px;border:1.5px solid ${a.bg};background:${a.bg};color:${a.color};font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .2s"
@@ -610,8 +610,8 @@ const EmployeesModule = {
 
       <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
         <button class="btn btn-outline-primary" onclick="App.closeModal(); EmployeesModule.openEdit('${id}')"><i class="fas fa-pencil"></i> ${t('common.edit')}</button>
-        <button class="btn btn-secondary" onclick="App.closeModal(); LoansModule.openAddForm('${id}')"><i class="fas fa-hand-holding-dollar"></i> سلفة جديدة</button>
-        <button class="btn btn-sm" style="background:#25d366;color:#fff" onclick="App.closeModal(); EmployeesModule.sendCredentials('${id}')"><i class="fab fa-whatsapp"></i> إرسال بيانات الدخول</button>
+        <button class="btn btn-secondary" onclick="App.closeModal(); LoansModule.openAddForm('${id}')"><i class="fas fa-hand-holding-dollar"></i> ${t('employees.newLoan')}</button>
+        <button class="btn btn-sm" style="background:#25d366;color:#fff" onclick="App.closeModal(); EmployeesModule.sendCredentials('${id}')"><i class="fab fa-whatsapp"></i> ${t('employees.sendCredentials')}</button>
         <button class="btn btn-danger" onclick="App.closeModal(); EmployeesModule.deleteEmployee('${id}')"><i class="fas fa-trash"></i> ${t('common.delete')}</button>
       </div>
     `);
@@ -660,7 +660,7 @@ const EmployeesModule = {
   // ── MIGRATE EMPLOYEE CODES ────────────────────────────────
   migrateEmpNos() {
     const count = DB.employees.length;
-    if (!count) { App.toast('لا يوجد موظفون', 'warning'); return; }
+    if (!count) { App.toast(currentLang==='ar'?'لا يوجد موظفون':'No employees found', 'warning'); return; }
 
     App.confirm(
       `سيتم تحديث أكواد ${count} موظف لتصبح بصيغة (حرف إنجليزي + أرقام). هذا الإجراء لا يمكن التراجع عنه.`,
@@ -725,18 +725,18 @@ const EmployeesModule = {
 
   // ── IMPORT / EXPORT MODAL ─────────────────────────────────
   openImportExport() {
-    App.openModal('استيراد وتصدير بيانات الموظفين', `
+    App.openModal(t('employees.importExportTitle'), `
       <div style="display:flex;flex-direction:column;gap:0">
 
         <!-- TABS -->
         <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:20px">
           <button id="ie-tab-import" onclick="EmployeesModule._ieTab('import')"
             style="flex:1;padding:11px;font-size:13px;font-weight:700;border:none;background:var(--primary);color:#fff;cursor:pointer;border-radius:8px 0 0 0">
-            <i class="fas fa-upload"></i>  استيراد
+            <i class="fas fa-upload"></i>  ${t('employees.importTab')}
           </button>
           <button id="ie-tab-export" onclick="EmployeesModule._ieTab('export')"
             style="flex:1;padding:11px;font-size:13px;font-weight:700;border:none;background:var(--bg-secondary);color:var(--text-muted);cursor:pointer;border-radius:0 8px 0 0">
-            <i class="fas fa-download"></i>  تصدير
+            <i class="fas fa-download"></i>  ${t('common.export')}
           </button>
         </div>
 
@@ -750,12 +750,12 @@ const EmployeesModule = {
                 <i class="fas fa-file-excel" style="color:#fff;font-size:19px"></i>
               </div>
               <div style="flex:1">
-                <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:2px">الخطوة 1 — تحميل القالب</div>
-                <div style="font-size:11.5px;color:#3b82f6;line-height:1.5">حمّل القالب الجاهز، عبّئ بيانات موظفيك، ثم ارفعه</div>
+                <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:2px">${t('employees.step1Title')}</div>
+                <div style="font-size:11.5px;color:#3b82f6;line-height:1.5">${t('employees.step1Desc')}</div>
               </div>
               <button onclick="EmployeesModule.downloadTemplate()"
                 style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px">
-                <i class="fas fa-download"></i> تحميل القالب
+                <i class="fas fa-download"></i> ${t('employees.downloadTemplate')}
               </button>
             </div>
           </div>
@@ -764,7 +764,7 @@ const EmployeesModule = {
           <div style="margin-bottom:16px">
             <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);margin-bottom:8px">
               <span style="background:#6366f1;color:#fff;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;margin-left:6px">2</span>
-              رفع ملف Excel المعبّأ
+              ${t('employees.step2Title')}
             </div>
             <label id="ie-dropzone"
               style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
@@ -774,8 +774,8 @@ const EmployeesModule = {
               ondragleave="this.style.borderColor='#c7d2fe';this.style.background='#fafafa'"
               ondrop="event.preventDefault();this.style.borderColor='#c7d2fe';this.style.background='#fafafa';EmployeesModule._handleImportFile(event.dataTransfer.files[0])">
               <i class="fas fa-cloud-arrow-up" style="font-size:32px;color:#a5b4fc"></i>
-              <div style="font-size:13px;font-weight:700;color:var(--text-primary)">اسحب الملف هنا أو اضغط للاختيار</div>
-              <div style="font-size:11px;color:var(--text-muted)">يدعم .xlsx و .xls فقط</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text-primary)">${t('employees.dropzoneText')}</div>
+              <div style="font-size:11px;color:var(--text-muted)">${t('employees.dropzoneHint')}</div>
               <input type="file" accept=".xlsx,.xls" style="display:none" id="ie-file-input"
                 onchange="EmployeesModule._handleImportFile(this.files[0])">
             </label>
@@ -838,17 +838,17 @@ const EmployeesModule = {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    App.toast('تم تحميل القالب ✓', 'success');
+    App.toast(currentLang==='ar'?'تم تحميل القالب ✓':'Template downloaded ✓', 'success');
   },
 
   // ── IMPORT: handle uploaded file ──────────────────────────
   _handleImportFile(file) {
     if (!file) return;
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      App.toast('يُقبل فقط ملفات .xlsx أو .xls', 'error'); return;
+      App.toast(currentLang==='ar'?'يُقبل فقط ملفات .xlsx أو .xls':'Only .xlsx or .xls files are accepted', 'error'); return;
     }
     if (typeof XLSX === 'undefined') {
-      App.toast('مكتبة Excel غير محملة، يرجى الانتظار', 'error'); return;
+      App.toast(currentLang==='ar'?'مكتبة Excel غير محملة، يرجى الانتظار':'Excel library loading, please wait', 'error'); return;
     }
 
     const reader = new FileReader();
@@ -872,7 +872,7 @@ const EmployeesModule = {
           }
         }
         if (headerRowIdx === -1) {
-          App.toast('لم يُعثر على صف الأعمدة في الملف', 'error'); return;
+          App.toast(currentLang==='ar'?'لم يُعثر على صف الأعمدة في الملف':'Column header row not found in file', 'error'); return;
         }
 
         const headerRow  = rawAll[headerRowIdx].map(c => (c||'').toString().trim());
@@ -974,11 +974,11 @@ const EmployeesModule = {
           };
         }).filter(Boolean); // إزالة الصفوف الفارغة
 
-        if (!mapped.length) { App.toast('لم يُعثر على بيانات صالحة', 'error'); return; }
+        if (!mapped.length) { App.toast(currentLang==='ar'?'لم يُعثر على بيانات صالحة':'No valid data found in file', 'error'); return; }
 
         this._showImportPreview(mapped);
       } catch(err) {
-        App.toast('خطأ في قراءة الملف: ' + err.message, 'error');
+        App.toast((currentLang==='ar'?'خطأ في قراءة الملف: ':'Error reading file: ') + err.message, 'error');
       }
     };
     reader.readAsBinaryString(file);
@@ -1081,15 +1081,18 @@ const EmployeesModule = {
 
   // ── EXPORT TO EXCEL ───────────────────────────────────────
   exportExcel() {
-    if (typeof XLSX === 'undefined') { App.toast('جارٍ تحميل مكتبة Excel...', 'info'); return; }
+    if (typeof XLSX === 'undefined') { App.toast(currentLang==='ar'?'جارٍ تحميل مكتبة Excel...':'Loading Excel library...', 'info'); return; }
 
-    const headers = ['رقم الموظف','الاسم الكامل','البريد الإلكتروني','الهاتف','القسم','المنصب','الراتب الأساسي','تاريخ التعيين','الجنس','الحالة','ملاحظات'];
+    const isAr = currentLang === 'ar';
+    const headers = isAr
+      ? ['رقم الموظف','الاسم الكامل','البريد الإلكتروني','الهاتف','القسم','المنصب','الراتب الأساسي','تاريخ التعيين','الجنس','الحالة','ملاحظات']
+      : ['Emp No','Full Name','Email','Phone','Department','Position','Base Salary','Hire Date','Gender','Status','Notes'];
     const rows = DB.employees.map(e => [
       e.no, e.name, e.email, e.phone,
       DB.getDepartment(e.dept)?.name || '',
       e.position, e.salary, e.hireDate,
-      e.gender === 'male' ? 'ذكر' : e.gender === 'female' ? 'أنثى' : '',
-      e.status === 'active' ? 'نشط' : e.status === 'inactive' ? 'غير نشط' : 'في إجازة',
+      e.gender === 'male' ? t('common.male') : e.gender === 'female' ? t('common.female') : '',
+      e.status === 'active' ? t('common.active') : e.status === 'inactive' ? t('common.inactive') : t('nav.leaves'),
       e.notes || ''
     ]);
 
@@ -1099,25 +1102,27 @@ const EmployeesModule = {
       {wch:13},{wch:20},{wch:24},{wch:14},{wch:18},{wch:18},
       {wch:14},{wch:14},{wch:8},{wch:10},{wch:24}
     ];
-    XLSX.utils.book_append_sheet(wb, ws, 'الموظفون');
-    XLSX.writeFile(wb, `الموظفون_${new Date().toISOString().split('T')[0]}.xlsx`);
-    App.toast('تم تصدير البيانات ✓', 'success');
+    const sheetName = isAr ? 'الموظفون' : 'Employees';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, `${sheetName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    App.toast(currentLang==='ar'?'تم تصدير البيانات ✓':'Data exported ✓', 'success');
   },
 
   exportCSVFile() {
+    const isAr = currentLang === 'ar';
     const data = DB.employees.map(e => ({
-      'رقم الموظف':       e.no,
-      'الاسم الكامل':     e.name,
-      'البريد الإلكتروني':e.email,
-      'الهاتف':           e.phone,
-      'القسم':            DB.getDepartment(e.dept)?.name || '',
-      'المنصب':           e.position,
-      'الراتب الأساسي':   e.salary,
-      'تاريخ التعيين':    e.hireDate,
-      'الحالة':           e.status === 'active' ? 'نشط' : e.status === 'inactive' ? 'غير نشط' : 'في إجازة',
+      [isAr?'رقم الموظف':'Emp No']:              e.no,
+      [isAr?'الاسم الكامل':'Full Name']:          e.name,
+      [isAr?'البريد الإلكتروني':'Email']:         e.email,
+      [isAr?'الهاتف':'Phone']:                    e.phone,
+      [isAr?'القسم':'Department']:                DB.getDepartment(e.dept)?.name || '',
+      [isAr?'المنصب':'Position']:                 e.position,
+      [isAr?'الراتب الأساسي':'Base Salary']:      e.salary,
+      [isAr?'تاريخ التعيين':'Hire Date']:         e.hireDate,
+      [isAr?'الحالة':'Status']:                   e.status === 'active' ? t('common.active') : e.status === 'inactive' ? t('common.inactive') : t('nav.leaves'),
     }));
-    App.exportCSV(data, `الموظفون_${new Date().toISOString().split('T')[0]}.csv`);
-    App.toast('تم تصدير CSV ✓', 'success');
+    App.exportCSV(data, `${isAr?'الموظفون':'Employees'}_${new Date().toISOString().split('T')[0]}.csv`);
+    App.toast(currentLang==='ar'?'تم تصدير CSV ✓':'CSV exported ✓', 'success');
   },
 
   // ── PASSWORD MANAGEMENT ──────────────────────────────────
@@ -1126,20 +1131,21 @@ const EmployeesModule = {
     const emp = DB.getEmployee(id);
     if (!emp) return;
     const pwd = emp.password || '';
-    App.openModal(`كلمة مرور — ${emp.name}`, `
+    const isAr = currentLang === 'ar';
+    App.openModal(`${isAr?'كلمة مرور':'Password'} — ${emp.name}`, `
       <div style="display:flex;flex-direction:column;gap:16px">
 
         <!-- Current password display -->
         <div class="card" style="background:var(--bg-input);border:none;box-shadow:none">
           <div class="card-body" style="padding:14px">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px">كلمة المرور الحالية</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);margin-bottom:8px">${t('emp.currentPassword')}</div>
             <div style="display:flex;align-items:center;gap:8px">
               <input id="emp-cur-pass" type="password" value="${pwd}"
                 style="flex:1;background:transparent;border:none;font-family:var(--font-en);font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:2px;outline:none" readonly>
-              <button class="btn-icon btn" title="إظهار" onclick="const i=document.getElementById('emp-cur-pass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fas fa-eye':'fas fa-eye-slash'">
+              <button class="btn-icon btn" title="${isAr?'إظهار':'Show'}" onclick="const i=document.getElementById('emp-cur-pass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fas fa-eye':'fas fa-eye-slash'">
                 <i class="fas fa-eye"></i>
               </button>
-              <button class="btn-icon btn" title="نسخ" onclick="navigator.clipboard.writeText('${pwd}');App.toast('تم نسخ كلمة المرور ✓','success')">
+              <button class="btn-icon btn" title="${t('common.export','نسخ')}" onclick="navigator.clipboard.writeText('${pwd}');App.toast(currentLang==='ar'?'تم نسخ كلمة المرور ✓':'Password copied ✓','success')">
                 <i class="fas fa-copy"></i>
               </button>
             </div>
@@ -1148,25 +1154,25 @@ const EmployeesModule = {
 
         <!-- Set new password -->
         <div class="app-form-group">
-          <label>كلمة مرور جديدة</label>
+          <label>${t('emp.newPassword')}</label>
           <div style="display:flex;gap:8px">
             <div style="position:relative;flex:1">
-              <input class="app-form-input" id="emp-new-pass" type="password" placeholder="أدخل كلمة مرور جديدة" style="padding-left:40px">
+              <input class="app-form-input" id="emp-new-pass" type="password" placeholder="${isAr?'أدخل كلمة مرور جديدة':'Enter new password'}" style="padding-left:40px">
               <button type="button" class="btn-icon btn" style="position:absolute;left:8px;top:50%;transform:translateY(-50%)"
                 onclick="const i=document.getElementById('emp-new-pass');i.type=i.type==='password'?'text':'password';this.querySelector('i').className=i.type==='password'?'fas fa-eye':'fas fa-eye-slash'">
                 <i class="fas fa-eye"></i>
               </button>
             </div>
-            <button class="btn btn-outline" title="توليد تلقائي" onclick="EmployeesModule._generatePass()" style="white-space:nowrap">
-              <i class="fas fa-dice"></i> توليد
+            <button class="btn btn-outline" title="${isAr?'توليد تلقائي':'Auto-generate'}" onclick="EmployeesModule._generatePass()" style="white-space:nowrap">
+              <i class="fas fa-dice"></i> ${isAr?'توليد':'Generate'}
             </button>
           </div>
         </div>
 
         <div style="display:flex;gap:10px;justify-content:flex-end">
-          <button class="btn btn-outline" onclick="App.closeModal()">إلغاء</button>
+          <button class="btn btn-outline" onclick="App.closeModal()">${t('common.cancel')}</button>
           <button class="btn btn-primary" onclick="EmployeesModule.savePassword('${id}')">
-            <i class="fas fa-save"></i> حفظ كلمة المرور
+            <i class="fas fa-save"></i> ${t('emp.updatePassword')}
           </button>
         </div>
       </div>
@@ -1179,20 +1185,19 @@ const EmployeesModule = {
     for (let i = 0; i < 10; i++) pass += chars[Math.floor(Math.random() * chars.length)];
     const inp = document.getElementById('emp-new-pass');
     if (inp) { inp.value = pass; inp.type = 'text'; }
-    App.toast('تم توليد كلمة مرور جديدة', 'info');
+    App.toast(currentLang==='ar'?'تم توليد كلمة مرور جديدة':'New password generated', 'info');
   },
 
   savePassword(id) {
     const emp  = DB.getEmployee(id);
     if (!emp) return;
     const newPass = document.getElementById('emp-new-pass')?.value.trim();
-    if (!newPass) { App.toast('يرجى إدخال كلمة مرور', 'error'); return; }
-    if (newPass.length < 6) { App.toast('كلمة المرور يجب أن تكون 6 أحرف على الأقل', 'error'); return; }
+    if (!newPass) { App.toast(currentLang==='ar'?'يرجى إدخال كلمة مرور':'Please enter a password', 'error'); return; }
+    if (newPass.length < 6) { App.toast(currentLang==='ar'?'كلمة المرور يجب أن تكون 6 أحرف على الأقل':'Password must be at least 6 characters', 'error'); return; }
     emp.password = newPass;
     DB.save();
-    DB.logAudit(App.state.user?.id || 'admin', 'تغيير كلمة مرور موظف', 'الموظفون', `تم تغيير كلمة مرور ${emp.name}`);
     App.closeModal();
-    App.toast(`تم حفظ كلمة مرور ${emp.name} ✓`, 'success');
+    App.toast(`${currentLang==='ar'?'تم حفظ كلمة مرور':'Password saved for'} ${emp.name} ✓`, 'success');
   },
 
   // ─── إرسال بيانات الدخول عبر واتساب ─────────────────────────
@@ -1246,7 +1251,7 @@ const EmployeesModule = {
     const emp   = DB.getEmployee(id);
     if (!emp) return;
     const phone = document.getElementById('cred-phone')?.value.trim();
-    if (!phone) { App.toast('أدخل رقم الهاتف', 'error'); return; }
+    if (!phone) { App.toast(currentLang==='ar'?'أدخل رقم الهاتف':'Enter a phone number', 'error'); return; }
 
     // حفظ الرقم على الموظف إذا تغيّر
     if (phone !== emp.phone) { emp.phone = phone; DB.save(); }

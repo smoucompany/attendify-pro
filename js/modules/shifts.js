@@ -64,7 +64,7 @@ const ShiftsModule = {
               <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
                 <div>
                   <div style="font-size:15px;font-weight:800;color:white;margin-bottom:3px">${s.name}</div>
-                  <div style="font-size:12px;color:rgba(255,255,255,0.8);font-family:var(--font-en)">${s.start} — ${s.end}${isOvernight?` <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px">+${currentLang==='ar'?'يوم':'day'}</span>`:''}</div>
+                  <div style="font-size:12px;color:rgba(255,255,255,0.8);font-family:var(--font-en)">${s.start} — ${s.end}${isOvernight?` <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:4px">+${t('common.dayAbbr')}</span>`:''}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                   ${isOvernight ? `<span style="font-size:10px;background:rgba(255,255,255,0.2);color:white;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ${t('shifts.overnight')}</span>` : ''}
@@ -140,13 +140,13 @@ const ShiftsModule = {
                       if (!sh) return `
                         <td style="padding:4px;text-align:center">
                           <div class="shift-cell off" style="cursor:pointer;font-size:10px"
-                            onclick="ShiftsModule.quickAssign('${emp.id}','${d}')" title="اضغط للتعيين">—</div>
+                            onclick="ShiftsModule.quickAssign('${emp.id}','${d}')" title="${t('shifts.clickToSet')}">—</div>
                         </td>`;
                       return `
                         <td style="padding:4px;text-align:center">
                           <div class="shift-cell ${sh.type}" style="cursor:pointer;position:relative;font-size:11px"
                             onclick="ShiftsModule.quickAssign('${emp.id}','${d}')"
-                            title="${sh.name}: ${sh.start}–${sh.end} (اضغط للتغيير)">
+                            title="${sh.name}: ${sh.start}–${sh.end} (${t('shifts.clickToChange')})">
                             ${sh.start}
                           </div>
                         </td>`;
@@ -166,7 +166,7 @@ const ShiftsModule = {
           </table>
           ${displayEmps.length < allEmps.length ? `
             <div style="padding:8px 14px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);text-align:center">
-              ${currentLang==='ar'?`عرض ${displayEmps.length} من ${allEmps.length} موظف`:`Showing ${displayEmps.length} of ${allEmps.length} employees`}
+              ${t('shifts.showingOf').replace('{0}', displayEmps.length).replace('{1}', allEmps.length)}
             </div>` : ''}
         </div>
       </div>
@@ -281,7 +281,7 @@ const ShiftsModule = {
       <div class="app-form-group">
         <label>${t('nav.employees')}</label>
         <select id="assign-emp" class="app-form-input app-form-select" onchange="ShiftsModule._refreshAssignPanel(this.value)">
-          <option value="">${currentLang==='ar'?'— اختر موظفاً —':'— Select an employee —'}</option>
+          <option value="">${t('shifts.selectEmployee')}</option>
           ${DB.employees.filter(e=>e.status!=='terminated').map(e =>
             `<option value="${e.id}" ${e.id===preEmpId?'selected':''}>${e.name}</option>`
           ).join('')}
@@ -300,7 +300,7 @@ const ShiftsModule = {
         </div>
         <div style="display:flex;gap:8px">
           <select id="assign-shift" class="app-form-input app-form-select" style="padding:8px 12px;flex:1">
-            <option value="">— ${currentLang==='ar'?'اختر وردية':'Select shift'} —</option>
+            <option value="">${t('shifts.selectShift')}</option>
             ${shifts.map(s=>`<option value="${s.id}">${s.name} · ${s.start}–${s.end}</option>`).join('')}
           </select>
           <button onclick="ShiftsModule._addAssignment()"
