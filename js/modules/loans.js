@@ -119,29 +119,23 @@ const LoansModule = {
       ` : ''}
 
       <!-- Filters -->
-      <div class="filter-bar">
-        <div class="filter-group">
-          <select class="filter-select" id="ln-filter-status" onchange="LoansModule._filter()">
-            <option value="">${t('loans.allStatuses')}</option>
-            <option value="pending">${t('loans.pending')}</option>
-            <option value="approved">${t('loans.active')}</option>
-            <option value="rejected">${t('loans.rejected')}</option>
-            <option value="paid">${t('loans.paid')}</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <select class="filter-select" id="ln-filter-type" onchange="LoansModule._filter()">
-            <option value="">${t('loans.allTypes')}</option>
-            <option value="advance">${t('loans.typeAdvance')}</option>
-            <option value="loan">${t('loans.typeLoan')}</option>
-          </select>
-        </div>
-        <div class="filter-group" style="flex:1">
-          <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="search-input" id="ln-search"
-              placeholder="${t('loans.searchPlaceholder')}" oninput="LoansModule._filter()">
-          </div>
+      <div class="toolbar">
+        <select class="toolbar-select" id="ln-filter-status" onchange="LoansModule._filter()">
+          <option value="">${t('loans.allStatuses')}</option>
+          <option value="pending">${t('loans.pending')}</option>
+          <option value="approved">${t('loans.active')}</option>
+          <option value="rejected">${t('loans.rejected')}</option>
+          <option value="paid">${t('loans.paid')}</option>
+        </select>
+        <select class="toolbar-select" id="ln-filter-type" onchange="LoansModule._filter()">
+          <option value="">${t('loans.allTypes')}</option>
+          <option value="advance">${t('loans.typeAdvance')}</option>
+          <option value="loan">${t('loans.typeLoan')}</option>
+        </select>
+        <div class="toolbar-search" style="flex:1">
+          <i class="fas fa-search"></i>
+          <input type="text" id="ln-search"
+            placeholder="${t('loans.searchPlaceholder')}" oninput="LoansModule._filter()">
         </div>
       </div>
 

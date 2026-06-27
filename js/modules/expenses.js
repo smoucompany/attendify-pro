@@ -152,36 +152,29 @@ const ExpensesModule = {
       ` : ''}
 
       <!-- Filters -->
-      <div class="filter-bar">
-        <div class="filter-group">
-          <select class="filter-select" id="exp-filter-status"
-            onchange="ExpensesModule._filter.status=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
-            <option value="all">${t('common.all')}</option>
-            <option value="pending">${t('expenses.pending')}</option>
-            <option value="approved">${t('expenses.approved')}</option>
-            <option value="rejected">${t('expenses.rejected')}</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <select class="filter-select" id="exp-filter-emp"
-            onchange="ExpensesModule._filter.empId=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
-            <option value="">${t('expenses.allEmployees')}</option>
-            ${DB.employees.filter(e=>e.status!=='inactive').map(e=>`<option value="${e.id}">${_esc(e.name)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-group">
-          <select class="filter-select" id="exp-filter-cat"
-            onchange="ExpensesModule._filter.category=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
-            <option value="">${t('expenses.allCategories')}</option>
-            ${this._cats().map(c=>`<option value="${c.id}">${currentLang==='ar'?c.ar:c.en}</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-group">
-          <button class="btn btn-secondary" style="height:36px;padding:0 14px"
-            onclick="ExpensesModule._filter={status:'all',empId:'',category:''};ExpensesModule._page=1;ExpensesModule._renderTable();ExpensesModule._restoreFilters()">
-            <i class="fas fa-rotate-left"></i>
-          </button>
-        </div>
+      <div class="toolbar">
+        <select class="toolbar-select" id="exp-filter-status"
+          onchange="ExpensesModule._filter.status=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+          <option value="all">${t('common.all')}</option>
+          <option value="pending">${t('expenses.pending')}</option>
+          <option value="approved">${t('expenses.approved')}</option>
+          <option value="rejected">${t('expenses.rejected')}</option>
+        </select>
+        <select class="toolbar-select" id="exp-filter-emp"
+          onchange="ExpensesModule._filter.empId=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+          <option value="">${t('expenses.allEmployees')}</option>
+          ${DB.employees.filter(e=>e.status!=='inactive').map(e=>`<option value="${e.id}">${_esc(e.name)}</option>`).join('')}
+        </select>
+        <select class="toolbar-select" id="exp-filter-cat"
+          onchange="ExpensesModule._filter.category=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+          <option value="">${t('expenses.allCategories')}</option>
+          ${this._cats().map(c=>`<option value="${c.id}">${currentLang==='ar'?c.ar:c.en}</option>`).join('')}
+        </select>
+        <div class="toolbar-separator"></div>
+        <button class="btn btn-secondary"
+          onclick="ExpensesModule._filter={status:'all',empId:'',category:''};ExpensesModule._page=1;ExpensesModule._renderTable();ExpensesModule._restoreFilters()">
+          <i class="fas fa-rotate-left"></i>
+        </button>
       </div>
 
       <!-- Table -->
@@ -359,49 +352,49 @@ const ExpensesModule = {
     const currency = DB.company.currency || 'SAR';
 
     const body = `
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div>
-          <label class="form-label">${t('expenses.colEmployee')} *</label>
-          <select class="form-control" id="exp-emp" required>
-            <option value="">${t('expenses.selectEmployee')}</option>
-            ${DB.employees.filter(e=>e.status!=='inactive').map(e=>`<option value="${e.id}" ${isEdit&&ex.empId===e.id?'selected':''}>${_esc(e.name)}</option>`).join('')}
-          </select>
+      <div class="app-form-group">
+        <label>${t('expenses.colEmployee')} <span style="color:#ef4444">*</span></label>
+        <select class="app-form-input app-form-select" id="exp-emp" required>
+          <option value="">${t('expenses.selectEmployee')}</option>
+          ${DB.employees.filter(e=>e.status!=='inactive').map(e=>`<option value="${e.id}" ${isEdit&&ex.empId===e.id?'selected':''}>${_esc(e.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="app-form-group">
+        <label>${t('expenses.colCategory')} <span style="color:#ef4444">*</span></label>
+        <select class="app-form-input app-form-select" id="exp-cat" required>
+          <option value="">${t('expenses.selectCategory')}</option>
+          ${this._cats().map(c=>`<option value="${c.id}" ${isEdit&&ex.category===c.id?'selected':''}>${isAr?c.ar:c.en}</option>`).join('')}
+        </select>
+      </div>
+      <div class="app-form-row">
+        <div class="app-form-group">
+          <label>${t('expenses.colAmount')} (${currency}) <span style="color:#ef4444">*</span></label>
+          <input type="number" class="app-form-input" id="exp-amount" min="0" step="0.01" value="${isEdit?ex.amount:''}" required>
         </div>
-        <div>
-          <label class="form-label">${t('expenses.colCategory')} *</label>
-          <select class="form-control" id="exp-cat" required>
-            <option value="">${t('expenses.selectCategory')}</option>
-            ${this._cats().map(c=>`<option value="${c.id}" ${isEdit&&ex.category===c.id?'selected':''}>${isAr?c.ar:c.en}</option>`).join('')}
-          </select>
+        <div class="app-form-group">
+          <label>${t('expenses.colDate')} <span style="color:#ef4444">*</span></label>
+          <input type="date" class="app-form-input" id="exp-date" value="${isEdit?ex.date:new Date().toISOString().slice(0,10)}" required>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div>
-            <label class="form-label">${t('expenses.colAmount')} (${currency}) *</label>
-            <input type="number" class="form-control" id="exp-amount" min="0" step="0.01" value="${isEdit?ex.amount:''}" required>
-          </div>
-          <div>
-            <label class="form-label">${t('expenses.colDate')} *</label>
-            <input type="date" class="form-control" id="exp-date" value="${isEdit?ex.date:new Date().toISOString().slice(0,10)}" required>
-          </div>
-        </div>
-        <div>
-          <label class="form-label">${t('expenses.colDescription')}</label>
-          <textarea class="form-control" id="exp-desc" rows="3" style="resize:vertical">${isEdit?_esc(ex.description||''):''}</textarea>
-        </div>
-        <div>
-          <label class="form-label">${t('expenses.receipt')}</label>
-          <input type="text" class="form-control" id="exp-receipt" value="${isEdit?_esc(ex.attachmentNote||''):''}" placeholder="${t('expenses.receiptPlaceholder')}">
-        </div>
+      </div>
+      <div class="app-form-group">
+        <label>${t('expenses.colDescription')}</label>
+        <textarea class="app-form-input" id="exp-desc" rows="3" style="resize:vertical">${isEdit?_esc(ex.description||''):''}</textarea>
+      </div>
+      <div class="app-form-group">
+        <label>${t('expenses.receipt')}</label>
+        <input type="text" class="app-form-input" id="exp-receipt" value="${isEdit?_esc(ex.attachmentNote||''):''}" placeholder="${t('expenses.receiptPlaceholder')}">
+      </div>
+      <div class="modal-footer" style="padding:0;margin-top:8px">
+        <button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+        <button class="btn btn-primary" onclick="ExpensesModule._save(${isEdit?`'${ex.id}'`:'null'})">
+          <i class="fas fa-save"></i> ${t('common.save')}
+        </button>
       </div>
     `;
 
     App.openModal(
       isEdit ? t('expenses.editExpense') : t('expenses.addExpense'),
-      body,
-      `<button class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
-       <button class="btn btn-primary" onclick="ExpensesModule._save(${isEdit?`'${ex.id}'`:'null'})">
-         <i class="fas fa-save"></i> ${t('common.save')}
-       </button>`
+      body
     );
   },
 

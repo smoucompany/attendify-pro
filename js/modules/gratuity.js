@@ -114,28 +114,22 @@ const GratuityModule = {
       ` : ''}
 
       <!-- Filters -->
-      <div class="filter-bar">
-        <div class="filter-group">
-          <select class="filter-select" id="gr-dept" onchange="GratuityModule._filter()">
-            <option value="">${t('gratuity.allDepts')}</option>
-            ${DB.departments.map(d=>`<option value="${d.id}">${_esc(d.name)}</option>`).join('')}
-          </select>
-        </div>
-        <div class="filter-group">
-          <select class="filter-select" id="gr-years" onchange="GratuityModule._filter()">
-            <option value="">${t('gratuity.allPeriods')}</option>
-            <option value="1">${t('gratuity.lessThan1Y')}</option>
-            <option value="2">${t('gratuity.1to5Y')}</option>
-            <option value="3">${t('gratuity.5to10Y')}</option>
-            <option value="4">${t('gratuity.more10Y')}</option>
-          </select>
-        </div>
-        <div class="filter-group" style="flex:1">
-          <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="search-input" id="gr-search"
-              placeholder="${t('loans.searchPlaceholder')}" oninput="GratuityModule._filter()">
-          </div>
+      <div class="toolbar">
+        <select class="toolbar-select" id="gr-dept" onchange="GratuityModule._filter()">
+          <option value="">${t('gratuity.allDepts')}</option>
+          ${DB.departments.map(d=>`<option value="${d.id}">${_esc(d.name)}</option>`).join('')}
+        </select>
+        <select class="toolbar-select" id="gr-years" onchange="GratuityModule._filter()">
+          <option value="">${t('gratuity.allPeriods')}</option>
+          <option value="1">${t('gratuity.lessThan1Y')}</option>
+          <option value="2">${t('gratuity.1to5Y')}</option>
+          <option value="3">${t('gratuity.5to10Y')}</option>
+          <option value="4">${t('gratuity.more10Y')}</option>
+        </select>
+        <div class="toolbar-search" style="flex:1">
+          <i class="fas fa-search"></i>
+          <input type="text" id="gr-search"
+            placeholder="${t('loans.searchPlaceholder')}" oninput="GratuityModule._filter()">
         </div>
       </div>
 
