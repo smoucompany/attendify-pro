@@ -163,8 +163,8 @@ const CalendarModule = {
     const monthStart = `${prefix}01`;
     const monthEnd   = `${prefix}${String(new Date(year, month+1, 0).getDate()).padStart(2,'0')}`;
 
-    // Get filtered employees
-    let filteredEmps = DB.employees.filter(e => e.status === 'active');
+    // Get filtered employees (include on_leave status too)
+    let filteredEmps = DB.employees.filter(e => e.status !== 'inactive');
     if (this._filter.startsWith('dept:')) {
       const deptId = this._filter.slice(5);
       filteredEmps = filteredEmps.filter(e => e.dept === deptId);
@@ -179,9 +179,10 @@ const CalendarModule = {
     const leaveDates = {}; // empId → Set<dateStr>
     DB.leaves.forEach(l => {
       if (l.status !== 'approved') return;
-      if (!empIds.has(l.empId)) return;
+      // allow all non-inactive employees' leaves
       const emp = getEmp(l.empId);
-      if (!emp) return;
+      if (!emp || emp.status === 'inactive') return;
+      if (this._filter !== 'all' && !empIds.has(l.empId)) return;
       if (!leaveDates[l.empId]) leaveDates[l.empId] = new Set();
       let cur = new Date(l.from);
       const end = new Date(l.to);
@@ -210,7 +211,7 @@ const CalendarModule = {
       }
     });
 
-    // Build attendance map: empId+date → record
+    // Build attendance map: date → { empId → record }
     const attMap = {};
     DB.attendance.forEach(a => {
       if (!a.date.startsWith(prefix)) return;
@@ -219,26 +220,30 @@ const CalendarModule = {
       attMap[a.date][a.empId] = a;
     });
 
-    // Working days in month + virtual absences
+    // Virtual absences: only on days that have SOME attendance records
+    // (days with zero records = attendance not tracked that day → no virtual absences)
     const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
     const weekend  = DB.company.weekend || ['fri'];
-    const holidays = new Set((DB.company.holidays||[]).map(h => h.date));
+    const holidayDates = new Set((DB.company.holidays||[]).map(h => h.date));
+    const today = new Date().toISOString().slice(0,10);
+
     for (let d = new Date(monthStart); d <= new Date(monthEnd); d.setDate(d.getDate()+1)) {
       const ds  = d.toISOString().slice(0,10);
+      if (ds > today) continue; // skip future days
       const dow = dayNames[d.getDay()];
-      if (weekend.includes(dow) || holidays.has(ds)) continue; // skip weekends/holidays
+      if (weekend.includes(dow) || holidayDates.has(ds)) continue;
+
+      const dayRecords = attMap[ds] || {};
+      const hasAnyRecord = Object.keys(dayRecords).length > 0;
 
       filteredEmps.forEach(emp => {
         if (!map[ds]) map[ds] = { leaves:[], holidays:[], absences:[], present:[] };
-        const rec = attMap[ds]?.[emp.id];
+        const rec = dayRecords[emp.id];
         if (rec) {
-          // has an attendance record
           if (rec.status === 'absent') map[ds].absences.push({ empName: emp.name });
           else map[ds].present.push({ empName: emp.name });
-        } else if (leaveDates[emp.id]?.has(ds)) {
-          // on approved leave — already added above
-        } else {
-          // no record and not on leave → absent
+        } else if (!leaveDates[emp.id]?.has(ds) && hasAnyRecord) {
+          // day was tracked but this employee has no record and isn't on leave → absent
           map[ds].absences.push({ empName: emp.name });
         }
       });
@@ -328,7 +333,7 @@ const CalendarModule = {
   _buildEventMapForDate(dateStr) {
     const result = { leaves:[], holidays:[], absences:[], present:[] };
 
-    let filteredEmps = DB.employees.filter(e => e.status === 'active');
+    let filteredEmps = DB.employees.filter(e => e.status !== 'inactive');
     if (this._filter.startsWith('dept:')) {
       const deptId = this._filter.slice(5);
       filteredEmps = filteredEmps.filter(e => e.dept === deptId);
@@ -342,10 +347,12 @@ const CalendarModule = {
     const onLeaveIds = new Set();
     DB.leaves.forEach(l => {
       if (l.status !== 'approved') return;
-      if (!empIds.has(l.empId)) return;
+      const emp = DB.employees.find(e => e.id === l.empId);
+      if (!emp || emp.status === 'inactive') return;
+      if (this._filter !== 'all' && !empIds.has(l.empId)) return;
       if (dateStr >= l.from && dateStr <= l.to) {
-        const emp = DB.employees.find(e => e.id === l.empId);
-        if (emp) { result.leaves.push({ empName: emp.name, type: l.type }); onLeaveIds.add(l.empId); }
+        result.leaves.push({ empName: emp.name, type: l.type });
+        onLeaveIds.add(l.empId);
       }
     });
 
@@ -366,12 +373,14 @@ const CalendarModule = {
       attOnDate[a.empId] = a;
     });
 
-    // Check if this is a working day
-    const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
-    const weekend  = DB.company.weekend || ['fri'];
-    const holidays = new Set((DB.company.holidays||[]).map(h => h.date));
-    const dow = dayNames[new Date(dateStr).getDay()];
-    const isWorkingDay = !weekend.includes(dow) && !holidays.has(dateStr);
+    // Virtual absences only if: working day, not future, AND some attendance was recorded
+    const dayNames    = ['sun','mon','tue','wed','thu','fri','sat'];
+    const weekend     = DB.company.weekend || ['fri'];
+    const holidayDates = new Set((DB.company.holidays||[]).map(h => h.date));
+    const dow          = dayNames[new Date(dateStr).getDay()];
+    const isWorkingDay = !weekend.includes(dow) && !holidayDates.has(dateStr);
+    const isFuture     = dateStr > new Date().toISOString().slice(0,10);
+    const hasAnyRecord = Object.keys(attOnDate).length > 0;
 
     filteredEmps.forEach(emp => {
       const rec = attOnDate[emp.id];
@@ -380,7 +389,8 @@ const CalendarModule = {
         else result.present.push({ empName: emp.name });
       } else if (onLeaveIds.has(emp.id)) {
         // already in leaves
-      } else if (isWorkingDay) {
+      } else if (isWorkingDay && !isFuture && hasAnyRecord) {
+        // day was tracked but employee missing → absent
         result.absences.push({ empName: emp.name });
       }
     });
