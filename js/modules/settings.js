@@ -510,20 +510,37 @@ const SettingsModule = {
 
       <!-- Holidays -->
       ${this._group(t('settings.holidays'),t('settings.holidaysDesc'),`
-        <div id="holidays-list">
-          ${(DB.company.holidays||[]).map(h=>`
-            <div class="settings-item" id="holiday-${h.id}">
-              <div class="settings-item-info">
-                <div class="settings-item-label">${h.name}</div>
-                <div class="settings-item-desc">${h.date} — ${h.days} ${t('leaves.days')}</div>
-              </div>
-              <button class="btn btn-danger btn-sm" onclick="SettingsModule.removeHoliday('${h.id}')">
-                <i class="fas fa-trash"></i>
-              </button>
+
+        <!-- Auto-fill banner -->
+        <div style="
+          background:linear-gradient(135deg,#6366f108,#8b5cf608);
+          border:1.5px solid #6366f130;
+          border-radius:14px;
+          padding:14px 18px;
+          margin-bottom:14px;
+          display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+        ">
+          <div style="flex:1;min-width:200px">
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px">
+              <i class="fas fa-wand-magic-sparkles" style="color:#6366f1;margin-${currentLang==='ar'?'left':'right'}:6px"></i>
+              ${currentLang==='ar'?'تحديث الإجازات السعودية تلقائياً':'Auto-fill Saudi Official Holidays'}
             </div>
-          `).join('')}
+            <div style="font-size:11px;color:var(--text-muted)">
+              ${currentLang==='ar'
+                ? `يضيف إجازات ${new Date().getFullYear()} و${new Date().getFullYear()+1} تلقائياً (اليوم الوطني، التأسيس، عيد الفطر، عيد الأضحى)`
+                : `Adds ${new Date().getFullYear()} & ${new Date().getFullYear()+1} holidays (National Day, Founding Day, Eid Al-Fitr, Eid Al-Adha)`}
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="SettingsModule.autoFillHolidays()" style="white-space:nowrap">
+            <i class="fas fa-rotate"></i>
+            ${currentLang==='ar'?'تحديث تلقائي':'Auto Update'}
+          </button>
         </div>
-        <div class="settings-item" style="border:none">
+
+        <div id="holidays-list">
+          ${(DB.company.holidays||[]).map(h=>this._holidayRow(h)).join('')}
+        </div>
+        <div class="settings-item" style="border:none;margin-top:4px">
           <button class="btn btn-outline-primary btn-sm" onclick="SettingsModule.addHoliday()">
             <i class="fas fa-plus"></i> ${t('settings.addHoliday')}
           </button>
@@ -689,6 +706,122 @@ const SettingsModule = {
     DB.saveCompany();
     document.getElementById(`holiday-${id}`)?.remove();
     App.toast(t('settings.toastHolidayDeleted'), 'success');
+  },
+
+  _holidayRow(h) {
+    const isAr = currentLang === 'ar';
+    // Icon per holiday type
+    const icons = {
+      'عيد الفطر':   { icon:'fas fa-moon',              color:'#6366f1' },
+      'عيد الأضحى':  { icon:'fas fa-star-and-crescent',  color:'#10b981' },
+      'يوم عرفة':    { icon:'fas fa-kaaba',              color:'#f59e0b' },
+      'اليوم الوطني':{ icon:'fas fa-flag',               color:'#10b981' },
+      'يوم التأسيس': { icon:'fas fa-landmark',           color:'#6366f1' },
+    };
+    const ic = icons[h.name] || { icon:'fas fa-calendar-star', color:'#8b5cf6' };
+    const dateObj = h.date ? new Date(h.date + 'T12:00:00') : null;
+    const dateLabel = dateObj
+      ? dateObj.toLocaleDateString(isAr?'ar-SA':'en-US', {year:'numeric',month:'long',day:'numeric'})
+      : h.date;
+    // Is this year or future?
+    const yr = parseInt((h.date||'').slice(0,4));
+    const thisYr = new Date().getFullYear();
+    const isPast = yr < thisYr;
+
+    return `
+      <div class="settings-item" id="holiday-${h.id}" style="gap:12px;${isPast?'opacity:.5':''}">
+        <div style="width:40px;height:40px;border-radius:12px;background:${ic.color}15;
+          border:1.5px solid ${ic.color}30;
+          display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="${ic.icon}" style="color:${ic.color};font-size:16px"></i>
+        </div>
+        <div class="settings-item-info" style="flex:1">
+          <div class="settings-item-label" style="display:flex;align-items:center;gap:6px">
+            ${h.name}
+            ${isPast ? `<span style="font-size:10px;background:#94a3b820;color:#94a3b8;border-radius:6px;padding:1px 7px">${isAr?'منتهية':'Past'}</span>` : `<span style="font-size:10px;background:${ic.color}15;color:${ic.color};border-radius:6px;padding:1px 7px">${yr}</span>`}
+          </div>
+          <div class="settings-item-desc" style="display:flex;align-items:center;gap:10px;margin-top:3px">
+            <span><i class="fas fa-calendar" style="opacity:.5;font-size:10px;margin-${isAr?'left':'right'}:4px"></i>${dateLabel}</span>
+            <span style="color:#6366f1;font-weight:600"><i class="fas fa-sun" style="font-size:10px;margin-${isAr?'left':'right'}:4px"></i>${h.days} ${t('leaves.days')}</span>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="SettingsModule.removeHoliday('${h.id}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `;
+  },
+
+  _getSaudiHolidays(year) {
+    // Fixed Gregorian holidays
+    const fixed = [
+      { name: 'يوم التأسيس',  date: `${year}-02-22`, days: 1 },
+      { name: 'اليوم الوطني', date: `${year}-09-23`, days: 2 },
+    ];
+    // Approximate Hijri-based dates (pre-computed)
+    const hijri = {
+      2025: [
+        { name: 'عيد الفطر',  date: '2025-03-30', days: 4 },
+        { name: 'يوم عرفة',   date: '2025-06-05', days: 1 },
+        { name: 'عيد الأضحى', date: '2025-06-06', days: 3 },
+      ],
+      2026: [
+        { name: 'عيد الفطر',  date: '2026-03-20', days: 4 },
+        { name: 'يوم عرفة',   date: '2026-05-26', days: 1 },
+        { name: 'عيد الأضحى', date: '2026-05-27', days: 3 },
+      ],
+      2027: [
+        { name: 'عيد الفطر',  date: '2027-03-09', days: 4 },
+        { name: 'يوم عرفة',   date: '2027-05-15', days: 1 },
+        { name: 'عيد الأضحى', date: '2027-05-16', days: 3 },
+      ],
+      2028: [
+        { name: 'عيد الفطر',  date: '2028-02-26', days: 4 },
+        { name: 'يوم عرفة',   date: '2028-05-03', days: 1 },
+        { name: 'عيد الأضحى', date: '2028-05-04', days: 3 },
+      ],
+    };
+    return [...fixed, ...(hijri[year] || [])];
+  },
+
+  autoFillHolidays() {
+    const isAr = currentLang === 'ar';
+    const thisYear = new Date().getFullYear();
+    const nextYear = thisYear + 1;
+
+    const newHolidays = [
+      ...this._getSaudiHolidays(thisYear),
+      ...this._getSaudiHolidays(nextYear),
+    ];
+
+    if (!DB.company.holidays) DB.company.holidays = [];
+
+    // Remove existing auto-holidays for these two years to avoid duplicates
+    DB.company.holidays = DB.company.holidays.filter(h => {
+      const yr = parseInt((h.date || '').slice(0, 4));
+      return yr !== thisYear && yr !== nextYear;
+    });
+
+    newHolidays.forEach(h => {
+      DB.company.holidays.push({
+        id:   `h-auto-${h.date}`,
+        name: h.name,
+        date: h.date,
+        days: h.days,
+      });
+    });
+
+    // Sort by date
+    DB.company.holidays.sort((a, b) => (a.date||'').localeCompare(b.date||''));
+
+    DB.saveCompany();
+    App.toast(
+      isAr
+        ? `✅ تم تحديث ${newHolidays.length} إجازة رسمية سعودية لعامَي ${thisYear} و${nextYear}`
+        : `✅ Added ${newHolidays.length} Saudi official holidays for ${thisYear} & ${nextYear}`,
+      'success', 5000
+    );
+    this._renderSection();
   },
 
   _getLeaveTypes() {
