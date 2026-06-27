@@ -2795,7 +2795,7 @@ ul { list-style: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 240px;
+  width: 248px;
   flex-shrink: 0;
 }
 .orgchart-connector-up {
@@ -2813,51 +2813,66 @@ ul { list-style: none; }
   transition: box-shadow .25s, transform .25s;
 }
 .orgchart-dept-node:hover {
-  box-shadow: 0 12px 36px rgba(0,0,0,.12);
+  box-shadow: 0 10px 32px rgba(0,0,0,.10);
   transform: translateY(-3px);
 }
 
-/* Banner */
-.orgchart-dept-banner {
-  padding: 18px 14px 14px;
+/* Top section (replaces banner) */
+.orgchart-dept-top {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  position: relative;
-  overflow: hidden;
+  gap: 10px;
+  padding: 13px 14px 12px;
+  border-bottom: 1px solid var(--border);
 }
-.orgchart-dept-banner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 60%, var(--bg-card) 100%);
-  pointer-events: none;
-}
-.orgchart-dept-banner-icon {
-  width: 48px; height: 48px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.22);
+.orgchart-dept-top-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; color: #fff;
-  border: 2px solid rgba(255,255,255,.3);
-  box-shadow: 0 4px 12px rgba(0,0,0,.15);
-  position: relative; z-index: 1;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: transform .2s;
 }
-.orgchart-dept-banner-name {
-  font-size: 13px; font-weight: 700; color: #fff;
-  text-align: center; line-height: 1.3;
-  position: relative; z-index: 1;
-  text-shadow: 0 1px 4px rgba(0,0,0,.2);
+.orgchart-dept-node:hover .orgchart-dept-top-icon { transform: scale(1.05); }
+.orgchart-dept-top-name {
+  font-size: 13px; font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.3;
 }
-.orgchart-dept-banner-count {
-  font-size: 10px; color: rgba(255,255,255,.8);
-  position: relative; z-index: 1;
-  font-weight: 500;
+.orgchart-dept-top-count {
+  font-size: 10px; color: var(--text-muted);
+  margin-top: 2px;
 }
 
-/* Content area */
-.orgchart-dept-content { padding: 12px 12px 10px; }
+/* Section wrapper */
+.orgchart-dept-section { padding: 10px 12px 8px; }
+
+/* Employee Avatars row */
+.orgchart-emp-avatars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  padding: 2px 12px 10px;
+}
+.orgchart-emp-av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid var(--bg-card);
+  cursor: default;
+  transition: transform .15s, z-index 0s;
+  position: relative;
+  z-index: 1;
+}
+.orgchart-emp-av:hover { transform: translateY(-3px) scale(1.15); z-index: 10; }
+.orgchart-emp-av-more {
+  font-size: 8px;
+  font-weight: 700;
+}
 
 /* Manager Row */
 .orgchart-manager-row {
@@ -3010,6 +3025,30 @@ ul { list-style: none; }
   font-size: 12px; font-weight: 600;
   border-width: 1px; border-style: solid;
   white-space: nowrap;
+}
+
+/* 2-column employee grid in list view */
+.orgchart-list-emp-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.orgchart-list-emp-item2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  background: var(--bg-secondary);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: border-color .15s, background .15s;
+}
+.orgchart-list-emp-item2:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+}
+@media (max-width: 500px) {
+  .orgchart-list-emp-grid2 { grid-template-columns: 1fr; }
 }
 
 /* Manager highlight in list */
