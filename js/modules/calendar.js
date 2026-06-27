@@ -160,29 +160,34 @@ const CalendarModule = {
   _buildEventMap(year, month) {
     const map    = {};
     const prefix = `${year}-${String(month+1).padStart(2,'0')}-`;
+    const monthStart = `${prefix}01`;
+    const monthEnd   = `${prefix}${String(new Date(year, month+1, 0).getDate()).padStart(2,'0')}`;
 
     // Get filtered employees
-    let empIds = null;
+    let filteredEmps = DB.employees.filter(e => e.status === 'active');
     if (this._filter.startsWith('dept:')) {
       const deptId = this._filter.slice(5);
-      empIds = new Set(DB.employees.filter(e => e.dept === deptId).map(e => e.id));
+      filteredEmps = filteredEmps.filter(e => e.dept === deptId);
     } else if (this._filter.startsWith('emp:')) {
-      empIds = new Set([this._filter.slice(4)]);
+      const empId = this._filter.slice(4);
+      filteredEmps = filteredEmps.filter(e => e.id === empId);
     }
-
+    const empIds = new Set(filteredEmps.map(e => e.id));
     const getEmp = id => DB.employees.find(e => e.id === id);
 
-    // Leaves
+    // Build leave dates per employee
+    const leaveDates = {}; // empId → Set<dateStr>
     DB.leaves.forEach(l => {
       if (l.status !== 'approved') return;
-      if (empIds && !empIds.has(l.empId)) return;
+      if (!empIds.has(l.empId)) return;
       const emp = getEmp(l.empId);
       if (!emp) return;
-      // iterate days in range
+      if (!leaveDates[l.empId]) leaveDates[l.empId] = new Set();
       let cur = new Date(l.from);
       const end = new Date(l.to);
       while (cur <= end) {
         const ds = cur.toISOString().slice(0,10);
+        leaveDates[l.empId].add(ds);
         if (ds.startsWith(prefix)) {
           if (!map[ds]) map[ds] = { leaves:[], holidays:[], absences:[], present:[] };
           map[ds].leaves.push({ empName: emp.name, type: l.type });
@@ -205,16 +210,39 @@ const CalendarModule = {
       }
     });
 
-    // Attendance (absences & present)
+    // Build attendance map: empId+date → record
+    const attMap = {};
     DB.attendance.forEach(a => {
       if (!a.date.startsWith(prefix)) return;
-      if (empIds && !empIds.has(a.empId)) return;
-      const emp = getEmp(a.empId);
-      if (!emp) return;
-      if (!map[a.date]) map[a.date] = { leaves:[], holidays:[], absences:[], present:[] };
-      if (a.status === 'absent') map[a.date].absences.push({ empName: emp.name });
-      else map[a.date].present.push({ empName: emp.name });
+      if (!empIds.has(a.empId)) return;
+      if (!attMap[a.date]) attMap[a.date] = {};
+      attMap[a.date][a.empId] = a;
     });
+
+    // Working days in month + virtual absences
+    const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
+    const weekend  = DB.company.weekend || ['fri'];
+    const holidays = new Set((DB.company.holidays||[]).map(h => h.date));
+    for (let d = new Date(monthStart); d <= new Date(monthEnd); d.setDate(d.getDate()+1)) {
+      const ds  = d.toISOString().slice(0,10);
+      const dow = dayNames[d.getDay()];
+      if (weekend.includes(dow) || holidays.has(ds)) continue; // skip weekends/holidays
+
+      filteredEmps.forEach(emp => {
+        if (!map[ds]) map[ds] = { leaves:[], holidays:[], absences:[], present:[] };
+        const rec = attMap[ds]?.[emp.id];
+        if (rec) {
+          // has an attendance record
+          if (rec.status === 'absent') map[ds].absences.push({ empName: emp.name });
+          else map[ds].present.push({ empName: emp.name });
+        } else if (leaveDates[emp.id]?.has(ds)) {
+          // on approved leave — already added above
+        } else {
+          // no record and not on leave → absent
+          map[ds].absences.push({ empName: emp.name });
+        }
+      });
+    }
 
     return map;
   },
@@ -299,23 +327,29 @@ const CalendarModule = {
 
   _buildEventMapForDate(dateStr) {
     const result = { leaves:[], holidays:[], absences:[], present:[] };
-    let empIds = null;
+
+    let filteredEmps = DB.employees.filter(e => e.status === 'active');
     if (this._filter.startsWith('dept:')) {
       const deptId = this._filter.slice(5);
-      empIds = new Set(DB.employees.filter(e => e.dept === deptId).map(e => e.id));
+      filteredEmps = filteredEmps.filter(e => e.dept === deptId);
     } else if (this._filter.startsWith('emp:')) {
-      empIds = new Set([this._filter.slice(4)]);
+      const empId = this._filter.slice(4);
+      filteredEmps = filteredEmps.filter(e => e.id === empId);
     }
-    const getEmp = id => DB.employees.find(e => e.id === id);
+    const empIds = new Set(filteredEmps.map(e => e.id));
 
+    // Leaves on this date
+    const onLeaveIds = new Set();
     DB.leaves.forEach(l => {
       if (l.status !== 'approved') return;
-      if (empIds && !empIds.has(l.empId)) return;
+      if (!empIds.has(l.empId)) return;
       if (dateStr >= l.from && dateStr <= l.to) {
-        const emp = getEmp(l.empId);
-        if (emp) result.leaves.push({ empName: emp.name, type: l.type });
+        const emp = DB.employees.find(e => e.id === l.empId);
+        if (emp) { result.leaves.push({ empName: emp.name, type: l.type }); onLeaveIds.add(l.empId); }
       }
     });
+
+    // Holidays
     (DB.company.holidays||[]).forEach(h => {
       if (!h.date) return;
       for (let i = 0; i < (h.days||1); i++) {
@@ -323,14 +357,34 @@ const CalendarModule = {
         if (d.toISOString().slice(0,10) === dateStr) result.holidays.push({ name: h.name });
       }
     });
+
+    // Attendance records for this date
+    const attOnDate = {};
     DB.attendance.forEach(a => {
       if (a.date !== dateStr) return;
-      if (empIds && !empIds.has(a.empId)) return;
-      const emp = getEmp(a.empId);
-      if (!emp) return;
-      if (a.status === 'absent') result.absences.push({ empName: emp.name });
-      else result.present.push({ empName: emp.name });
+      if (!empIds.has(a.empId)) return;
+      attOnDate[a.empId] = a;
     });
+
+    // Check if this is a working day
+    const dayNames = ['sun','mon','tue','wed','thu','fri','sat'];
+    const weekend  = DB.company.weekend || ['fri'];
+    const holidays = new Set((DB.company.holidays||[]).map(h => h.date));
+    const dow = dayNames[new Date(dateStr).getDay()];
+    const isWorkingDay = !weekend.includes(dow) && !holidays.has(dateStr);
+
+    filteredEmps.forEach(emp => {
+      const rec = attOnDate[emp.id];
+      if (rec) {
+        if (rec.status === 'absent') result.absences.push({ empName: emp.name });
+        else result.present.push({ empName: emp.name });
+      } else if (onLeaveIds.has(emp.id)) {
+        // already in leaves
+      } else if (isWorkingDay) {
+        result.absences.push({ empName: emp.name });
+      }
+    });
+
     return result;
   },
 

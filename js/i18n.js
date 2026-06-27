@@ -63,6 +63,10 @@ const TRANSLATIONS = {
     'nav.orgchart': 'الهيكل التنظيمي',
     'nav.calendar': 'تقويم الفريق',
     'nav.expenses': 'المصروفات',
+    'nav.deductions': 'الخصومات',
+    'nav.loans': 'السلف والقروض',
+    'nav.gratuity': 'نهاية الخدمة',
+    'nav.finance': 'المالية',
 
     // Org Chart
     'orgchart.title': 'الهيكل التنظيمي',
@@ -1232,6 +1236,10 @@ const TRANSLATIONS = {
     'nav.orgchart': 'Org Chart',
     'nav.calendar': 'Team Calendar',
     'nav.expenses': 'Expenses',
+    'nav.deductions': 'Deductions',
+    'nav.loans': 'Advances & Loans',
+    'nav.gratuity': 'End of Service',
+    'nav.finance': 'Finance',
 
     // Org Chart
     'orgchart.title': 'Organizational Chart',
@@ -2386,6 +2394,7 @@ const TRANSLATIONS = {
     'nav.gps': 'GPS ट्रैकिंग', 'nav.audit': 'ऑडिट लॉग',
     'nav.roles': 'भूमिकाएं और अनुमतियां', 'nav.settings': 'सेटिंग्स',
     'nav.orgchart': 'संगठन चार्ट', 'nav.calendar': 'टीम कैलेंडर', 'nav.expenses': 'खर्च',
+    'nav.deductions': 'कटौतियां', 'nav.loans': 'अग्रिम और ऋण', 'nav.gratuity': 'सेवा समाप्ति', 'nav.finance': 'वित्त',
     'orgchart.title': 'संगठन चार्ट', 'orgchart.subtitle': 'कंपनी संरचना देखें', 'orgchart.treeView': 'वृक्ष', 'orgchart.listView': 'सूची',
     'orgchart.noDepts': 'कोई विभाग नहीं', 'orgchart.noDeptsDesc': 'पहले विभाग जोड़ें', 'orgchart.addDepts': 'विभाग जोड़ें',
     'orgchart.employee': 'कर्मचारी', 'orgchart.manager': 'प्रबंधक', 'orgchart.noManager': 'प्रबंधक नहीं', 'orgchart.empty': 'कोई कर्मचारी नहीं', 'orgchart.more': 'अधिक', 'orgchart.unassigned': 'अनिर्दिष्ट',
@@ -2720,6 +2729,7 @@ const TRANSLATIONS = {
     'nav.gps': 'GPS ٹریکنگ', 'nav.audit': 'آڈٹ لاگ',
     'nav.roles': 'کردار اور اجازتیں', 'nav.settings': 'ترتیبات',
     'nav.orgchart': 'تنظیمی چارٹ', 'nav.calendar': 'ٹیم کیلنڈر', 'nav.expenses': 'اخراجات',
+    'nav.deductions': 'کٹوتیاں', 'nav.loans': 'پیشگی اور قرض', 'nav.gratuity': 'اختتام خدمت', 'nav.finance': 'مالیات',
     'orgchart.title': 'تنظیمی چارٹ', 'orgchart.subtitle': 'کمپنی کا ڈھانچہ دیکھیں', 'orgchart.treeView': 'درخت', 'orgchart.listView': 'فہرست',
     'orgchart.noDepts': 'کوئی محکمہ نہیں', 'orgchart.noDeptsDesc': 'پہلے محکمے شامل کریں', 'orgchart.addDepts': 'محکمہ شامل کریں',
     'orgchart.employee': 'ملازم', 'orgchart.manager': 'مدیر', 'orgchart.noManager': 'کوئی مدیر نہیں', 'orgchart.empty': 'کوئی ملازم نہیں', 'orgchart.more': 'مزید', 'orgchart.unassigned': 'غیر تفویض شدہ',
@@ -2861,6 +2871,7 @@ const TRANSLATIONS = {
     'nav.payroll': 'Sahod', 'nav.gps': 'GPS Tracking',
     'nav.audit': 'Audit Logs', 'nav.roles': 'Mga Tungkulin at Pahintulot', 'nav.settings': 'Mga Setting',
     'nav.orgchart': 'Org Chart', 'nav.calendar': 'Team Calendar', 'nav.expenses': 'Mga Gastos',
+    'nav.deductions': 'Mga Bawas', 'nav.loans': 'Paunang Bayad at Utang', 'nav.gratuity': 'Katapusan ng Serbisyo', 'nav.finance': 'Pananalapi',
     'orgchart.title': 'Organizational Chart', 'orgchart.subtitle': 'Tingnan ang istruktura ng kumpanya', 'orgchart.treeView': 'Puno', 'orgchart.listView': 'Listahan',
     'orgchart.noDepts': 'Walang Departamento', 'orgchart.noDeptsDesc': 'Magdagdag muna ng departamento', 'orgchart.addDepts': 'Magdagdag ng Departamento',
     'orgchart.employee': 'empleyado', 'orgchart.manager': 'Tagapamahala', 'orgchart.noManager': 'Walang tagapamahala', 'orgchart.empty': 'Walang empleyado', 'orgchart.more': 'iba pa', 'orgchart.unassigned': 'Hindi naitalaga',
