@@ -198,7 +198,7 @@ const DashboardModule = {
             sub: t('dashboard.awaitingApproval'),
             trend: (counts.leaves + counts.requests) > 5 ? 'down' : 'neutral',
           },
-        ].map(k => this._kpiCard(k)).join('')}
+        ].map((k, i) => this._kpiCard(k, i)).join('')}
       </div>
 
       <!-- ═══ CHARTS ROW ═════════════════════════════════════════ -->
@@ -357,73 +357,127 @@ const DashboardModule = {
       </div>
     `;
 
-    // Charts
+    // Charts + counter animations
     setTimeout(() => {
       this._renderTrendChart(trend);
       this._renderDeptChart();
-    }, 100);
+      this._animateCounters();
+    }, 120);
   },
 
-  /* ── KPI Card ─────────────────────────────────────────────── */
-  _kpiCard({ icon, color, link, val, lbl, sub, trend }) {
-    const trendCfg = {
-      up:      { bg:'#10b98118', color:'#10b981', icon:'fa-arrow-trend-up',   lbl: currentLang==='ar'?'ارتفاع':'Rising'   },
-      down:    { bg:'#ef444418', color:'#ef4444', icon:'fa-arrow-trend-down', lbl: currentLang==='ar'?'انخفاض':'Falling'  },
-      neutral: { bg:'#94a3b818', color:'#94a3b8', icon:'fa-minus',            lbl: currentLang==='ar'?'ثابت':'Stable'     },
-    };
-    const tc  = trendCfg[trend] || trendCfg.neutral;
+  /* ── KPI Card v2 — animated ──────────────────────────────── */
+  _kpiCard({ icon, color, link, val, lbl, sub, trend }, idx) {
     const isAr = currentLang === 'ar';
+
+    const trendCfg = {
+      up:      { cls:'kpi-badge-up',   icon:'fa-arrow-trend-up',   lbl: isAr?'ارتفاع':'Rising'  },
+      down:    { cls:'kpi-badge-down', icon:'fa-arrow-trend-down', lbl: isAr?'انخفاض':'Falling' },
+      neutral: { cls:'kpi-badge-neu',  icon:'fa-minus',            lbl: isAr?'ثابت':'Stable'    },
+    };
+    const tc = trendCfg[trend] || trendCfg.neutral;
+
+    // Unique icon animation per card
+    const iconAnims = [
+      'kpiIconFloat 3s ease-in-out infinite',
+      'kpiIconBounce 2.4s ease infinite',
+      'kpiIconSwing 3.5s ease-in-out infinite',
+      'kpiIconTick 4s ease-in-out infinite',
+      'kpiIconShake 2.8s ease-in-out infinite',
+      'kpiIconSpin 7s linear infinite',
+      'kpiIconPulseScale 2.5s ease-in-out infinite',
+      'kpiIconWobble 3s ease-in-out infinite',
+    ];
+    const animStr  = iconAnims[idx % iconAnims.length];
+    const ringDly  = `${(idx * 0.4).toFixed(1)}s`;
+    const slideDly = `${(idx * 0.08).toFixed(2)}s`;
+    const valDly   = `${(idx * 0.08 + 0.18).toFixed(2)}s`;
+    const lineDly  = `${(idx * 0.1 + 0.3).toFixed(2)}s`;
+
+    const numStr = String(val);
+    const suffix = numStr.endsWith('%') ? '%' : '';
+    const target = numStr.replace('%', '');
+    const isNum  = !isNaN(Number(target)) && Number(target) > 0;
+
     return `
-      <div style="
-        background:var(--bg-card);
-        border-radius:16px;
-        padding:18px 20px;
-        border:1px solid var(--border);
-        box-shadow:var(--shadow-sm);
-        border-${isAr?'right':'left'}:4px solid ${color};
-        cursor:pointer;
-        transition:all .2s;
-        position:relative;overflow:hidden;
-      "
-      onclick="App.navigate('${link}')"
-      onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,.12)'"
-      onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow-sm)'">
+      <div class="dash-kpi-card"
+        style="border-${isAr?'right':'left'}:4px solid ${color};animation:kpiSlideIn .45s cubic-bezier(.34,1.2,.64,1) ${slideDly} both"
+        onclick="App.navigate('${link}')">
 
-        <!-- Background glow -->
-        <div style="position:absolute;${isAr?'left':'right'}:0;top:0;bottom:0;width:60px;
-          background:linear-gradient(${isAr?'to right':'to left'},${color}08,transparent);pointer-events:none"></div>
+        <!-- Ambient radial glow -->
+        <div style="position:absolute;${isAr?'left':'right'}:-20px;top:-20px;
+          width:130px;height:130px;border-radius:50%;
+          background:radial-gradient(circle,${color}14 0%,transparent 70%);
+          pointer-events:none"></div>
 
-        <!-- Top row: icon + trend badge -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div style="
-            width:42px;height:42px;border-radius:12px;
-            background:${color}18;
-            display:flex;align-items:center;justify-content:center;
-            color:${color};
-          ">
-            <i class="${icon}" style="font-size:18px"></i>
+        <!-- Top row -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;position:relative;z-index:1">
+
+          <!-- Trend badge -->
+          <div class="${tc.cls}">
+            <i class="fas ${tc.icon}" style="font-size:9px"></i> ${tc.lbl}
           </div>
-          <div style="
-            display:inline-flex;align-items:center;gap:4px;
-            background:${tc.bg};color:${tc.color};
-            border-radius:8px;padding:3px 8px;
-            font-size:10px;font-weight:700;
-          ">
-            <i class="fas ${tc.icon}" style="font-size:9px"></i>
-            ${tc.lbl}
+
+          <!-- Animated icon with pulse ring -->
+          <div style="position:relative;flex-shrink:0">
+            <div style="position:absolute;inset:-5px;border-radius:18px;
+              border:2px solid ${color};opacity:0;
+              animation:kpiRing 2.5s ease-out ${ringDly} infinite"></div>
+            <div style="
+              width:52px;height:52px;border-radius:14px;
+              background:${color}18;border:1.5px solid ${color}2a;
+              display:flex;align-items:center;justify-content:center;
+              animation:${animStr};
+            ">
+              <i class="${icon}" style="color:${color};font-size:20px"></i>
+            </div>
           </div>
         </div>
 
-        <!-- Value -->
-        <div style="font-size:30px;font-weight:900;color:var(--text-primary);line-height:1;margin-bottom:5px">${val}</div>
+        <!-- Animated counter value -->
+        <div style="position:relative;z-index:1;margin-bottom:5px;
+          animation:kpiValPop .55s cubic-bezier(.34,1.56,.64,1) ${valDly} both">
+          <span class="kpi-counter"
+            data-target="${target}" data-suffix="${suffix}" data-isnum="${isNum}"
+            style="font-size:34px;font-weight:900;color:var(--text-primary);line-height:1">
+            ${val}
+          </span>
+        </div>
 
-        <!-- Label -->
-        <div style="font-size:13px;font-weight:600;color:var(--text-secondary)">${lbl}</div>
+        <!-- Label + sub -->
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:3px;position:relative;z-index:1">${lbl}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:13px;position:relative;z-index:1">${sub}</div>
 
-        <!-- Sub -->
-        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;opacity:.8">${sub}</div>
+        <!-- Animated accent line -->
+        <div class="kpi-line-anim" style="
+          height:3px;border-radius:3px;
+          background:linear-gradient(${isAr?'to left':'to right'},${color},${color}55,transparent);
+          transform-origin:${isAr?'right':'left'};
+          animation:kpiLineGrow .85s ease ${lineDly} both;
+        "></div>
       </div>
     `;
+  },
+
+  /* ── Number counter animation ─────────────────────────────── */
+  _animateCounters() {
+    document.querySelectorAll('.kpi-counter').forEach((el, i) => {
+      const target = parseFloat(el.dataset.target);
+      const suffix = el.dataset.suffix || '';
+      const isNum  = el.dataset.isnum === 'true';
+      if (!isNum || isNaN(target)) return;
+      const isFloat = el.dataset.target.includes('.');
+      const dur     = Math.min(900 + target * 8, 1800);
+      setTimeout(() => {
+        const t0 = performance.now();
+        const tick = now => {
+          const p = Math.min((now - t0) / dur, 1);
+          const e = 1 - Math.pow(1 - p, 3);
+          el.textContent = (isFloat ? (target*e).toFixed(1) : Math.round(target*e)) + suffix;
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, i * 60 + 320);
+    });
   },
 
   /* ── Activity Feed ────────────────────────────────────────── */

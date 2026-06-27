@@ -2729,6 +2729,120 @@ ul { list-style: none; }
   margin-bottom: 22px;
 }
 
+/* ── KPI Card ─────────────────────────────────────────────── */
+.dash-kpi-card {
+  background: var(--bg-card);
+  border-radius: 18px;
+  padding: 20px 22px 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform .28s cubic-bezier(.34,1.4,.64,1), box-shadow .28s ease;
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+}
+.dash-kpi-card:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 20px 52px rgba(0,0,0,.13);
+}
+.dash-kpi-card:active { transform: translateY(-2px) scale(1.005); }
+
+/* Trend badges */
+.kpi-badge-up {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 10px; padding: 4px 10px;
+  font-size: 11px; font-weight: 700;
+  background: linear-gradient(135deg,#10b981,#059669);
+  color: #fff;
+}
+.kpi-badge-down {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 10px; padding: 4px 10px;
+  font-size: 11px; font-weight: 700;
+  background: linear-gradient(135deg,#ef4444,#dc2626);
+  color: #fff;
+  animation: kpiBadgePulse 1.8s ease infinite;
+}
+.kpi-badge-neu {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 10px; padding: 4px 10px;
+  font-size: 11px; font-weight: 700;
+  background: rgba(148,163,184,.12);
+  color: #94a3b8;
+}
+
+/* ── KPI Keyframes ────────────────────────────────────────── */
+@keyframes kpiSlideIn {
+  from { opacity:0; transform:translateY(30px) scale(.96); }
+  to   { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes kpiValPop {
+  0%   { opacity:0; transform:scale(.6) translateY(8px); }
+  70%  { transform:scale(1.06); }
+  100% { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes kpiLineGrow {
+  from { transform:scaleX(0); transform-origin:left; }
+  to   { transform:scaleX(1); transform-origin:left; }
+}
+[dir="rtl"] .kpi-line-anim { animation-name: kpiLineGrowRtl !important; }
+@keyframes kpiLineGrowRtl {
+  from { transform:scaleX(0); transform-origin:right; }
+  to   { transform:scaleX(1); transform-origin:right; }
+}
+@keyframes kpiRing {
+  0%   { transform:scale(1); opacity:.5; }
+  100% { transform:scale(1.55); opacity:0; }
+}
+@keyframes kpiBadgePulse {
+  0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,.4); }
+  50%     { box-shadow:0 0 0 6px rgba(239,68,68,0); }
+}
+/* Icon-specific animations */
+@keyframes kpiIconFloat {
+  0%,100% { transform:translateY(0) rotate(0deg); }
+  50%     { transform:translateY(-7px) rotate(-3deg); }
+}
+@keyframes kpiIconBounce {
+  0%,20%,50%,80%,100% { transform:translateY(0) scale(1); }
+  35%                  { transform:translateY(-9px) scale(1.1); }
+  65%                  { transform:translateY(-4px) scale(1.05); }
+}
+@keyframes kpiIconSwing {
+  0%,100% { transform:rotate(0deg); }
+  20%     { transform:rotate(9deg); }
+  40%     { transform:rotate(-6deg); }
+  60%     { transform:rotate(4deg); }
+  80%     { transform:rotate(-2deg); }
+}
+@keyframes kpiIconTick {
+  0%,40%  { transform:rotate(0deg) scale(1); }
+  45%     { transform:rotate(180deg) scale(.9); }
+  55%,100%{ transform:rotate(180deg) scale(1); }
+  /* pauses to simulate hourglass sand */
+}
+@keyframes kpiIconShake {
+  0%,100% { transform:translateX(0) rotate(0deg); }
+  15%,45% { transform:translateX(-5px) rotate(-3deg); }
+  30%,60% { transform:translateX(5px) rotate(3deg); }
+  75%     { transform:translateX(-2px); }
+}
+@keyframes kpiIconSpin {
+  0%   { transform:rotate(0deg) scale(1); }
+  80%  { transform:rotate(340deg) scale(1.05); }
+  100% { transform:rotate(360deg) scale(1); }
+}
+@keyframes kpiIconPulseScale {
+  0%,100% { transform:scale(1); }
+  50%     { transform:scale(1.15); }
+}
+@keyframes kpiIconWobble {
+  0%,100% { transform:skewX(0deg) scale(1); }
+  25%     { transform:skewX(-6deg) scale(.97); }
+  75%     { transform:skewX(6deg) scale(.97); }
+}
+
 @media (max-width: 1200px) {
   .dash-kpi-grid { grid-template-columns: repeat(4, 1fr); }
 }
