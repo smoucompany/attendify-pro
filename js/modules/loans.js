@@ -5,16 +5,28 @@
 const LoansModule = {
 
   render(container) {
-    const loans = DB.loans || [];
+    const loans    = DB.loans || [];
     const pending  = loans.filter(l => l.status === 'pending');
     const active   = loans.filter(l => l.status === 'approved');
     const paid     = loans.filter(l => l.status === 'paid');
+    const rejected = loans.filter(l => l.status === 'rejected');
+    const isAr     = currentLang === 'ar';
+
+    const totalAmt  = loans.reduce((s,l) => s + (l.amount||0), 0);
     const activeAmt = active.reduce((s,l) => s + (l.remainingAmount||0), 0);
+    const paidAmt   = paid.reduce((s,l) => s + (l.amount||0), 0);
+    const paidPct   = totalAmt > 0 ? Math.round((paidAmt / totalAmt) * 100) : 0;
 
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
-          <h1><i class="fas fa-hand-holding-dollar" style="color:#6366f1;font-size:22px"></i> ${t('loans.title')}</h1>
+          <h1 style="display:flex;align-items:center;gap:10px">
+            <span style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#818cf8);
+              display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0">
+              <i class="fas fa-hand-holding-dollar"></i>
+            </span>
+            ${t('loans.title')}
+          </h1>
           <p>${t('loans.subtitle')}</p>
         </div>
         <div class="page-header-actions">
@@ -24,37 +36,89 @@ const LoansModule = {
         </div>
       </div>
 
-      <div class="stat-cards">
-        <div class="stat-card primary stagger-item">
-          <div class="stat-icon gradient-primary"><i class="fas fa-file-invoice-dollar"></i></div>
-          <div class="stat-info">
-            <div class="stat-value" data-count="${loans.length}">${loans.length}</div>
-            <div class="stat-label">${t('loans.totalRequests')}</div>
+      <!-- Stats -->
+      <div class="orgchart-stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:20px">
+        <div class="orgchart-stat-card" style="color:#6366f1">
+          <div class="orgchart-stat-icon" style="background:#6366f115;color:#6366f1">
+            <i class="fas fa-file-invoice-dollar"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${loans.length}</div>
+            <div class="orgchart-stat-lbl">${t('loans.totalRequests')}</div>
           </div>
         </div>
-        <div class="stat-card warning stagger-item">
-          <div class="stat-icon gradient-warning"><i class="fas fa-clock"></i></div>
-          <div class="stat-info">
-            <div class="stat-value" data-count="${pending.length}">${pending.length}</div>
-            <div class="stat-label">${t('loans.pending')}</div>
+        <div class="orgchart-stat-card" style="color:#f59e0b;cursor:pointer"
+          onclick="document.getElementById('ln-filter-status').value='pending';LoansModule._filter()">
+          <div class="orgchart-stat-icon" style="background:#f59e0b15;color:#f59e0b">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${pending.length}</div>
+            <div class="orgchart-stat-lbl">${t('loans.pending')}</div>
           </div>
         </div>
-        <div class="stat-card success stagger-item">
-          <div class="stat-icon gradient-success"><i class="fas fa-check-circle"></i></div>
-          <div class="stat-info">
-            <div class="stat-value" data-count="${active.length}">${active.length}</div>
-            <div class="stat-label">${t('loans.active')}</div>
+        <div class="orgchart-stat-card" style="color:#10b981;cursor:pointer"
+          onclick="document.getElementById('ln-filter-status').value='approved';LoansModule._filter()">
+          <div class="orgchart-stat-icon" style="background:#10b98115;color:#10b981">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${active.length}</div>
+            <div class="orgchart-stat-lbl">${t('loans.active')}</div>
           </div>
         </div>
-        <div class="stat-card danger stagger-item">
-          <div class="stat-icon gradient-danger"><i class="fas fa-coins"></i></div>
-          <div class="stat-info">
-            <div class="stat-value">${App.formatCurrency(activeAmt)}</div>
-            <div class="stat-label">${t('loans.totalRemaining')}</div>
+        <div class="orgchart-stat-card" style="color:#ef4444">
+          <div class="orgchart-stat-icon" style="background:#ef444415;color:#ef4444">
+            <i class="fas fa-coins"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val" style="font-size:16px">${App.formatCurrency(activeAmt)}</div>
+            <div class="orgchart-stat-lbl">${t('loans.totalRemaining')}</div>
           </div>
         </div>
       </div>
 
+      <!-- Portfolio Overview -->
+      ${loans.length > 0 ? `
+      <div class="card" style="padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--text-muted)">
+              ${isAr ? 'إجمالي المحفظة' : 'Total Portfolio'}
+            </span>
+            <span style="font-size:13px;font-weight:700;color:#6366f1">${App.formatCurrency(totalAmt)}</span>
+          </div>
+          <div style="background:var(--border);border-radius:8px;height:10px;overflow:hidden">
+            <div style="height:10px;border-radius:8px;background:linear-gradient(90deg,#10b981,#6ee7b7);width:${paidPct}%;transition:width .6s"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px">
+            <span style="font-size:11px;color:#10b981;font-weight:600">
+              <i class="fas fa-check"></i> ${App.formatCurrency(paidAmt)} ${isAr?'مسدّد':'paid'} (${paidPct}%)
+            </span>
+            <span style="font-size:11px;color:#ef4444;font-weight:600">
+              ${App.formatCurrency(activeAmt)} ${isAr?'متبقي':'remaining'}
+            </span>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          ${[
+            { color:'#10b981', count: paid.length,     label: t('loans.paid') },
+            { color:'#6366f1', count: active.length,   label: t('loans.active') },
+            { color:'#f59e0b', count: pending.length,  label: t('loans.pending') },
+            { color:'#ef4444', count: rejected.length, label: t('loans.rejected') },
+          ].map(s => `
+            <div style="display:flex;flex-direction:column;align-items:center;
+              background:${s.color}10;border:1px solid ${s.color}30;border-radius:12px;
+              padding:8px 14px;min-width:60px">
+              <div style="font-size:20px;font-weight:800;color:${s.color}">${s.count}</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.label}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
+
+      <!-- Filters -->
       <div class="filter-bar">
         <div class="filter-group">
           <select class="filter-select" id="ln-filter-status" onchange="LoansModule._filter()">
@@ -75,11 +139,13 @@ const LoansModule = {
         <div class="filter-group" style="flex:1">
           <div class="search-box">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" class="search-input" id="ln-search" placeholder="${t('loans.searchPlaceholder')}" oninput="LoansModule._filter()">
+            <input type="text" class="search-input" id="ln-search"
+              placeholder="${t('loans.searchPlaceholder')}" oninput="LoansModule._filter()">
           </div>
         </div>
       </div>
 
+      <!-- Table -->
       <div class="data-table-wrap">
         <table class="data-table">
           <thead>
@@ -103,6 +169,9 @@ const LoansModule = {
             <div class="empty-icon"><i class="fas fa-hand-holding-dollar"></i></div>
             <div class="empty-title">${t('loans.noLoans')}</div>
             <p class="empty-desc">${t('loans.emptyDesc')}</p>
+            <button class="btn btn-primary" style="margin-top:16px" onclick="LoansModule.openAddForm()">
+              <i class="fas fa-plus"></i> ${t('loans.addBtn')}
+            </button>
           </div>` : ''}
       </div>
     `;
@@ -110,40 +179,75 @@ const LoansModule = {
 
   _rows(list) {
     if (!list.length) return `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">${t('loans.noResults')}</td></tr>`;
+
+    const statusColors = { pending:'#f59e0b', approved:'#6366f1', rejected:'#ef4444', paid:'#10b981' };
+    const isAr = currentLang === 'ar';
+
     return list.map(ln => {
-      const emp = DB.getEmployee(ln.empId);
-      const pct = ln.amount > 0 ? Math.round(((ln.amount - (ln.remainingAmount||ln.amount)) / ln.amount) * 100) : 0;
+      const emp  = DB.getEmployee(ln.empId);
+      const paidAmt = (ln.amount||0) - (ln.remainingAmount||ln.amount||0);
+      const pct  = ln.amount > 0 ? Math.round((paidAmt / ln.amount) * 100) : 0;
+      const sc   = statusColors[ln.status] || '#94a3b8';
+      const moRemaining = ln.installment > 0 && ln.remainingAmount > 0
+        ? Math.ceil(ln.remainingAmount / ln.installment) : 0;
+
       return `
-        <tr class="stagger-item">
+        <tr class="stagger-item" style="border-${isAr?'right':'left'}:3px solid ${sc}">
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               ${App.renderAvatar(emp, 36, 12)}
               <div>
                 <div style="font-weight:600;font-size:14px">${_esc(emp?.name||'—')}</div>
-                <div style="color:var(--text-muted);font-size:11px">${_esc(emp?.no||'')}</div>
+                <div style="color:var(--text-muted);font-size:11px">${_esc(emp?.no||emp?.position||'')}</div>
               </div>
             </div>
           </td>
           <td>${this._typeBadge(ln.type)}</td>
-          <td style="font-weight:700">${App.formatCurrency(ln.amount||0)}</td>
-          <td style="color:#6366f1;font-weight:600">${App.formatCurrency(ln.installment||0)}</td>
           <td>
-            <div style="color:#ef4444;font-weight:700;margin-bottom:4px">${App.formatCurrency(ln.remainingAmount||0)}</div>
-            ${ln.status==='approved' ? `<div style="background:var(--border);border-radius:4px;height:4px;width:80px"><div style="background:#6366f1;height:4px;border-radius:4px;width:${pct}%"></div></div>` : ''}
+            <div style="font-weight:700;font-size:14px">${App.formatCurrency(ln.amount||0)}</div>
+            <div style="font-size:10px;color:var(--text-muted)">${ln.months||1} ${isAr?'شهر':'mo'}</div>
           </td>
-          <td style="color:var(--text-muted)">${ln.startMonth||'—'}</td>
+          <td>
+            <div style="color:#6366f1;font-weight:700">${App.formatCurrency(ln.installment||0)}</div>
+            ${moRemaining > 0 ? `<div style="font-size:10px;color:var(--text-muted)">${moRemaining} ${isAr?'قسط متبقي':'left'}</div>` : ''}
+          </td>
+          <td>
+            <div style="color:#ef4444;font-weight:700;margin-bottom:5px">${App.formatCurrency(ln.remainingAmount||0)}</div>
+            ${ln.status==='approved' ? `
+              <div style="background:var(--border);border-radius:4px;height:5px;width:90px;overflow:hidden">
+                <div style="background:linear-gradient(90deg,#6366f1,#818cf8);height:5px;border-radius:4px;width:${pct}%"></div>
+              </div>
+              <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${pct}% ${isAr?'مسدّد':'paid'}</div>
+            ` : ''}
+          </td>
+          <td style="color:var(--text-muted);font-size:13px">${ln.startMonth||'—'}</td>
           <td>${this._statusBadge(ln.status)}</td>
           <td>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
               ${ln.status==='pending' ? `
-                <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981" title="${t('loans.approve')}" onclick="LoansModule.approve('${ln.id}')"><i class="fas fa-check"></i></button>
-                <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444" title="${t('loans.reject')}" onclick="LoansModule.reject('${ln.id}')"><i class="fas fa-times"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981;border-radius:8px"
+                  title="${t('loans.approve')}" onclick="LoansModule.approve('${ln.id}')">
+                  <i class="fas fa-check"></i>
+                </button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444;border-radius:8px"
+                  title="${t('loans.reject')}" onclick="LoansModule.reject('${ln.id}')">
+                  <i class="fas fa-times"></i>
+                </button>
               ` : ''}
               ${ln.status==='approved' ? `
-                <button class="btn btn-icon btn-sm" style="background:rgba(99,102,241,.12);color:#6366f1" title="${t('loans.payInstallment')}" onclick="LoansModule.recordPayment('${ln.id}')"><i class="fas fa-money-bill-wave"></i></button>
+                <button class="btn btn-icon btn-sm" style="background:rgba(99,102,241,.12);color:#6366f1;border-radius:8px"
+                  title="${t('loans.payInstallment')}" onclick="LoansModule.recordPayment('${ln.id}')">
+                  <i class="fas fa-money-bill-wave"></i>
+                </button>
               ` : ''}
-              <button class="btn btn-icon btn-sm" title="${t('loans.details')}" onclick="LoansModule.viewDetails('${ln.id}')"><i class="fas fa-eye"></i></button>
-              <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444" title="${t('common.delete')}" onclick="LoansModule.deleteLoan('${ln.id}')"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-icon btn-sm" style="border-radius:8px"
+                title="${t('loans.details')}" onclick="LoansModule.viewDetails('${ln.id}')">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444;border-radius:8px"
+                title="${t('common.delete')}" onclick="LoansModule.deleteLoan('${ln.id}')">
+                <i class="fas fa-trash"></i>
+              </button>
             </div>
           </td>
         </tr>
@@ -153,10 +257,10 @@ const LoansModule = {
 
   _statusBadge(s) {
     const m = {
-      pending:  ['warning','clock', t('loans.pending')],
-      approved: ['success','check-circle', t('loans.active')],
-      rejected: ['danger','times-circle', t('loans.rejected')],
-      paid:     ['info','circle-check', t('loans.paid')],
+      pending:  ['warning','hourglass-half', t('loans.pending')],
+      approved: ['success','check-circle',   t('loans.active')],
+      rejected: ['danger','times-circle',    t('loans.rejected')],
+      paid:     ['info','circle-check',      t('loans.paid')],
     };
     const [cls, icon, label] = m[s] || ['default','circle',s];
     return `<span class="badge badge-${cls}"><i class="fas fa-${icon}"></i> ${label}</span>`;

@@ -8,17 +8,16 @@ const ExpensesModule = {
   _page: 1,
   _perPage: 15,
 
-  // Categories
   _cats() {
     const isAr = currentLang === 'ar';
     return [
-      { id: 'travel',        icon: 'fas fa-plane',          ar: 'سفر',          en: 'Travel'        },
-      { id: 'meals',         icon: 'fas fa-utensils',        ar: 'وجبات',        en: 'Meals'         },
-      { id: 'accommodation', icon: 'fas fa-hotel',           ar: 'إقامة',        en: 'Accommodation' },
-      { id: 'transport',     icon: 'fas fa-car',             ar: 'مواصلات',      en: 'Transport'     },
-      { id: 'communication', icon: 'fas fa-phone',           ar: 'اتصالات',      en: 'Communication' },
-      { id: 'supplies',      icon: 'fas fa-box',             ar: 'مستلزمات',     en: 'Supplies'      },
-      { id: 'other',         icon: 'fas fa-receipt',         ar: 'أخرى',         en: 'Other'         },
+      { id: 'travel',        icon: 'fas fa-plane',         color:'#6366f1', ar: 'سفر',       en: 'Travel'        },
+      { id: 'meals',         icon: 'fas fa-utensils',       color:'#f59e0b', ar: 'وجبات',     en: 'Meals'         },
+      { id: 'accommodation', icon: 'fas fa-hotel',          color:'#3b82f6', ar: 'إقامة',     en: 'Accommodation' },
+      { id: 'transport',     icon: 'fas fa-car',            color:'#10b981', ar: 'مواصلات',   en: 'Transport'     },
+      { id: 'communication', icon: 'fas fa-phone',          color:'#8b5cf6', ar: 'اتصالات',   en: 'Communication' },
+      { id: 'supplies',      icon: 'fas fa-box',            color:'#ec4899', ar: 'مستلزمات',  en: 'Supplies'      },
+      { id: 'other',         icon: 'fas fa-receipt',        color:'#94a3b8', ar: 'أخرى',      en: 'Other'         },
     ];
   },
 
@@ -33,21 +32,41 @@ const ExpensesModule = {
     return c ? c.icon : 'fas fa-receipt';
   },
 
+  _catColor(id) {
+    const c = this._cats().find(x => x.id === id);
+    return c ? c.color : '#94a3b8';
+  },
+
   render(container) {
     if (!DB.expenses) DB.expenses = [];
     const isAr = currentLang === 'ar';
 
-    const expenses = this._getFiltered();
-    const total    = expenses.reduce((s, e) => s + (Number(e.amount)||0), 0);
-    const pending  = DB.expenses.filter(e => e.status === 'pending').length;
-    const approved = DB.expenses.filter(e => e.status === 'approved').length;
-    const rejected = DB.expenses.filter(e => e.status === 'rejected').length;
+    const allExp   = DB.expenses;
+    const pending  = allExp.filter(e => e.status === 'pending');
+    const approved = allExp.filter(e => e.status === 'approved');
+    const rejected = allExp.filter(e => e.status === 'rejected');
+    const totalAmt = approved.reduce((s, e) => s + (Number(e.amount)||0), 0);
     const currency = DB.company.currency || 'SAR';
+
+    // Category breakdown (top 4)
+    const catTotals = {};
+    approved.forEach(e => {
+      catTotals[e.category] = (catTotals[e.category]||0) + (Number(e.amount)||0);
+    });
+    const topCats = Object.entries(catTotals)
+      .sort((a,b) => b[1]-a[1])
+      .slice(0, 4);
 
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
-          <h1>${t('expenses.title')}</h1>
+          <h1 style="display:flex;align-items:center;gap:10px">
+            <span style="width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#ec4899,#f43f5e);
+              display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:18px;flex-shrink:0">
+              <i class="fas fa-receipt"></i>
+            </span>
+            ${t('expenses.title')}
+          </h1>
           <p>${t('expenses.subtitle')}</p>
         </div>
         <div class="page-header-actions">
@@ -58,43 +77,108 @@ const ExpensesModule = {
       </div>
 
       <!-- Stats -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px">
-        <div class="card" style="padding:16px;cursor:pointer" onclick="ExpensesModule._filter.status='pending';ExpensesModule._page=1;ExpensesModule._renderTable()">
-          <div style="font-size:26px;font-weight:700;color:#f59e0b">${pending}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('expenses.pending')}</div>
+      <div class="orgchart-stats" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:20px">
+        <div class="orgchart-stat-card" style="color:#ec4899">
+          <div class="orgchart-stat-icon" style="background:#ec489915;color:#ec4899">
+            <i class="fas fa-receipt"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${allExp.length}</div>
+            <div class="orgchart-stat-lbl">${isAr?'إجمالي المصروفات':'Total Expenses'}</div>
+          </div>
         </div>
-        <div class="card" style="padding:16px;cursor:pointer" onclick="ExpensesModule._filter.status='approved';ExpensesModule._page=1;ExpensesModule._renderTable()">
-          <div style="font-size:26px;font-weight:700;color:#10b981">${approved}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('expenses.approved')}</div>
+        <div class="orgchart-stat-card" style="color:#f59e0b;cursor:pointer"
+          onclick="ExpensesModule._filter.status='pending';ExpensesModule._page=1;ExpensesModule._renderTable()">
+          <div class="orgchart-stat-icon" style="background:#f59e0b15;color:#f59e0b">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${pending.length}</div>
+            <div class="orgchart-stat-lbl">${t('expenses.pending')}</div>
+          </div>
         </div>
-        <div class="card" style="padding:16px;cursor:pointer" onclick="ExpensesModule._filter.status='rejected';ExpensesModule._page=1;ExpensesModule._renderTable()">
-          <div style="font-size:26px;font-weight:700;color:#ef4444">${rejected}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('expenses.rejected')}</div>
+        <div class="orgchart-stat-card" style="color:#10b981;cursor:pointer"
+          onclick="ExpensesModule._filter.status='approved';ExpensesModule._page=1;ExpensesModule._renderTable()">
+          <div class="orgchart-stat-icon" style="background:#10b98115;color:#10b981">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val">${approved.length}</div>
+            <div class="orgchart-stat-lbl">${t('expenses.approved')}</div>
+          </div>
         </div>
-        <div class="card" style="padding:16px">
-          <div style="font-size:22px;font-weight:700;color:var(--primary)">${this._fmt(total)} ${currency}</div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${t('expenses.totalAmount')} (${t('expenses.approvedOnly')})</div>
+        <div class="orgchart-stat-card" style="color:#6366f1">
+          <div class="orgchart-stat-icon" style="background:#6366f115;color:#6366f1">
+            <i class="fas fa-coins"></i>
+          </div>
+          <div>
+            <div class="orgchart-stat-val" style="font-size:16px">${this._fmt(totalAmt)} ${currency}</div>
+            <div class="orgchart-stat-lbl">${t('expenses.totalAmount')}</div>
+          </div>
         </div>
       </div>
 
+      <!-- Category Breakdown -->
+      ${topCats.length > 0 ? `
+      <div class="card" style="padding:18px 22px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:14px">
+          <i class="fas fa-chart-bar" style="color:#ec4899;margin-${isAr?'left':'right'}:6px"></i>
+          ${isAr?'أعلى الفئات إنفاقاً (المعتمد)':'Top Spending Categories (Approved)'}
+        </div>
+        <div style="display:grid;gap:10px">
+          ${topCats.map(([catId, amt]) => {
+            const pct = totalAmt > 0 ? Math.round(amt/totalAmt*100) : 0;
+            const cc  = this._catColor(catId);
+            return `
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:30px;height:30px;border-radius:8px;background:${cc}18;
+                  display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <i class="${this._catIcon(catId)}" style="color:${cc};font-size:12px"></i>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:600;color:var(--text-primary)">${_esc(this._catLabel(catId))}</span>
+                    <span style="font-size:12px;font-weight:700;color:${cc}">${this._fmt(amt)} ${currency} (${pct}%)</span>
+                  </div>
+                  <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+                    <div style="background:${cc};height:6px;border-radius:4px;width:${pct}%"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+      ` : ''}
+
       <!-- Filters -->
-      <div class="card" style="padding:14px 16px;margin-bottom:16px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-          <select class="form-control" style="height:36px;min-width:140px" id="exp-filter-status" onchange="ExpensesModule._filter.status=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+      <div class="filter-bar">
+        <div class="filter-group">
+          <select class="filter-select" id="exp-filter-status"
+            onchange="ExpensesModule._filter.status=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
             <option value="all">${t('common.all')}</option>
             <option value="pending">${t('expenses.pending')}</option>
             <option value="approved">${t('expenses.approved')}</option>
             <option value="rejected">${t('expenses.rejected')}</option>
           </select>
-          <select class="form-control" style="height:36px;min-width:160px" id="exp-filter-emp" onchange="ExpensesModule._filter.empId=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+        </div>
+        <div class="filter-group">
+          <select class="filter-select" id="exp-filter-emp"
+            onchange="ExpensesModule._filter.empId=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
             <option value="">${t('expenses.allEmployees')}</option>
             ${DB.employees.filter(e=>e.status!=='inactive').map(e=>`<option value="${e.id}">${_esc(e.name)}</option>`).join('')}
           </select>
-          <select class="form-control" style="height:36px;min-width:140px" id="exp-filter-cat" onchange="ExpensesModule._filter.category=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
+        </div>
+        <div class="filter-group">
+          <select class="filter-select" id="exp-filter-cat"
+            onchange="ExpensesModule._filter.category=this.value;ExpensesModule._page=1;ExpensesModule._renderTable()">
             <option value="">${t('expenses.allCategories')}</option>
-            ${this._cats().map(c=>`<option value="${c.id}">${isAr?c.ar:c.en}</option>`).join('')}
+            ${this._cats().map(c=>`<option value="${c.id}">${currentLang==='ar'?c.ar:c.en}</option>`).join('')}
           </select>
-          <button class="btn btn-secondary" style="height:36px" onclick="ExpensesModule._filter={status:'all',empId:'',category:''};ExpensesModule._page=1;ExpensesModule._renderTable()">
+        </div>
+        <div class="filter-group">
+          <button class="btn btn-secondary" style="height:36px;padding:0 14px"
+            onclick="ExpensesModule._filter={status:'all',empId:'',category:''};ExpensesModule._page=1;ExpensesModule._renderTable();ExpensesModule._restoreFilters()">
             <i class="fas fa-rotate-left"></i>
           </button>
         </div>
@@ -129,10 +213,10 @@ const ExpensesModule = {
   _renderTable() {
     const wrap = document.getElementById('exp-table-wrap');
     if (!wrap) return;
-    const isAr = currentLang === 'ar';
-    const list  = this._getFiltered();
-    const start = (this._page - 1) * this._perPage;
-    const page  = list.slice(start, start + this._perPage);
+    const isAr    = currentLang === 'ar';
+    const list    = this._getFiltered();
+    const start   = (this._page - 1) * this._perPage;
+    const page    = list.slice(start, start + this._perPage);
     const currency = DB.company.currency || 'SAR';
 
     if (list.length === 0) {
@@ -140,78 +224,117 @@ const ExpensesModule = {
         <div class="empty-icon"><i class="fas fa-receipt"></i></div>
         <div class="empty-title">${t('expenses.noExpenses')}</div>
         <p class="empty-desc">${t('expenses.noExpensesDesc')}</p>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="ExpensesModule.openAdd()">
+          <i class="fas fa-plus"></i> ${t('expenses.addExpense')}
+        </button>
       </div>`;
       return;
     }
 
+    const statusMeta = {
+      pending:  { color:'#f59e0b', icon:'fas fa-hourglass-half',  label: t('expenses.pending')  },
+      approved: { color:'#10b981', icon:'fas fa-check-circle',     label: t('expenses.approved') },
+      rejected: { color:'#ef4444', icon:'fas fa-times-circle',     label: t('expenses.rejected') },
+    };
+
     wrap.innerHTML = `
-      <div class="card" style="overflow:hidden;padding:0">
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse">
-            <thead>
-              <tr style="background:var(--bg-secondary)">
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colEmployee')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colCategory')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colDescription')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colDate')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colAmount')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('expenses.colStatus')}</th>
-                <th style="padding:12px 16px;text-align:${isAr?'right':'left'};font-size:12px;font-weight:600;color:var(--text-muted)">${t('common.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${page.map(ex => {
-                const emp = DB.employees.find(e => e.id === ex.empId);
-                const statusColors = { pending:'#f59e0b', approved:'#10b981', rejected:'#ef4444' };
-                const statusLabels = { pending: t('expenses.pending'), approved: t('expenses.approved'), rejected: t('expenses.rejected') };
-                const color = statusColors[ex.status] || '#94a3b8';
-                return `
-                  <tr style="border-top:1px solid var(--border)" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
-                    <td style="padding:12px 16px">
-                      <div style="display:flex;align-items:center;gap:8px">
-                        <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-alpha);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--primary);flex-shrink:0">
-                          ${emp ? _esc(emp.name.charAt(0)) : '?'}
-                        </div>
-                        <div style="font-size:13px;font-weight:500;color:var(--text-primary)">${emp ? _esc(emp.name) : '—'}</div>
+      <div class="data-table-wrap" style="padding:0">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>${t('expenses.colEmployee')}</th>
+              <th>${t('expenses.colCategory')}</th>
+              <th>${t('expenses.colDescription')}</th>
+              <th>${t('expenses.colDate')}</th>
+              <th>${t('expenses.colAmount')}</th>
+              <th>${t('expenses.colStatus')}</th>
+              <th>${t('common.actions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${page.map(ex => {
+              const emp  = DB.employees.find(e => e.id === ex.empId);
+              const sm   = statusMeta[ex.status] || { color:'#94a3b8', icon:'fas fa-circle', label: ex.status };
+              const cc   = this._catColor(ex.category);
+
+              return `
+                <tr class="stagger-item" style="border-${isAr?'right':'left'}:3px solid ${sm.color}">
+                  <td>
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#818cf8);
+                        display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0">
+                        ${emp ? _esc(emp.name.charAt(0)) : '?'}
                       </div>
-                    </td>
-                    <td style="padding:12px 16px">
-                      <div style="display:flex;align-items:center;gap:6px">
-                        <i class="${this._catIcon(ex.category)}" style="color:var(--text-muted);width:14px"></i>
-                        <span style="font-size:13px;color:var(--text-primary)">${_esc(this._catLabel(ex.category))}</span>
+                      <div style="font-size:13px;font-weight:600;color:var(--text-primary)">${emp ? _esc(emp.name) : '—'}</div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <div style="width:26px;height:26px;border-radius:7px;background:${cc}18;
+                        display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                        <i class="${this._catIcon(ex.category)}" style="color:${cc};font-size:11px"></i>
                       </div>
-                    </td>
-                    <td style="padding:12px 16px;font-size:13px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_esc(ex.description||'—')}</td>
-                    <td style="padding:12px 16px;font-size:13px;color:var(--text-muted)">${ex.date||'—'}</td>
-                    <td style="padding:12px 16px;font-size:14px;font-weight:700;color:var(--text-primary)">${this._fmt(ex.amount)} ${currency}</td>
-                    <td style="padding:12px 16px">
-                      <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:${color}18;color:${color}">
-                        ${statusLabels[ex.status]||ex.status}
+                      <span style="font-size:13px;color:var(--text-primary);font-weight:500">
+                        ${_esc(this._catLabel(ex.category))}
                       </span>
-                    </td>
-                    <td style="padding:12px 16px">
-                      <div style="display:flex;gap:4px;align-items:center">
-                        ${ex.status === 'pending' ? `
-                          <button class="btn-icon btn" style="color:#10b981" title="${t('expenses.approve')}" onclick="ExpensesModule.approve('${ex.id}')"><i class="fas fa-check"></i></button>
-                          <button class="btn-icon btn" style="color:#ef4444" title="${t('expenses.reject')}" onclick="ExpensesModule.reject('${ex.id}')"><i class="fas fa-times"></i></button>
-                        ` : ''}
-                        <button class="btn-icon btn" title="${t('common.edit')}" onclick="ExpensesModule.openEdit('${ex.id}')"><i class="fas fa-pencil"></i></button>
-                        <button class="btn-icon btn" style="color:var(--danger)" title="${t('common.delete')}" onclick="ExpensesModule.deleteExpense('${ex.id}')"><i class="fas fa-trash"></i></button>
-                      </div>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  </td>
+                  <td style="font-size:13px;color:var(--text-secondary);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                    ${_esc(ex.description||'—')}
+                  </td>
+                  <td style="font-size:13px;color:var(--text-muted);white-space:nowrap">${ex.date||'—'}</td>
+                  <td>
+                    <div style="font-size:15px;font-weight:800;color:var(--text-primary)">${this._fmt(ex.amount)}</div>
+                    <div style="font-size:10px;color:var(--text-muted)">${currency}</div>
+                  </td>
+                  <td>
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;
+                      border-radius:20px;font-size:11px;font-weight:600;
+                      background:${sm.color}18;color:${sm.color};border:1px solid ${sm.color}30">
+                      <i class="${sm.icon}" style="font-size:10px"></i>
+                      ${sm.label}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="display:flex;gap:5px;align-items:center">
+                      ${ex.status === 'pending' ? `
+                        <button class="btn btn-icon btn-sm" style="background:rgba(16,185,129,.12);color:#10b981;border-radius:8px"
+                          title="${t('expenses.approve')}" onclick="ExpensesModule.approve('${ex.id}')">
+                          <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.12);color:#ef4444;border-radius:8px"
+                          title="${t('expenses.reject')}" onclick="ExpensesModule.reject('${ex.id}')">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      ` : ''}
+                      <button class="btn btn-icon btn-sm" style="border-radius:8px"
+                        title="${t('common.edit')}" onclick="ExpensesModule.openEdit('${ex.id}')">
+                        <i class="fas fa-pencil"></i>
+                      </button>
+                      <button class="btn btn-icon btn-sm" style="background:rgba(239,68,68,.08);color:#ef4444;border-radius:8px"
+                        title="${t('common.delete')}" onclick="ExpensesModule.deleteExpense('${ex.id}')">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
         ${list.length > this._perPage ? `
-          <div style="display:flex;justify-content:center;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--border)">
-            <button class="btn btn-secondary" ${this._page===1?'disabled':''} onclick="ExpensesModule._page--;ExpensesModule._renderTable()">
+          <div style="display:flex;justify-content:center;align-items:center;gap:12px;
+            padding:14px 16px;border-top:1px solid var(--border);background:var(--bg-secondary)">
+            <button class="btn btn-secondary" ${this._page===1?'disabled':''}
+              onclick="ExpensesModule._page--;ExpensesModule._renderTable()">
               <i class="fas fa-chevron-${isAr?'right':'left'}"></i>
             </button>
-            <span style="font-size:13px;color:var(--text-muted)">${this._page} / ${Math.ceil(list.length/this._perPage)}</span>
-            <button class="btn btn-secondary" ${this._page>=Math.ceil(list.length/this._perPage)?'disabled':''} onclick="ExpensesModule._page++;ExpensesModule._renderTable()">
+            <span style="font-size:13px;color:var(--text-muted)">
+              ${this._page} / ${Math.ceil(list.length/this._perPage)}
+              <span style="color:var(--text-muted);font-size:11px">(${list.length})</span>
+            </span>
+            <button class="btn btn-secondary" ${this._page>=Math.ceil(list.length/this._perPage)?'disabled':''}
+              onclick="ExpensesModule._page++;ExpensesModule._renderTable()">
               <i class="fas fa-chevron-${isAr?'left':'right'}"></i>
             </button>
           </div>
@@ -231,7 +354,7 @@ const ExpensesModule = {
   },
 
   _openModal(ex) {
-    const isAr = currentLang === 'ar';
+    const isAr  = currentLang === 'ar';
     const isEdit = !!ex;
     const currency = DB.company.currency || 'SAR';
 
