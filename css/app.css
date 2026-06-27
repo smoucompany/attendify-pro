@@ -2669,6 +2669,80 @@ ul { list-style: none; }
   .data-table { min-width: 460px; font-size: 10px; }
 }
 
+/* ─── DASHBOARD v2 ───────────────────────────────────────── */
+
+/* Hero Banner */
+.dash-hero-wrap {
+  background: linear-gradient(135deg, #4338ca 0%, #6366f1 45%, #7c3aed 100%);
+  border-radius: 22px;
+  padding: 28px 32px;
+  margin-bottom: 22px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  box-shadow: 0 16px 48px rgba(99,102,241,.3);
+}
+.dash-hero-info { flex: 1; position: relative; z-index: 1; }
+.dash-hero-date {
+  font-size: 12px;
+  color: rgba(255,255,255,.75);
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 6px;
+  line-height: 1.2;
+}
+.dash-hero-title span { color: rgba(255,255,255,.9); }
+.dash-hero-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,.7);
+  margin: 0 0 14px;
+}
+.dash-hero-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dash-hero-ring-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+/* KPI Grid */
+.dash-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 1200px) {
+  .dash-kpi-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 900px) {
+  .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-hero-ring-wrap { display: none; }
+}
+@media (max-width: 600px) {
+  .dash-kpi-grid { grid-template-columns: 1fr 1fr; }
+  .dash-hero-wrap { padding: 20px; }
+  .dash-hero-title { font-size: 16px; }
+  .dash-hero-pills { gap: 5px; }
+}
+
 /* ─── ORG CHART ───────────────────────────────────────────── */
 
 /* Stats Bar */
