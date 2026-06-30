@@ -4,93 +4,772 @@
    ========================================================= */
 
 const SettingsModule = {
-  _section: 'company',
+  _section: 'overview',
+  _searchTerm: '',
+  _history: [],
+  _historyIndex: -1,
 
   _sections: [
-    { key:'company',       icon:'fas fa-building'        },
-    { key:'hours',         icon:'fas fa-clock'           },
-    { key:'attendance',    icon:'fas fa-fingerprint'     },
-    { key:'leaves',        icon:'fas fa-calendar-minus'  },
-    { key:'payroll',       icon:'fas fa-money-bill-wave' },
-    { key:'signatures',    icon:'fas fa-signature'       },
-    { key:'portal',        icon:'fas fa-user'            },
-    { key:'notifications', icon:'fas fa-bell'            },
-    { key:'integrations',  icon:'fas fa-plug'            },
-    { key:'security',      icon:'fas fa-shield-halved'   },
-    { key:'appearance',    icon:'fas fa-palette'         },
-    { key:'backup',        icon:'fas fa-cloud-arrow-up'  },
-    { key:'roles',         icon:'fas fa-user-shield'     },
+    { key:'overview', title:'لوحة التحكم', description:'نظرة عامة على جميع الإعدادات', icon:'fas fa-sliders', color:'linear-gradient(135deg, #6366f1, #8b5cf6)', badge:'Live' },
+    { key:'general', title:'الإعدادات العامة', description:'اسم النظام، اللغة، العملة، الحالة العامة', icon:'fas fa-sliders', color:'linear-gradient(135deg, #0ea5e9, #2563eb)', badge:'12' },
+    { key:'company', title:'الشركة', description:'البيانات الأساسية والشعار والختم', icon:'fas fa-building', color:'linear-gradient(135deg, #f59e0b, #ef4444)', badge:'8' },
+    { key:'users', title:'المستخدمون والصلاحيات', description:'الأدوار، الأقسام، 2FA، الجلسات', icon:'fas fa-users-gear', color:'linear-gradient(135deg, #10b981, #059669)', badge:'6' },
+    { key:'attendance', title:'الحضور', description:'مواعيد العمل، التأخير، GPS', icon:'fas fa-fingerprint', color:'linear-gradient(135deg, #3b82f6, #1d4ed8)', badge:'9' },
+    { key:'hr', title:'الموارد البشرية', description:'الوظائف، العقود، التقييم', icon:'fas fa-user-tie', color:'linear-gradient(135deg, #8b5cf6, #ec4899)', badge:'7' },
+    { key:'payroll', title:'الرواتب', description:'الراتب، البدلات، الاستقطاعات', icon:'fas fa-money-bill-wave', color:'linear-gradient(135deg, #14b8a6, #0f766e)', badge:'10' },
+    { key:'correspondence', title:'المراسلات', description:'الخطابات، التوقيع، القوالب', icon:'fas fa-envelope-open-text', color:'linear-gradient(135deg, #64748b, #334155)', badge:'5' },
+    { key:'notifications', title:'الإشعارات', description:'البريد، SMS، واتساب، تيليغرام', icon:'fas fa-bell', color:'linear-gradient(135deg, #f97316, #ea580c)', badge:'4' },
+    { key:'ai', title:'المساعد الذكي', description:'الذكاء الاصطناعي، النموذج، التوصيات', icon:'fas fa-robot', color:'linear-gradient(135deg, #8b5cf6, #6366f1)', badge:'AI' },
+    { key:'automation', title:'الأتمتة', description:'قواعد تلقائية، التنبيهات والتقارير', icon:'fas fa-gears', color:'linear-gradient(135deg, #22c55e, #16a34a)', badge:'3' },
+    { key:'integrations', title:'التكاملات', description:'Google، Microsoft، Slack، Supabase', icon:'fas fa-plug', color:'linear-gradient(135deg, #6366f1, #4f46e5)', badge:'6' },
+    { key:'security', title:'الأمان', description:'2FA، كلمات المرور، IP restrictions', icon:'fas fa-shield-halved', color:'linear-gradient(135deg, #ef4444, #b91c1c)', badge:'7' },
+    { key:'backup', title:'النسخ الاحتياطي', description:'جدولة النسخ، الاستعادة، السحابة', icon:'fas fa-cloud-arrow-up', color:'linear-gradient(135deg, #06b6d4, #0f766e)', badge:'5' },
+    { key:'appearance', title:'المظهر', description:'الثيم، الألوان، الخطوط، التخطيط', icon:'fas fa-palette', color:'linear-gradient(135deg, #ec4899, #8b5cf6)', badge:'9' },
+    { key:'printing', title:'الطباعة', description:'A4، A5، Thermal، القوالب', icon:'fas fa-print', color:'linear-gradient(135deg, #475569, #0f172a)', badge:'6' },
+    { key:'reports', title:'التقارير', description:'التصدير، الجدولة، الرسوم البيانية', icon:'fas fa-chart-column', color:'linear-gradient(135deg, #14b8a6, #0284c7)', badge:'8' },
+    { key:'performance', title:'الأداء', description:'الذاكرة، الكاش، الضغط', icon:'fas fa-gauge-high', color:'linear-gradient(135deg, #84cc16, #4d7c0f)', badge:'4' },
+    { key:'database', title:'قاعدة البيانات', description:'الجداول، الفهارس، التخزين', icon:'fas fa-database', color:'linear-gradient(135deg, #64748b, #1e293b)', badge:'5' },
+    { key:'api', title:'واجهة البرمجة', description:'API Keys، Webhooks، OAuth', icon:'fas fa-code', color:'linear-gradient(135deg, #2563eb, #1d4ed8)', badge:'4' },
+    { key:'logs', title:'السجلات', description:'الأنشطة، الأخطاء، AI logs', icon:'fas fa-file-lines', color:'linear-gradient(135deg, #a855f7, #7e22ce)', badge:'6' },
+    { key:'about', title:'عن النظام', description:'النسخة، الترخيص، التحديثات', icon:'fas fa-circle-info', color:'linear-gradient(135deg, #64748b, #475569)', badge:'3' },
   ],
 
   render(container) {
+    if (!container) return;
     container.innerHTML = `
-      <div class="page-header">
-        <div class="page-header-text">
-          <h1>${t('settings.title')}</h1>
-          <p>${t('settings.subtitleDesc')}</p>
-        </div>
-      </div>
-      <div class="settings-grid">
-        <!-- Sidebar Nav -->
-        <div class="settings-nav" id="settings-nav">
-          ${this._sections.map(s => `
-            <div class="settings-nav-item ${this._section===s.key?'active':''}" data-key="${s.key}"
-              onclick="SettingsModule.switchSection('${s.key}')">
-              <i class="${s.icon}"></i>
-              <span>${t('settings.tab.' + s.key)}</span>
+      <div class="sp-layout">
+        <aside class="sp-sidebar">
+          <div class="sp-sidebar-header">
+            <div class="sp-sidebar-brand">
+              <div class="sp-brand-icon"><i class="fas fa-gear"></i></div>
+              <div>
+                <div class="sp-brand-name">Control Center</div>
+                <div class="sp-brand-sub">إدارة النظام الذكية</div>
+              </div>
             </div>
-          `).join('')}
-          <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
-          <div class="settings-nav-item" style="color:var(--danger)" onclick="App.logout()">
-            <i class="fas fa-right-from-bracket"></i>
-            <span>${t('header.logout')}</span>
+            <button class="sp-search-trigger" type="button" onclick="document.getElementById('sp-search-input').focus()">
+              <i class="sp-search-trigger-icon fas fa-search"></i>
+              <span>ابحث داخل الإعدادات...</span>
+              <kbd>⌘/Ctrl K</kbd>
+            </button>
+            <div class="sp-ai-banner" onclick="SettingsModule.openAIAssistant()">
+              <div class="sp-ai-banner-glow"></div>
+              <div class="sp-ai-banner-icon"><i class="fas fa-wand-magic-sparkles"></i></div>
+              <div style="flex:1">
+                <div class="sp-ai-banner-title">مساعد الإعدادات</div>
+                <div class="sp-ai-banner-sub">تحليل النظام وتوصيات فورية</div>
+              </div>
+              <div class="sp-ai-banner-badge">✦</div>
+            </div>
           </div>
-        </div>
-        <!-- Content -->
-        <div id="settings-content"></div>
+          <nav class="sp-nav">
+            <div class="sp-nav-group">
+              <div class="sp-nav-group-label"><i class="fas fa-layer-group"></i> Main</div>
+              ${this._sections.filter(s => s.key !== 'overview').map(s => `
+                <div class="sp-nav-item ${this._section === s.key ? 'active' : ''}" data-key="${s.key}" onclick="SettingsModule.switchSection('${s.key}')">
+                  <div class="sp-nav-item-icon" style="background:${s.color};color:#fff"><i class="${s.icon}"></i></div>
+                  <div class="sp-nav-item-label">${s.title}</div>
+                  <div class="sp-nav-item-badge">${s.badge}</div>
+                </div>
+              `).join('')}
+            </div>
+          </nav>
+          <div class="sp-sidebar-footer">
+            <button class="sp-footer-btn" type="button" onclick="App.logout()"><i class="fas fa-right-from-bracket"></i> تسجيل الخروج</button>
+          </div>
+        </aside>
+        <main class="sp-main">
+          <div class="sp-topbar">
+            <div class="sp-topbar-left">
+              <div class="sp-breadcrumb">
+                <div class="sp-bc-icon"><i class="fas fa-gear"></i></div>
+                <span class="sp-bc-sep">/</span>
+                <span class="sp-bc-active">${this._section === 'overview' ? 'لوحة التحكم' : this._getSectionMeta(this._section).title}</span>
+              </div>
+            </div>
+            <div class="sp-topbar-right">
+              <input class="app-form-input" id="sp-search-input" value="${this._searchTerm}" placeholder="بحث سريع..." style="min-width:240px" oninput="SettingsModule._searchTerm=this.value;SettingsModule._renderContent()">
+              <button class="sp-topbar-btn" type="button" onclick="SettingsModule.exportSettings()" title="Export JSON"><i class="fas fa-download"></i></button>
+              <button class="sp-topbar-btn" type="button" onclick="SettingsModule.importSettings()" title="Import JSON"><i class="fas fa-upload"></i></button>
+              <button class="sp-topbar-btn" type="button" onclick="SettingsModule.restorePrevious()" title="Restore Previous"><i class="fas fa-rotate-left"></i></button>
+              <button class="sp-topbar-btn sp-topbar-btn--ai" type="button" onclick="SettingsModule.openAIAssistant()" title="AI Assistant"><i class="fas fa-wand-magic-sparkles"></i></button>
+            </div>
+          </div>
+          <div class="sp-content" id="sp-content"></div>
+        </main>
       </div>
     `;
-    this._renderSection();
+    this._attachKeyboardShortcuts();
+    this._renderContent();
   },
 
   switchSection(key) {
     this._section = key;
-    document.querySelectorAll('.settings-nav-item[data-key]').forEach(el => {
+    this._trackRecent(key);
+    document.querySelectorAll('.sp-nav-item[data-key]').forEach(el => {
       el.classList.toggle('active', el.dataset.key === key);
     });
-    this._renderSection();
+    this._renderContent();
   },
 
-  _renderSection() {
-    const el = document.getElementById('settings-content');
+  _renderContent() {
+    const el = document.getElementById('sp-content');
     if (!el) return;
-
-    // Modules with their own render() — delegate directly (guard against missing modules)
+    if (this._section === 'overview') {
+      el.innerHTML = this._overview();
+      return;
+    }
+    // Modules with their own full render() — delegate directly.
     if (this._section === 'backup') {
-      if (typeof BackupModule !== 'undefined') { BackupModule.render(el); }
-      else { el.innerHTML = `<div class="empty-state"><p>${t('settings.backupUnavailable')}</p></div>`; }
-      return;
+      if (typeof BackupModule !== 'undefined') { el.innerHTML = ''; BackupModule.render(el); return; }
     }
-    if (this._section === 'roles') {
-      if (typeof RolesModule !== 'undefined') { RolesModule.render(el); }
-      else { el.innerHTML = `<div class="empty-state"><p>${t('settings.rolesUnavailable')}</p></div>`; }
-      return;
+    if (this._section === 'users') {
+      if (typeof RolesModule !== 'undefined') { el.innerHTML = ''; RolesModule.render(el); return; }
+    }
+    el.innerHTML = this._sectionDetail(this._section);
+    this._bindSectionControls();
+  },
+
+  // Legacy section renderers (logo upload, GPS zones, signature pad, WhatsApp config, etc.)
+  // call this after saving — keep it as an alias so they keep working under the Control Center shell.
+  _renderSection() {
+    this._renderContent();
+  },
+
+  // Sections that have a real, dedicated editor instead of the generic toggle/select field list.
+  _legacySections: {
+    company: '_company',
+    attendance: '_attendanceCombined',
+    hr: '_leavesSettings',
+    payroll: '_payrollSettings',
+    correspondence: '_signatures',
+    notifications: '_notifications',
+    integrations: '_integrations',
+    security: '_security',
+    appearance: '_appearance',
+  },
+
+  _attendanceCombined() {
+    return this._hours() + this._attendance();
+  },
+
+  _getSectionMeta(key) {
+    return this._sections.find(s => s.key === key) || this._sections[0];
+  },
+
+  _overview() {
+    const cards = this._sections.filter(s => s.key !== 'overview').filter(s => {
+      const text = `${s.title} ${s.description}`.toLowerCase();
+      return !this._searchTerm || text.includes(this._searchTerm.toLowerCase());
+    });
+    const favorites = this._getFavorites();
+    const recent = this._getRecent();
+
+    const progress = (section) => {
+      const values = this._getState(section.key);
+      const count = Object.keys(values).length;
+      return Math.min(100, Math.round((count / 8) * 100));
+    };
+
+    const status = (section) => {
+      const p = progress(section);
+      return p >= 80 ? 'Configured' : p >= 50 ? 'In Progress' : 'Needs Attention';
+    };
+
+    return `
+      <div class="sp-section">
+        <div class="sp-section-hero">
+          <div class="sp-section-hero-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)"><i class="fas fa-sliders"></i></div>
+          <div class="sp-section-hero-text">
+            <h2>Control Center للإعدادات</h2>
+            <p>مركز إداري موحد لإدارة النظام، مع بحث ذكي، حفظ تلقائي، سجل تغييرات، ومساعد ذكي يوصي بالتحسينات.</p>
+          </div>
+            <div class="sp-section-hero-actions">
+            <button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.openAIAssistant()"><i class="fas fa-robot"></i> تحليل النظام</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="SettingsModule.exportSettings()"><i class="fas fa-download"></i> Export</button>
+          </div>
+        </div>
+        ${recent.length ? `
+          <div class="sp-card" style="margin-bottom:14px">
+            <div class="sp-card-head">
+              <div style="font-size:13px;font-weight:800;color:var(--text-primary)">Recently Used</div>
+            </div>
+            <div style="padding:12px 20px 16px;display:flex;gap:8px;flex-wrap:wrap">
+              ${recent.map(key => {
+                const meta = this._getSectionMeta(key);
+                return `<button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.switchSection('${key}')">${meta.title}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${favorites.length ? `
+          <div class="sp-card" style="margin-bottom:14px">
+            <div class="sp-card-head">
+              <div style="font-size:13px;font-weight:800;color:var(--text-primary)">Favorites</div>
+            </div>
+            <div style="padding:12px 20px 16px;display:flex;gap:8px;flex-wrap:wrap">
+              ${favorites.map(key => {
+                const meta = this._getSectionMeta(key);
+                return `<button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.switchSection('${key}')">${meta.title}</button>`;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+        <div class="sp-cards-grid">
+          ${cards.map(section => `
+            <div class="sp-card" style="cursor:pointer" onclick="SettingsModule.switchSection('${section.key}')">
+              <div class="sp-card-head">
+                <div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${section.title}</div>
+                  <div style="font-size:15px;font-weight:800;color:var(--text-primary)">${section.description}</div>
+                </div>
+                <div class="sp-card-icon" style="background:${section.color};color:#fff"><i class="${section.icon}"></i></div>
+              </div>
+              <div style="padding:16px 20px 18px">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);margin-bottom:10px">
+                  <span>Status</span>
+                  <span style="font-weight:700;color:${status(section) === 'Configured' ? 'var(--success)' : status(section) === 'In Progress' ? 'var(--warning)' : 'var(--danger)'}">${status(section)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);margin-bottom:10px">
+                  <span>Last Edit</span>
+                  <span>${this._lastEditLabel(section.key)}</span>
+                </div>
+                <div style="height:8px;border-radius:999px;background:var(--bg-input);overflow:hidden;margin-bottom:10px">
+                  <div style="height:100%;width:${progress(section)}%;background:${section.color};border-radius:999px"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <span style="font-size:12px;color:var(--text-muted)">Progress ${progress(section)}%</span>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-outline-primary btn-sm" type="button" onclick="event.stopPropagation();SettingsModule.toggleFavorite('${section.key}')"><i class="fas fa-star"></i></button>
+                    <button class="btn btn-outline-primary btn-sm" type="button" onclick="event.stopPropagation();SettingsModule.switchSection('${section.key}')">Open</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  },
+
+  _sectionDetail(key) {
+    const meta = this._getSectionMeta(key);
+    const legacyFn = this._legacySections[key];
+    if (legacyFn && typeof this[legacyFn] === 'function') {
+      return `
+        <div class="sp-section">
+          <div class="sp-section-hero">
+            <div class="sp-section-hero-icon" style="background:${meta.color}"><i class="${meta.icon}"></i></div>
+            <div class="sp-section-hero-text">
+              <h2>${meta.title}</h2>
+              <p>${meta.description}</p>
+            </div>
+          </div>
+          ${this[legacyFn]()}
+        </div>
+      `;
     }
 
-    const map = {
-      company:       () => this._company(),
-      hours:         () => this._hours(),
-      attendance:    () => this._attendance(),
-      leaves:        () => this._leavesSettings(),
-      payroll:       () => this._payrollSettings(),
-      signatures:    () => this._signatures(),
-      portal:        () => this._portal(),
-      notifications: () => this._notifications(),
-      integrations:  () => this._integrations(),
-      security:      () => this._security(),
-      appearance:    () => this._appearance(),
+    const values = this._getState(key);
+    const fields = this._getFieldsForSection(key, values);
+
+    return `
+      <div class="sp-section">
+        <div class="sp-section-hero">
+          <div class="sp-section-hero-icon" style="background:${meta.color}"><i class="${meta.icon}"></i></div>
+          <div class="sp-section-hero-text">
+            <h2>${meta.title}</h2>
+            <p>${meta.description}</p>
+          </div>
+          <div class="sp-section-hero-actions">
+            <button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.undo()"><i class="fas fa-undo"></i> Undo</button>
+            <button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.redo()"><i class="fas fa-redo"></i> Redo</button>
+            <button class="btn btn-outline-primary btn-sm" type="button" onclick="SettingsModule.restorePrevious()"><i class="fas fa-rotate-left"></i> Restore</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="SettingsModule.saveCurrentSection('${key}')"><i class="fas fa-save"></i> Save</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr .9fr;gap:16px;align-items:start">
+          <div>
+            <div class="sp-card">
+              <div class="sp-card-head">
+                <div>
+                  <div style="font-size:13px;font-weight:800;color:var(--text-primary)">التكوين</div>
+                  <div style="font-size:12px;color:var(--text-muted)">يتم الحفظ تلقائياً عند كل تعديل</div>
+                </div>
+              </div>
+              <div style="padding:16px 20px 18px;display:grid;gap:12px">
+                ${fields.map(field => `
+                  <div class="sp-field-row">
+                    <label>${field.label}</label>
+                    ${field.type === 'toggle' ? `
+                      <label class="sp-toggle" onclick="event.stopPropagation();SettingsModule._toggleField('${key}','${field.key}',${!!field.value})">
+                        <input type="checkbox" ${field.value ? 'checked' : ''} onchange="SettingsModule._setField('${key}','${field.key}',this.checked)">
+                        <span></span>
+                      </label>
+                    ` : field.type === 'textarea' ? `
+                      <textarea class="app-form-input" rows="3" data-setting-control="true" data-section-key="${key}" data-field="${field.key}" data-type="textarea">${field.value || ''}</textarea>
+                    ` : field.type === 'select' ? `
+                      <select class="app-form-input" data-setting-control="true" data-section-key="${key}" data-field="${field.key}" data-type="select">
+                        ${field.options.map(o => `<option value="${o.value}" ${String(field.value) === String(o.value) ? 'selected' : ''}>${o.label}</option>`).join('')}
+                      </select>
+                    ` : `
+                      <input class="app-form-input" type="${field.type || 'text'}" value="${field.value || ''}" data-setting-control="true" data-section-key="${key}" data-field="${field.key}" data-type="${field.type || 'text'}">
+                    `}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="sp-card">
+              <div class="sp-card-head">
+                <div>
+                  <div style="font-size:13px;font-weight:800;color:var(--text-primary)">Preview</div>
+                  <div style="font-size:12px;color:var(--text-muted)">معاينة مباشرة قبل الحفظ</div>
+                </div>
+              </div>
+              <div style="padding:16px 20px 18px;display:grid;gap:10px">
+                ${Object.entries(values).slice(0, 6).map(([k, v]) => `
+                  <div style="display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input)">
+                    <span style="font-size:12px;color:var(--text-muted)">${k}</span>
+                    <span style="font-size:12px;font-weight:700;color:var(--text-primary);text-align:left;max-width:60%">${typeof v === 'boolean' ? (v ? 'Enabled' : 'Disabled') : String(v)}</span>
+                  </div>
+                `).join('')}
+                <div style="margin-top:6px;padding:10px 12px;border-radius:12px;background:linear-gradient(135deg, rgba(99,102,241,.14), rgba(139,92,246,.12));color:var(--text-primary)">
+                  <div style="font-size:12px;font-weight:700;margin-bottom:4px">Auto Save Active</div>
+                  <div style="font-size:11px;color:var(--text-muted)">التغييرات تُحفظ فوراً وتظهر في سجل التغييرات</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  _attachKeyboardShortcuts() {
+    document.removeEventListener('keydown', this._shortcutHandler);
+    this._shortcutHandler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('sp-search-input');
+        if (input) { input.focus(); input.select(); }
+      }
     };
-    el.innerHTML = map[this._section]?.() || '';
+    document.addEventListener('keydown', this._shortcutHandler);
+  },
+
+  _bindSectionControls() {
+    document.querySelectorAll('[data-setting-control]').forEach(el => {
+      const type = el.dataset.type || 'text';
+      const sectionKey = el.dataset.sectionKey;
+      const field = el.dataset.field;
+
+      const handler = (e) => {
+        let value = e.target.value;
+        if (type === 'number') value = Number(value);
+        if (type === 'checkbox') value = e.target.checked;
+        if (type === 'select') value = e.target.value;
+        if (type === 'textarea') value = e.target.value;
+        this._setField(sectionKey, field, value, false);
+      };
+
+      const changeHandler = (e) => {
+        let value = e.target.value;
+        if (type === 'number') value = Number(value);
+        if (type === 'checkbox') value = e.target.checked;
+        if (type === 'select') value = e.target.value;
+        if (type === 'textarea') value = e.target.value;
+        this._setField(sectionKey, field, value, true);
+      };
+
+      if (type === 'checkbox' || type === 'select' || type === 'textarea' || type === 'number' || type === 'text' || type === 'time' || type === 'email') {
+        el.oninput = handler;
+        el.onchange = changeHandler;
+      }
+    });
+  },
+
+  _setField(sectionKey, field, value, rerender = false) {
+    const state = this._getState(sectionKey);
+    state[field] = value;
+    this._persistState(sectionKey, state, false);
+    if (rerender) this._renderContent();
+  },
+
+  _toggleField(sectionKey, field, current) {
+    this._setField(sectionKey, field, !current, true);
+  },
+
+  _getState(sectionKey) {
+    const store = this._getStore();
+    store.values = store.values || {};
+    store.values[sectionKey] = store.values[sectionKey] || this._defaultValues(sectionKey);
+    return store.values[sectionKey];
+  },
+
+  _defaultValues(sectionKey) {
+    const co = DB.company || {};
+    const defaults = {
+      general: { systemName: co.name || 'Attendance & Leave', companyName: co.name || 'الشركة', language: 'ar', timezone: co.timezone || 'Asia/Riyadh', currency: co.currency || 'SAR', maintenanceMode: false },
+      company: { companyName: co.name || 'الشركة', manager: co.manager || 'المدير', regNo: co.regNo || '', taxNo: co.taxNo || '', email: co.email || '', phone: co.phone || '', website: co.website || '', address: co.address || '' },
+      users: { roles: true, departments: true, customPermissions: false, twoFactor: true, activeSessions: true, loginHistory: true, ipRestrictions: false },
+      attendance: { startTime: '08:00', endTime: '16:00', graceMinutes: 10, earlyCheckout: 15, overtime: true, weeklyRest: true, gps: true, faceRecognition: false, qrAttendance: true },
+      hr: { positions: true, contracts: true, promotions: true, evaluation: true, leaveTypes: true, deductions: false, allowances: true, bonuses: true },
+      payroll: { baseSalary: 5000, allowances: true, deductions: true, taxes: true, insurances: true, bankTransfer: true, templates: true },
+      correspondence: { letterNumber: true, signature: true, stamp: true, templates: true, workflow: true, approvalChain: true, pdfArchive: true, qr: false, barcode: true },
+      notifications: { email: true, sms: true, whatsapp: true, telegram: false, push: true, desktop: true, rules: true },
+      ai: { provider: 'OpenAI', model: 'gpt-4o-mini', apiKey: '', temperature: 0.7, maxTokens: 4000, systemPrompt: 'You are a smart HR and operations assistant.', memory: true, suggestions: true, analytics: true, chat: true },
+      automation: { rules: true, lateNotice: true, deduct: false, email: true, report: true },
+      integrations: { googleDrive: true, googleCalendar: false, outlook: false, microsoft365: false, slack: false, discord: false, twilio: false, firebase: false, cloudinary: false, awsS3: false, supabase: true },
+      security: { passwordPolicy: true, sessionTimeout: 60, whitelist: false, twoFactor: true, encryption: true, auditLogs: true, deviceHistory: true, failedLogins: true, captcha: false },
+      backup: { autoBackup: true, schedule: 'daily', googleDrive: false, dropbox: false, oneDrive: false, s3: false, restore: true, download: true },
+      appearance: { theme: 'dark', primaryColor: '#6366f1', secondaryColor: '#8b5cf6', accent: '#10b981', radius: 18, animations: true, sidebarStyle: 'glass', headerStyle: 'minimal', cardStyle: 'modern', blur: true, fonts: true },
+      printing: { paper: 'A4', margins: 'normal', header: true, footer: true, logo: true, stamp: true, watermark: false, qr: true, barcode: true, preview: true },
+      reports: { dashboard: true, charts: true, exportExcel: true, exportPdf: true, exportWord: false, csv: true, powerpoint: false, schedule: true },
+      performance: { cache: true, cdn: true, compression: true, lazyLoading: true, imageOptimization: true, memoryUsage: true, serverStatus: true },
+      database: { tables: true, indexes: true, storage: true, import: true, export: true, optimization: true, cleanup: true },
+      api: { apiKeys: true, webhook: true, oauth: false, rateLimit: true, tokens: true },
+      logs: { activity: true, audit: true, system: true, errors: true, login: true, ai: true, export: true },
+      about: { version: '2026.1.0', license: 'Enterprise', updates: true, changelog: true, support: true, documentation: true },
+    };
+    return defaults[sectionKey] || {};
+  },
+
+  _getStore() {
+    DB.company = DB.company || {};
+    DB.company.settingsCenter = DB.company.settingsCenter || { values: {}, history: [] };
+    return DB.company.settingsCenter;
+  },
+
+  _trackRecent(sectionKey) {
+    const store = this._getStore();
+    store.recentSections = store.recentSections || [];
+    store.recentSections = [sectionKey, ...store.recentSections.filter(k => k !== sectionKey)].slice(0, 4);
+  },
+
+  _getRecent() {
+    const store = this._getStore();
+    return store.recentSections || [];
+  },
+
+  toggleFavorite(sectionKey) {
+    const store = this._getStore();
+    store.favorites = store.favorites || [];
+    if (store.favorites.includes(sectionKey)) {
+      store.favorites = store.favorites.filter(k => k !== sectionKey);
+    } else {
+      store.favorites.push(sectionKey);
+    }
+    this._renderContent();
+  },
+
+  _getFavorites() {
+    const store = this._getStore();
+    return store.favorites || [];
+  },
+
+  undo() {
+    const store = this._getStore();
+    if (!store.history || !store.history.length) return;
+    if (this._historyIndex <= 0) return;
+    this._historyIndex -= 1;
+    const snapshot = store.history[this._historyIndex];
+    this._applySnapshot(snapshot);
+  },
+
+  redo() {
+    const store = this._getStore();
+    if (!store.history || !store.history.length) return;
+    if (this._historyIndex >= store.history.length - 1) return;
+    this._historyIndex += 1;
+    const snapshot = store.history[this._historyIndex];
+    this._applySnapshot(snapshot);
+  },
+
+  _applySnapshot(snapshot) {
+    if (!snapshot) return;
+    const store = this._getStore();
+    store.values = store.values || {};
+    store.values[snapshot.sectionKey] = snapshot.values;
+    this._section = snapshot.sectionKey;
+    this._renderContent();
+  },
+
+  _persistState(sectionKey, values, showToast = true) {
+    const store = this._getStore();
+    store.values = store.values || {};
+    store.values[sectionKey] = values;
+    store.lastUpdated = new Date().toISOString();
+    const snapshot = { sectionKey, at: new Date().toISOString(), values: JSON.parse(JSON.stringify(values)) };
+    store.history = store.history || [];
+    store.history.push(snapshot);
+    if (store.history.length > 20) store.history.shift();
+    this._history = store.history;
+    this._historyIndex = this._history.length - 1;
+    this._syncPreview();
+    if (typeof DB !== 'undefined' && DB.saveCompany) DB.saveCompany();
+    if (showToast && typeof App !== 'undefined' && App.toast) {
+      App.toast('تم الحفظ تلقائياً', 'success', 1000);
+    }
+  },
+
+  _syncPreview() {
+    const preview = document.getElementById('sp-preview');
+    if (preview) preview.innerHTML = 'Preview updated';
+  },
+
+  saveCurrentSection(sectionKey) {
+    const values = this._getState(sectionKey);
+    this._persistState(sectionKey, values);
+    if (typeof App !== 'undefined' && App.toast) {
+      App.toast('تم حفظ القسم بنجاح', 'success');
+    }
+  },
+
+  restorePrevious() {
+    const store = this._getStore();
+    if (!store.history || store.history.length < 2) {
+      if (typeof App !== 'undefined' && App.toast) App.toast('لا توجد نسخة سابقة', 'info');
+      return;
+    }
+    const snapshot = store.history[store.history.length - 2];
+    if (!snapshot) return;
+    store.values = store.values || {};
+    store.values[snapshot.sectionKey] = snapshot.values;
+    this._history = store.history;
+    this._historyIndex = store.history.length - 2;
+    this._section = snapshot.sectionKey;
+    this._renderContent();
+    if (typeof App !== 'undefined' && App.toast) App.toast('تم استرجاع النسخة السابقة', 'success');
+  },
+
+  exportSettings() {
+    const store = this._getStore();
+    const dataStr = JSON.stringify(store, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'settings-control-center.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  },
+
+  importSettings() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.onchange = (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          DB.company.settingsCenter = parsed;
+          this._renderContent();
+          if (typeof App !== 'undefined' && App.toast) App.toast('تم استيراد الإعدادات', 'success');
+        } catch (error) {
+          if (typeof App !== 'undefined' && App.toast) App.toast('ملف غير صالح', 'warning');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  },
+
+  openAIAssistant() {
+    const store = this._getStore();
+    const suggestions = [];
+    if (!store.values?.security?.twoFactor) suggestions.push('تفعيل المصادقة الثنائية يعزز الأمان');
+    if (!store.values?.backup?.autoBackup) suggestions.push('تشغيل النسخ الاحتياطية التلقائية يقلل مخاطر فقدان البيانات');
+    if (!store.values?.notifications?.whatsapp) suggestions.push('ربط واتساب يسرع التواصل مع الموظفين');
+    if (!store.values?.ai?.apiKey) suggestions.push('إضافة مفتاح API يحسن جودة المساعد الذكي');
+    const html = `
+      <div style="display:grid;gap:12px">
+        <div style="padding:14px;border-radius:14px;background:linear-gradient(135deg, rgba(99,102,241,.16), rgba(139,92,246,.12));border:1px solid rgba(99,102,241,.2)">
+          <div style="font-size:13px;font-weight:800;margin-bottom:6px">AI Settings Assistant</div>
+          <div style="font-size:12px;color:var(--text-muted)">تحليل تلقائي للإعدادات الحالية وتوصيات سريعة</div>
+        </div>
+        ${suggestions.length ? suggestions.map(s => `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input)">${s}</div>`).join('') : '<div style="padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg-input)">لا توجد توصيات حالياً، النظام في حالة ممتازة.</div>'}
+      </div>
+    `;
+    if (typeof App !== 'undefined' && App.openModal) {
+      App.openModal('AI Settings Assistant', html);
+    } else {
+      alert(html.replace(/<[^>]+>/g, '\n'));
+    }
+  },
+
+  _getFieldsForSection(sectionKey, values) {
+    const fieldMapper = {
+      general: [
+        { label: 'اسم النظام', key: 'systemName', value: values.systemName },
+        { label: 'اسم الشركة', key: 'companyName', value: values.companyName },
+        { label: 'اللغة', key: 'language', type: 'select', value: values.language, options: [{ value:'ar', label:'العربية' }, { value:'en', label:'English' }] },
+        { label: 'المنطقة الزمنية', key: 'timezone', type: 'select', value: values.timezone, options: [{ value:'Asia/Riyadh', label:'Asia/Riyadh' }, { value:'Asia/Dubai', label:'Asia/Dubai' }, { value:'UTC', label:'UTC' }] },
+        { label: 'العملة', key: 'currency', type: 'select', value: values.currency, options: [{ value:'SAR', label:'SAR' }, { value:'AED', label:'AED' }, { value:'USD', label:'USD' }] },
+        { label: 'وضع الصيانة', key: 'maintenanceMode', type: 'toggle', value: values.maintenanceMode },
+      ],
+      company: [
+        { label: 'اسم الشركة', key: 'companyName', value: values.companyName },
+        { label: 'اسم المدير', key: 'manager', value: values.manager },
+        { label: 'رقم السجل', key: 'regNo', value: values.regNo },
+        { label: 'الرقم الضريبي', key: 'taxNo', value: values.taxNo },
+        { label: 'البريد الإلكتروني', key: 'email', type: 'email', value: values.email },
+        { label: 'الجوال', key: 'phone', value: values.phone },
+        { label: 'الموقع', key: 'website', value: values.website },
+        { label: 'العنوان', key: 'address', type: 'textarea', value: values.address },
+      ],
+      users: [
+        { label: 'الأدوار', key: 'roles', type: 'toggle', value: values.roles },
+        { label: 'الأقسام', key: 'departments', type: 'toggle', value: values.departments },
+        { label: 'صلاحيات مخصصة', key: 'customPermissions', type: 'toggle', value: values.customPermissions },
+        { label: 'المصادقة الثنائية', key: 'twoFactor', type: 'toggle', value: values.twoFactor },
+        { label: 'الجلسات النشطة', key: 'activeSessions', type: 'toggle', value: values.activeSessions },
+        { label: 'سجل الدخول', key: 'loginHistory', type: 'toggle', value: values.loginHistory },
+      ],
+      attendance: [
+        { label: 'بداية الدوام', key: 'startTime', type: 'time', value: values.startTime },
+        { label: 'نهاية الدوام', key: 'endTime', type: 'time', value: values.endTime },
+        { label: 'التأخير المسموح', key: 'graceMinutes', type: 'number', value: values.graceMinutes },
+        { label: 'الانصراف المبكر', key: 'earlyCheckout', type: 'number', value: values.earlyCheckout },
+        { label: 'العمل الإضافي', key: 'overtime', type: 'toggle', value: values.overtime },
+        { label: 'الراحة الأسبوعية', key: 'weeklyRest', type: 'toggle', value: values.weeklyRest },
+        { label: 'GPS', key: 'gps', type: 'toggle', value: values.gps },
+      ],
+      hr: [
+        { label: 'الوظائف', key: 'positions', type: 'toggle', value: values.positions },
+        { label: 'العقود', key: 'contracts', type: 'toggle', value: values.contracts },
+        { label: 'الترقيات', key: 'promotions', type: 'toggle', value: values.promotions },
+        { label: 'التقييم', key: 'evaluation', type: 'toggle', value: values.evaluation },
+        { label: 'البدلات', key: 'allowances', type: 'toggle', value: values.allowances },
+        { label: 'المكافآت', key: 'bonuses', type: 'toggle', value: values.bonuses },
+      ],
+      payroll: [
+        { label: 'الراتب الأساسي', key: 'baseSalary', type: 'number', value: values.baseSalary },
+        { label: 'البدلات', key: 'allowances', type: 'toggle', value: values.allowances },
+        { label: 'الاستقطاعات', key: 'deductions', type: 'toggle', value: values.deductions },
+        { label: 'الضرائب', key: 'taxes', type: 'toggle', value: values.taxes },
+        { label: 'التأمينات', key: 'insurances', type: 'toggle', value: values.insurances },
+        { label: 'التحويل البنكي', key: 'bankTransfer', type: 'toggle', value: values.bankTransfer },
+      ],
+      correspondence: [
+        { label: 'أرقام الخطابات', key: 'letterNumber', type: 'toggle', value: values.letterNumber },
+        { label: 'التوقيع', key: 'signature', type: 'toggle', value: values.signature },
+        { label: 'الختم', key: 'stamp', type: 'toggle', value: values.stamp },
+        { label: 'القوالب', key: 'templates', type: 'toggle', value: values.templates },
+        { label: 'سلسلة الموافقات', key: 'approvalChain', type: 'toggle', value: values.approvalChain },
+      ],
+      notifications: [
+        { label: 'البريد', key: 'email', type: 'toggle', value: values.email },
+        { label: 'SMS', key: 'sms', type: 'toggle', value: values.sms },
+        { label: 'WhatsApp', key: 'whatsapp', type: 'toggle', value: values.whatsapp },
+        { label: 'Telegram', key: 'telegram', type: 'toggle', value: values.telegram },
+        { label: 'Push', key: 'push', type: 'toggle', value: values.push },
+      ],
+      ai: [
+        { label: 'المزود', key: 'provider', type: 'select', value: values.provider, options: [{ value:'OpenAI', label:'OpenAI' }, { value:'Claude', label:'Claude' }, { value:'Gemini', label:'Gemini' }, { value:'DeepSeek', label:'DeepSeek' }] },
+        { label: 'النموذج', key: 'model', value: values.model },
+        { label: 'API Key', key: 'apiKey', value: values.apiKey },
+        { label: 'Temperature', key: 'temperature', type: 'number', value: values.temperature },
+        { label: 'Max Tokens', key: 'maxTokens', type: 'number', value: values.maxTokens },
+        { label: 'التذكر الذكي', key: 'memory', type: 'toggle', value: values.memory },
+      ],
+      automation: [
+        { label: 'التشغيل التلقائي', key: 'rules', type: 'toggle', value: values.rules },
+        { label: 'تنبيه التأخير', key: 'lateNotice', type: 'toggle', value: values.lateNotice },
+        { label: 'خصم تلقائي', key: 'deduct', type: 'toggle', value: values.deduct },
+        { label: 'إرسال بريد', key: 'email', type: 'toggle', value: values.email },
+        { label: 'إنشاء تقرير', key: 'report', type: 'toggle', value: values.report },
+      ],
+      integrations: [
+        { label: 'Google Drive', key: 'googleDrive', type: 'toggle', value: values.googleDrive },
+        { label: 'Google Calendar', key: 'googleCalendar', type: 'toggle', value: values.googleCalendar },
+        { label: 'Microsoft 365', key: 'microsoft365', type: 'toggle', value: values.microsoft365 },
+        { label: 'Slack', key: 'slack', type: 'toggle', value: values.slack },
+        { label: 'Supabase', key: 'supabase', type: 'toggle', value: values.supabase },
+      ],
+      security: [
+        { label: 'سياسة كلمات المرور', key: 'passwordPolicy', type: 'toggle', value: values.passwordPolicy },
+        { label: 'مهلة الجلسة (دقائق)', key: 'sessionTimeout', type: 'number', value: values.sessionTimeout },
+        { label: 'القائمة البيضاء', key: 'whitelist', type: 'toggle', value: values.whitelist },
+        { label: '2FA', key: 'twoFactor', type: 'toggle', value: values.twoFactor },
+        { label: 'التشفير', key: 'encryption', type: 'toggle', value: values.encryption },
+        { label: 'سجل التدقيق', key: 'auditLogs', type: 'toggle', value: values.auditLogs },
+      ],
+      backup: [
+        { label: 'نسخ احتياطي تلقائي', key: 'autoBackup', type: 'toggle', value: values.autoBackup },
+        { label: 'الجدول', key: 'schedule', type: 'select', value: values.schedule, options: [{ value:'hourly', label:'كل ساعة' }, { value:'daily', label:'يومياً' }, { value:'weekly', label:'أسبوعياً' }] },
+        { label: 'Google Drive', key: 'googleDrive', type: 'toggle', value: values.googleDrive },
+        { label: 'OneDrive', key: 'oneDrive', type: 'toggle', value: values.oneDrive },
+        { label: 'S3', key: 's3', type: 'toggle', value: values.s3 },
+      ],
+      appearance: [
+        { label: 'السمة', key: 'theme', type: 'select', value: values.theme, options: [{ value:'light', label:'Light' }, { value:'dark', label:'Dark' }, { value:'auto', label:'Auto' }] },
+        { label: 'اللون الأساسي', key: 'primaryColor', value: values.primaryColor },
+        { label: 'اللون الثانوي', key: 'secondaryColor', value: values.secondaryColor },
+        { label: 'الحواف', key: 'radius', type: 'number', value: values.radius },
+        { label: 'الرسوم المتحركة', key: 'animations', type: 'toggle', value: values.animations },
+        { label: 'Glass Effect', key: 'blur', type: 'toggle', value: values.blur },
+      ],
+      printing: [
+        { label: 'الحجم', key: 'paper', type: 'select', value: values.paper, options: [{ value:'A4', label:'A4' }, { value:'A5', label:'A5' }, { value:'Thermal', label:'Thermal' }] },
+        { label: 'الهوامش', key: 'margins', type: 'select', value: values.margins, options: [{ value:'normal', label:'عادية' }, { value:'narrow', label:'ضيقة' }, { value:'wide', label:'واسعة' }] },
+        { label: 'الهيدر', key: 'header', type: 'toggle', value: values.header },
+        { label: 'الفوتر', key: 'footer', type: 'toggle', value: values.footer },
+        { label: 'الشعار', key: 'logo', type: 'toggle', value: values.logo },
+        { label: 'الختم', key: 'stamp', type: 'toggle', value: values.stamp },
+      ],
+      reports: [
+        { label: 'لوحة التقارير', key: 'dashboard', type: 'toggle', value: values.dashboard },
+        { label: 'الرسوم', key: 'charts', type: 'toggle', value: values.charts },
+        { label: 'Excel', key: 'exportExcel', type: 'toggle', value: values.exportExcel },
+        { label: 'PDF', key: 'exportPdf', type: 'toggle', value: values.exportPdf },
+        { label: 'جدولة التقارير', key: 'schedule', type: 'toggle', value: values.schedule },
+      ],
+      performance: [
+        { label: 'الكاش', key: 'cache', type: 'toggle', value: values.cache },
+        { label: 'CDN', key: 'cdn', type: 'toggle', value: values.cdn },
+        { label: 'الضغط', key: 'compression', type: 'toggle', value: values.compression },
+        { label: 'Lazy Loading', key: 'lazyLoading', type: 'toggle', value: values.lazyLoading },
+        { label: 'تحسين الصور', key: 'imageOptimization', type: 'toggle', value: values.imageOptimization },
+      ],
+      database: [
+        { label: 'الجداول', key: 'tables', type: 'toggle', value: values.tables },
+        { label: 'الفهارس', key: 'indexes', type: 'toggle', value: values.indexes },
+        { label: 'التخزين', key: 'storage', type: 'toggle', value: values.storage },
+        { label: 'الاستيراد', key: 'import', type: 'toggle', value: values.import },
+        { label: 'التصدير', key: 'export', type: 'toggle', value: values.export },
+      ],
+      api: [
+        { label: 'API Keys', key: 'apiKeys', type: 'toggle', value: values.apiKeys },
+        { label: 'Webhook', key: 'webhook', type: 'toggle', value: values.webhook },
+        { label: 'OAuth', key: 'oauth', type: 'toggle', value: values.oauth },
+        { label: 'Rate Limit', key: 'rateLimit', type: 'toggle', value: values.rateLimit },
+      ],
+      logs: [
+        { label: 'السجل النشط', key: 'activity', type: 'toggle', value: values.activity },
+        { label: 'سجل التدقيق', key: 'audit', type: 'toggle', value: values.audit },
+        { label: 'الأخطاء', key: 'errors', type: 'toggle', value: values.errors },
+        { label: 'AI Logs', key: 'ai', type: 'toggle', value: values.ai },
+      ],
+      about: [
+        { label: 'النسخة', key: 'version', value: values.version },
+        { label: 'الترخيص', key: 'license', value: values.license },
+        { label: 'التحديثات', key: 'updates', type: 'toggle', value: values.updates },
+        { label: 'التوثيق', key: 'documentation', type: 'toggle', value: values.documentation },
+      ],
+    };
+    return fieldMapper[sectionKey] || [];
+  },
+
+  _lastEditLabel(sectionKey) {
+    const store = this._getStore();
+    const snapshot = (store.history || []).slice().reverse().find(s => s.sectionKey === sectionKey);
+    if (!snapshot) return '—';
+    const d = new Date(snapshot.at);
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   },
 
   /* ── HELPERS ── */
