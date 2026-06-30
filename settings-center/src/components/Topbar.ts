@@ -68,19 +68,24 @@ export function renderTopbar(opts: TopbarOptions): HTMLElement {
 
   return h('header', { class: 'cc-topbar' }, [
     h('div', { class: 'cc-topbar-left' }, [
-      h('button', { class: 'cc-search-trigger', type: 'button', onclick: opts.onOpenPalette }, [
-        h('i', { class: 'fas fa-magnifying-glass' }),
-        h('span', {}, ['ابحث في كل الإعدادات...']),
-        h('kbd', {}, ['⌘K']),
+      h('div', { class: 'cc-topbar-title' }, [
+        h('i', { class: 'fas fa-gear' }),
+        h('span', {}, ['مركز الإعدادات']),
       ]),
+      // Icon-only — the host app already shows a full search pill with the same
+      // Ctrl+K hint in its own header; a second full-width pill right under it
+      // reads as a duplicated/overlapping search bar, so this stays compact.
+      h('button', { class: 'cc-topbar-btn', type: 'button', title: 'ابحث في كل الإعدادات (⌘K)', onclick: opts.onOpenPalette }, [h('i', { class: 'fas fa-magnifying-glass' })]),
     ]),
     h('div', { class: 'cc-topbar-right' }, [
       h('span', { class: `cc-env-badge cc-env-badge--${env.toLowerCase()}` }, [env]),
-      lastUpdated,
       h('span', { class: 'cc-save-pill' }, [h('i', { class: 'fas fa-circle-check' }), ' Auto Saved']),
+      lastUpdated,
+      h('span', { class: 'cc-topbar-divider' }),
       h('button', { class: 'cc-topbar-btn', type: 'button', title: 'تراجع', onclick: opts.onUndo }, [h('i', { class: 'fas fa-rotate-left' })]),
       h('button', { class: 'cc-topbar-btn', type: 'button', title: 'إعادة', onclick: opts.onRedo }, [h('i', { class: 'fas fa-rotate-right' })]),
       h('button', { class: 'cc-topbar-btn', type: 'button', title: 'سجل التغييرات', onclick: opts.onOpenHistory }, [h('i', { class: 'fas fa-clock-rotate-left' })]),
+      h('span', { class: 'cc-topbar-divider' }),
       h('button', { class: 'cc-topbar-btn', type: 'button', title: 'تصدير', onclick: () => exportJson(store) }, [h('i', { class: 'fas fa-download' })]),
       h('button', { class: 'cc-topbar-btn', type: 'button', title: 'استيراد', onclick: () => importJson(store, () => location.reload()) }, [h('i', { class: 'fas fa-upload' })]),
       h('button', {

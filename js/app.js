@@ -619,10 +619,30 @@ const App = {
           gratuity:      () => typeof GratuityModule !== 'undefined' ? GratuityModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-award"></i></div><div class="empty-title">نهاية الخدمة</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           gps:           () => GpsModule.render(content),
           audit:         () => AuditModule.render(content),
-          settings:      () => SettingsCenterV2.render(content),
+          settings:      () => {
+            if (typeof SettingsCenterV2 !== 'undefined' && SettingsCenterV2?.render) {
+              SettingsCenterV2.render(content);
+            } else if (typeof SettingsModule !== 'undefined' && SettingsModule?.render) {
+              SettingsModule.render(content);
+            } else {
+              content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-gear"></i></div><div class="empty-title">الإعدادات</div><p class="empty-desc">لم يتم تحميل واجهة Control Center</p></div>';
+            }
+          },
           profile:       () => ProfileModule.render(content),
-          roles:         () => SettingsCenterV2.render(content, 'users'),
-          backup:        () => SettingsCenterV2.render(content, 'backup'),
+          roles:         () => {
+            if (typeof SettingsCenterV2 !== 'undefined' && SettingsCenterV2?.render) {
+              SettingsCenterV2.render(content, 'users');
+            } else if (typeof SettingsModule !== 'undefined' && SettingsModule?.render) {
+              SettingsModule.render(content);
+            }
+          },
+          backup:        () => {
+            if (typeof SettingsCenterV2 !== 'undefined' && SettingsCenterV2?.render) {
+              SettingsCenterV2.render(content, 'backup');
+            } else if (typeof SettingsModule !== 'undefined' && SettingsModule?.render) {
+              SettingsModule.render(content);
+            }
+          },
           orgchart:      () => typeof OrgChartModule  !== 'undefined' ? OrgChartModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-sitemap"></i></div><div class="empty-title">الهيكل التنظيمي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           calendar:      () => typeof CalendarModule  !== 'undefined' ? CalendarModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-calendar-days"></i></div><div class="empty-title">تقويم الفريق</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           expenses:      () => typeof ExpensesModule  !== 'undefined' ? ExpensesModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-receipt"></i></div><div class="empty-title">المصروفات</div><p class="empty-desc">الوحدة غير محملة</p></div>',
