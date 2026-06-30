@@ -132,8 +132,13 @@ const SettingsModule = {
 
   // Legacy section renderers (logo upload, GPS zones, signature pad, WhatsApp config, etc.)
   // call this after saving — keep it as an alias so they keep working under the Control Center shell.
+  // Legacy editors (_company, _attendance, _hours, etc.) call this after every
+  // save. Settings Center v2 (settings-center/) owns the page now and listens
+  // for this event to refresh the wrapped legacy panel; _renderContent() below
+  // is dead-shell code kept only so a router rollback to SettingsModule.render
+  // still works if the new bundle ever needs to be disabled.
   _renderSection() {
-    this._renderContent();
+    window.dispatchEvent(new CustomEvent('sc:legacy-rerender'));
   },
 
   // Sections that have a real, dedicated editor instead of the generic toggle/select field list.
@@ -383,7 +388,7 @@ const SettingsModule = {
         this._setField(sectionKey, field, value, true);
       };
 
-      if (type === 'checkbox' || type === 'select' || type === 'textarea' || type === 'number' || type === 'text' || type === 'time' || type === 'email') {
+      if (type === 'checkbox' || type === 'select' || type === 'textarea' || type === 'number' || type === 'text' || type === 'time' || type === 'email' || type === 'password') {
         el.oninput = handler;
         el.onchange = changeHandler;
       }
@@ -671,9 +676,10 @@ const SettingsModule = {
       ai: [
         { label: 'المزود', key: 'provider', type: 'select', value: values.provider, options: [{ value:'OpenAI', label:'OpenAI' }, { value:'Claude', label:'Claude' }, { value:'Gemini', label:'Gemini' }, { value:'DeepSeek', label:'DeepSeek' }] },
         { label: 'النموذج', key: 'model', value: values.model },
-        { label: 'API Key', key: 'apiKey', value: values.apiKey },
+        { label: 'API Key', key: 'apiKey', type: 'password', value: values.apiKey },
         { label: 'Temperature', key: 'temperature', type: 'number', value: values.temperature },
         { label: 'Max Tokens', key: 'maxTokens', type: 'number', value: values.maxTokens },
+        { label: 'System Prompt', key: 'systemPrompt', type: 'textarea', value: values.systemPrompt },
         { label: 'التذكر الذكي', key: 'memory', type: 'toggle', value: values.memory },
       ],
       automation: [

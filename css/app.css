@@ -3850,6 +3850,10 @@ ul { list-style: none; }
   color: #fff;
   border-end-end-radius: 4px;
 }
+.el-ai-table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+.el-ai-table th, .el-ai-table td { border: 1px solid var(--border); padding: 5px 8px; text-align: start; }
+.el-ai-table th { background: var(--bg-input); font-weight: 700; }
+.el-ai-hint { margin-top: 6px; font-size: 11px; color: var(--text-muted); }
 /* Thinking dots */
 .el-ai-thinking {
   display: flex;

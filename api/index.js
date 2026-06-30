@@ -63,6 +63,8 @@ function _makeRateLimiter(windowMs, max) {
 const _rateLimitLogin   = _makeRateLimiter(15 * 60 * 1000, 10);
 // جلب بيانات الموظف: 60 طلب / دقيقة
 const _rateLimitEmpData = _makeRateLimiter(60 * 1000, 60);
+// مساعد AI: 20 رسالة / دقيقة (يستهلك توكنز حقيقية على حساب المستخدم)
+const _rateLimitAI      = _makeRateLimiter(60 * 1000, 20);
 
 // ── Sanitize env vars (strip BOM / invisible chars) ───────────
 function cleanEnv(key) {
@@ -467,6 +469,208 @@ app.post('/api/emp/request', _rateLimitLogin, async (req, res) => {
   const { error } = await supabaseAdmin.from('requests').upsert({ id, data: newData });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, id, request: newData });
+});
+
+// ── AI Assistant — Service Layer ────────────────────────────
+// Reads business data from Supabase directly (never from the frontend/DOM),
+// builds a compact context, and forwards the question to the configured
+// LLM provider. API key + provider settings live in company.settingsCenter.values.ai.
+
+async function _getAISettings() {
+  const { data, error } = await supabaseAdmin.from('company').select('data').eq('id', 'main').maybeSingle();
+  if (error || !data?.data) return null;
+  // 'ai-center' is the Settings Center v2 storage key (settings-center/src/features/ai-center).
+  // Fall back to the legacy 'ai' key for any data saved before that migration.
+  return data.data.settingsCenter?.values?.['ai-center'] || data.data.settingsCenter?.values?.ai || null;
+}
+
+async function _buildBusinessContext() {
+  const today = new Date().toISOString().split('T')[0];
+  const monthStart = today.slice(0, 7);
+
+  const [empRes, attRes, leavesRes, deptRes, payrollRes, reqRes] = await Promise.all([
+    supabaseAdmin.from('employees').select('id,data'),
+    supabaseAdmin.from('attendance').select('id,data').order('created_at', { ascending: false }).limit(500),
+    supabaseAdmin.from('leaves').select('id,data').order('created_at', { ascending: false }).limit(100),
+    supabaseAdmin.from('departments').select('id,data'),
+    supabaseAdmin.from('payroll').select('id,data').order('created_at', { ascending: false }).limit(200),
+    supabaseAdmin.from('requests').select('id,data').order('created_at', { ascending: false }).limit(100),
+  ]);
+
+  const employees   = (empRes.data || []).map(r => r.data).filter(Boolean);
+  const attendance  = (attRes.data || []).map(r => r.data).filter(Boolean);
+  const leaves      = (leavesRes.data || []).map(r => r.data).filter(Boolean);
+  const departments = (deptRes.data || []).map(r => r.data).filter(Boolean);
+  const payroll     = (payrollRes.data || []).map(r => r.data).filter(Boolean);
+  const requests    = (reqRes.data || []).map(r => r.data).filter(Boolean);
+
+  const empById = new Map(employees.map(e => [String(e.id), e]));
+  const nameOf  = id => empById.get(String(id))?.name || String(id);
+
+  const todayAtt   = attendance.filter(a => a.date === today);
+  const monthAtt   = attendance.filter(a => (a.date || '').startsWith(monthStart));
+
+  const lateCounts = {};
+  const absentCounts = {};
+  monthAtt.forEach(a => {
+    if (a.status === 'late')   lateCounts[a.empId]   = (lateCounts[a.empId]   || 0) + 1;
+    if (a.status === 'absent') absentCounts[a.empId] = (absentCounts[a.empId] || 0) + 1;
+  });
+  const topLate = Object.entries(lateCounts)
+    .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([id, count]) => ({ name: nameOf(id), lateCount: count }));
+  const topAbsent = Object.entries(absentCounts)
+    .sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([id, count]) => ({ name: nameOf(id), absentCount: count }));
+
+  const deptHeadcount = departments.map(d => ({
+    name: d.name,
+    activeEmployees: employees.filter(e => e.dept === d.id && e.status !== 'inactive').length,
+  }));
+
+  return {
+    date: today,
+    employees: {
+      total: employees.length,
+      active: employees.filter(e => e.status === 'active').length,
+      inactive: employees.filter(e => e.status === 'inactive').length,
+    },
+    todayAttendance: {
+      present: todayAtt.filter(a => a.status === 'present').length,
+      late:    todayAtt.filter(a => a.status === 'late').length,
+      absent:  todayAtt.filter(a => a.status === 'absent').length,
+      absentNames: todayAtt.filter(a => a.status === 'absent').map(a => nameOf(a.empId)).slice(0, 20),
+      lateNames:   todayAtt.filter(a => a.status === 'late').map(a => nameOf(a.empId)).slice(0, 20),
+    },
+    monthToDateAttendance: { topLate, topAbsent },
+    departments: deptHeadcount,
+    leaves: {
+      pending: leaves.filter(l => l.status === 'pending').length,
+      pendingList: leaves.filter(l => l.status === 'pending').slice(0, 15).map(l => ({
+        employee: nameOf(l.empId), type: l.type, from: l.from, to: l.to, days: l.days,
+      })),
+    },
+    requests: { pending: requests.filter(r => r.status === 'pending').length },
+    payroll: {
+      monthlyTotal: payroll.filter(p => p.month === monthStart).reduce((s, p) => s + (p.total || 0), 0),
+      currency: 'SAR',
+    },
+  };
+}
+
+const _AI_PROVIDERS = {
+  OpenAI:   { kind: 'openai',    baseUrl: 'https://api.openai.com/v1/chat/completions',         defaultModel: 'gpt-4o-mini' },
+  DeepSeek: { kind: 'openai',    baseUrl: 'https://api.deepseek.com/chat/completions',           defaultModel: 'deepseek-chat' },
+  Claude:   { kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1/messages',               defaultModel: 'claude-sonnet-4-6' },
+  Gemini:   { kind: 'gemini',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models', defaultModel: 'gemini-2.0-flash' },
+};
+
+async function _callProvider({ provider, apiKey, model, temperature, maxTokens, system, history, message }) {
+  const cfg = _AI_PROVIDERS[provider] || _AI_PROVIDERS.OpenAI;
+  const useModel = model || cfg.defaultModel;
+  const temp = typeof temperature === 'number' ? temperature : 0.7;
+  const tokens = maxTokens || 1500;
+
+  if (cfg.kind === 'openai') {
+    const r = await fetch(cfg.baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: useModel,
+        temperature: temp,
+        max_tokens: tokens,
+        messages: [{ role: 'system', content: system }, ...history, { role: 'user', content: message }],
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message || `${provider} API error (${r.status})`);
+    return j.choices?.[0]?.message?.content || '';
+  }
+
+  if (cfg.kind === 'anthropic') {
+    const r = await fetch(cfg.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: useModel,
+        max_tokens: tokens,
+        temperature: temp,
+        system,
+        messages: [...history, { role: 'user', content: message }],
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message || `Claude API error (${r.status})`);
+    return (j.content || []).map(c => c.text).join('') || '';
+  }
+
+  if (cfg.kind === 'gemini') {
+    const r = await fetch(`${cfg.baseUrl}/${useModel}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [
+          ...history.map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.content }] })),
+          { role: 'user', parts: [{ text: message }] },
+        ],
+        generationConfig: { temperature: temp, maxOutputTokens: tokens },
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error?.message || `Gemini API error (${r.status})`);
+    return j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+  }
+
+  throw new Error('مزود الذكاء الاصطناعي غير مدعوم');
+}
+
+app.post('/api/ai/chat', authenticate, _rateLimitAI, async (req, res) => {
+  try {
+    const { message, history } = req.body || {};
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'الرسالة فارغة' });
+    }
+    if (message.length > 2000) return res.status(400).json({ error: 'الرسالة طويلة جداً' });
+
+    const ai = await _getAISettings();
+    if (!ai?.apiKey) {
+      return res.status(400).json({ error: 'لم يتم إعداد مفتاح API للذكاء الاصطناعي — أضفه من الإعدادات ← المساعد الذكي' });
+    }
+
+    const safeHistory = Array.isArray(history)
+      ? history.filter(h => h && typeof h.content === 'string' && ['user', 'assistant'].includes(h.role)).slice(-8)
+      : [];
+
+    const context = await _buildBusinessContext();
+    const system = [
+      ai.systemPrompt || 'You are a smart HR and operations assistant for Attendify Pro.',
+      'أجب بنفس لغة سؤال المستخدم (عربي أو إنجليزي). استخدم فقط البيانات المرفقة أدناه — لا تخترع بيانات غير موجودة فيها.',
+      'إذا طُلب منك عرض قائمة أو مقارنة، استخدم جدول Markdown.',
+      'كن مختصراً ومباشراً.',
+      `بيانات النظام الحالية (JSON):\n${JSON.stringify(context)}`,
+    ].join('\n\n');
+
+    const reply = await _callProvider({
+      provider: ai.provider || 'OpenAI',
+      apiKey: ai.apiKey,
+      model: ai.model,
+      temperature: ai.temperature,
+      maxTokens: ai.maxTokens,
+      system,
+      history: safeHistory,
+      message: message.trim(),
+    });
+
+    res.json({ ok: true, reply });
+  } catch (e) {
+    console.error('[ai/chat] error:', e.message);
+    res.status(502).json({ error: e.message || 'تعذّر الاتصال بمزود الذكاء الاصطناعي' });
+  }
 });
 
 module.exports = app;

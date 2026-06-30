@@ -668,7 +668,7 @@ const DashboardModule = {
   _closeAI() { document.getElementById('el-ai-panel')?.classList.remove('el-ai-open'); this._ai.open = false; },
   _toggleAI(){ this._ai.open ? this._closeAI() : this._openAI(); },
 
-  _sendAI(preset) {
+  async _sendAI(preset) {
     const input = document.getElementById('el-ai-input');
     const msg   = preset || (input?.value || '').trim();
     if (!msg) return;
@@ -693,11 +693,55 @@ const DashboardModule = {
     `);
     msgs.scrollTop = msgs.scrollHeight;
 
-    setTimeout(() => {
-      const think = document.getElementById(thinkId);
-      if (think) think.innerHTML = `<div class="el-ai-bubble">${this._aiReply(msg)}</div>`;
-      msgs.scrollTop = msgs.scrollHeight;
-    }, 900 + Math.random() * 500);
+    this._ai.history = this._ai.history || [];
+
+    let html;
+    try {
+      const res = await SupabaseDB._fetch('/api/ai/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: msg, history: this._ai.history }),
+      });
+      if (res.ok && res.data?.reply) {
+        this._ai.history.push({ role: 'user', content: msg }, { role: 'assistant', content: res.data.reply });
+        if (this._ai.history.length > 16) this._ai.history = this._ai.history.slice(-16);
+        html = this._renderAIMarkdown(res.data.reply);
+      } else {
+        // No API key configured / provider error — fall back to local rule-based answers
+        html = this._aiReply(msg) + (res.data?.error ? `<div class="el-ai-hint">${_esc(res.data.error)}</div>` : '');
+      }
+    } catch (e) {
+      html = this._aiReply(msg);
+    }
+
+    const think = document.getElementById(thinkId);
+    if (think) think.innerHTML = `<div class="el-ai-bubble">${html}</div>`;
+    msgs.scrollTop = msgs.scrollHeight;
+  },
+
+  // Minimal markdown → HTML for AI replies: bold, line breaks, pipe tables
+  _renderAIMarkdown(text) {
+    const lines = String(text).split('\n');
+    let html = '';
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^\s*\|.*\|\s*$/.test(line) && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1] || '')) {
+        const header = line.split('|').map(s => s.trim()).filter(Boolean);
+        let body = [];
+        i += 2;
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) {
+          body.push(lines[i].split('|').map(s => s.trim()).filter(Boolean));
+          i++;
+        }
+        html += `<table class="el-ai-table"><thead><tr>${header.map(h => `<th>${_esc(h)}</th>`).join('')}</tr></thead><tbody>${
+          body.map(row => `<tr>${row.map(c => `<td>${_esc(c)}</td>`).join('')}</tr>`).join('')
+        }</tbody></table>`;
+        continue;
+      }
+      html += `${_esc(line).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}<br>`;
+      i++;
+    }
+    return html;
   },
 
   _aiReply(msg) {

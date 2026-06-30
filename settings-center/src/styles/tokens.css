@@ -1,0 +1,14 @@
+/* Settings Center v2 — layered on top of the host app's existing :root design tokens
+   (--primary, --bg-card, --radius, --shadow-*, --text-*, --border) so light/dark
+   theme switching keeps working automatically without duplicating values here. */
+.cc-root {
+  --cc-radius: var(--radius-lg, 16px);
+  --cc-radius-sm: var(--radius, 12px);
+  --cc-gap: 16px;
+  --cc-sidebar-w: 268px;
+  --cc-glass-bg: var(--glass-bg, rgba(255, 255, 255, 0.7));
+  --cc-glass-border: var(--glass-border, rgba(255, 255, 255, 0.5));
+  font-family: inherit;
+  color: var(--text-primary);
+  height: 100%;
+}
