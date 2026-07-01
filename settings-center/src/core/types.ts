@@ -47,4 +47,5 @@ export interface CategoryMeta {
   icon: string;
   color: string;
   kind: Kind;
+  group?: string;
 }

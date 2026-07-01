@@ -255,6 +255,8 @@ const SupabaseDB = {
       }
 
       console.log('[Backend] Data loaded ✓');
+      /* Apply saved appearance settings now that DB.company is ready */
+      try { window.SettingsCenterV2?.applyFromDB(); } catch(_) {}
       return true;
     } catch(e) {
       console.warn('[Backend] Load failed:', e.message);

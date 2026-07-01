@@ -157,6 +157,7 @@
   <link rel="stylesheet" href="css/app.css?v=10">
   <link rel="stylesheet" href="css/pro-ui.css?v=10">
   <link rel="stylesheet" href="css/settings-pro.css?v=10">
+  <link rel="stylesheet" href="css/design-upgrade.css?v=1">
 </head>
 
 <body>
@@ -736,8 +737,14 @@
   <script src="js/biometrics.js?v=10"></script>
   <script src="js/config.js?v=10"></script>
   <script src="js/supabase.js?v=10"></script>
-  <link rel="stylesheet" href="settings-center/settings-center.css?v=1">
-  <script src="settings-center/settings-center.js?v=1"></script>
+  <link rel="stylesheet" href="settings-center/settings-center.css?v=9">
+  <script src="settings-center/settings-center.js?v=9"></script>
+  <script>
+    /* Apply saved appearance settings as early as possible */
+    document.addEventListener('DOMContentLoaded', function() {
+      try { window.SettingsCenterV2?.applyFromDB(); } catch(e) {}
+    });
+  </script>
   <script src="js/app.js?v=10"></script>
 
   <!-- ===== UNIFIED LOGIN SWITCHER ===== -->

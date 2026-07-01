@@ -46,8 +46,8 @@ const App = {
       if (!favLink) { favLink = document.createElement('link'); favLink.rel = 'icon'; document.head.appendChild(favLink); }
       favLink.href = DB.company.favicon;
     }
-    const savedColor = localStorage.getItem('attendify-color');
-    if (savedColor) document.documentElement.style.setProperty('--primary', savedColor);
+    /* Apply settings from Settings Center (overrides old localStorage color) */
+    try { window.SettingsCenterV2?.applyFromDB(); } catch(_) {}
     const savedFont = localStorage.getItem('attendify-font-size');
     if (savedFont) document.documentElement.style.fontSize = savedFont;
 

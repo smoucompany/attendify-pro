@@ -124,6 +124,29 @@
 /* English mode font */
 [data-lang="en"] { font-family: var(--font-en); }
 
+/* ─── SETTINGS-APPLIED OVERRIDES ────────────────────────── */
+/* Disable animations */
+[data-no-animations] *, [data-no-animations] *::before, [data-no-animations] *::after {
+  transition-duration: 0ms !important;
+  animation-duration:  0ms !important;
+}
+
+/* Compact mode — tighter padding */
+[data-compact] .page-content        { padding: 14px !important; }
+[data-compact] .card                { padding: 14px !important; }
+[data-compact] .kpi-card            { padding: 14px 16px !important; }
+[data-compact] .stat-card           { padding: 14px !important; }
+[data-compact] .table td, [data-compact] .table th { padding: 7px 10px !important; }
+[data-compact] .cc-content          { padding: 14px !important; }
+[data-compact] .fp-card-body        { padding: 12px !important; }
+
+/* No-glass mode — remove backdrop blur / transparency */
+[data-no-glass] .sidebar, [data-no-glass] .header, [data-no-glass] aside {
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  background: var(--bg-surface) !important;
+}
+[data-no-glass] .cc-sidebar { backdrop-filter: none !important; background: var(--bg-surface) !important; }
+
 /* ─── RESET & BASE ───────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
