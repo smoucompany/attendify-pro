@@ -1,47 +1,116 @@
 /* ══════════════════════════════════════════════════════════
-   ATTENDIFY PRO — VISUAL POLISH LAYER
-   Enhances app.css + pro-ui.css WITHOUT breaking anything.
-   Rules: use CSS vars, never override layout/position/display.
+   ATTENDIFY PRO — DESIGN UPGRADE v20
+   Visual-only overrides. No layout/position/display changes.
+   Dark mode handled with [data-theme="dark"] selectors.
    ══════════════════════════════════════════════════════════ */
 
-/* ── TOKENS ───────────────────────────────────────────────── */
+/* ── TRANSITIONS ──────────────────────────────────────────── */
 :root {
-  --up-t:    220ms cubic-bezier(.4,0,.2,1);
-  --up-t-sp: 360ms cubic-bezier(.34,1.56,.64,1);
+  --up-sp: 360ms cubic-bezier(.34,1.56,.64,1);
+  --up-t:  220ms cubic-bezier(.4,0,.2,1);
 }
 
 /* ══════════════════════════════════════════════════════════
-   HEADER  — glass + animated bottom stripe
+   1. BODY BACKGROUND
    ══════════════════════════════════════════════════════════ */
-.top-header {
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  box-shadow: 0 1px 0 var(--border), 0 4px 20px rgba(0,0,0,.05) !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 50 !important;
+.main-content,
+.app-wrapper {
+  background: #eef2ff !important;
 }
 
-/* Animated gradient stripe under header */
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .app-wrapper {
+  background: var(--bg-base) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   2. ANIMATED HEADER STRIPE
+   ══════════════════════════════════════════════════════════ */
 .top-header::after {
   content: '' !important;
   position: absolute !important;
   bottom: 0 !important; left: 0 !important; right: 0 !important;
   height: 2px !important;
   background: linear-gradient(90deg,
-    #6366f1 0%, #8b5cf6 20%, #ec4899 40%,
-    #06b6d4 60%, #10b981 80%, #6366f1 100%) !important;
+    #6366f1, #8b5cf6, #ec4899, #06b6d4, #10b981, #6366f1) !important;
   background-size: 300% 100% !important;
   animation: up-stripe 5s linear infinite !important;
-  opacity: .75 !important;
+  opacity: .8 !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   STAT CARDS  — colored icon bg + top border + stagger anim
+   3. KPI / STAT CARDS — full gradient backgrounds
    ══════════════════════════════════════════════════════════ */
 
-/* Staggered entrance */
-.stat-card { animation: up-card-in .45s ease-out both !important; }
+/* Remove the faint circle blob, we'll replace it */
+.stat-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -50px !important; right: -50px !important;
+  left: auto !important; bottom: auto !important;
+  width: 160px !important; height: 160px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,.1) !important;
+  transform: none !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+.stat-card::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -40px !important; left: -40px !important;
+  top: auto !important; right: auto !important;
+  width: 120px !important; height: 120px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,.07) !important;
+  transform: none !important;
+  pointer-events: none !important;
+  /* override shimmer from pro-ui */
+  background-size: auto !important;
+  animation: none !important;
+  opacity: 1 !important;
+}
+
+/* Gradient card backgrounds */
+.stat-card.primary {
+  background: linear-gradient(140deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 30px rgba(79,70,229,.38), 0 2px 8px rgba(0,0,0,.12) !important;
+}
+.stat-card.success {
+  background: linear-gradient(140deg, #059669 0%, #10b981 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 30px rgba(5,150,105,.38), 0 2px 8px rgba(0,0,0,.12) !important;
+}
+.stat-card.warning {
+  background: linear-gradient(140deg, #d97706 0%, #f59e0b 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 30px rgba(217,119,6,.38), 0 2px 8px rgba(0,0,0,.12) !important;
+}
+.stat-card.danger {
+  background: linear-gradient(140deg, #dc2626 0%, #ef4444 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 30px rgba(220,38,38,.38), 0 2px 8px rgba(0,0,0,.12) !important;
+}
+.stat-card.info {
+  background: linear-gradient(140deg, #2563eb 0%, #3b82f6 100%) !important;
+  border-color: transparent !important;
+  box-shadow: 0 8px 30px rgba(37,99,235,.38), 0 2px 8px rgba(0,0,0,.12) !important;
+}
+
+/* Hover lift */
+.stat-card:hover {
+  transform: translateY(-6px) scale(1.02) !important;
+}
+.stat-card.primary:hover { box-shadow: 0 14px 40px rgba(79,70,229,.5)  !important; }
+.stat-card.success:hover { box-shadow: 0 14px 40px rgba(5,150,105,.5)  !important; }
+.stat-card.warning:hover { box-shadow: 0 14px 40px rgba(217,119,6,.5)  !important; }
+.stat-card.danger:hover  { box-shadow: 0 14px 40px rgba(220,38,38,.5)  !important; }
+.stat-card.info:hover    { box-shadow: 0 14px 40px rgba(37,99,235,.5)  !important; }
+
+/* Staggered entrance animation */
+.stat-card { animation: up-card-in .5s ease-out both !important; }
 .stat-cards > .stat-card:nth-child(1) { animation-delay:.04s !important }
 .stat-cards > .stat-card:nth-child(2) { animation-delay:.09s !important }
 .stat-cards > .stat-card:nth-child(3) { animation-delay:.14s !important }
@@ -51,76 +120,107 @@
 .stat-cards > .stat-card:nth-child(7) { animation-delay:.34s !important }
 .stat-cards > .stat-card:nth-child(8) { animation-delay:.39s !important }
 
-/* Replace the small blob ::before with a colored top border */
-.stat-card::before {
-  content: '' !important;
-  position: absolute !important;
-  top: 0 !important; left: 0 !important; right: 0 !important;
-  bottom: auto !important;
-  height: 3px !important;
-  width: 100% !important;
-  border-radius: 0 !important;
-  opacity: 1 !important;
-  transform: none !important;
-  pointer-events: none !important;
+/* White text on gradient cards */
+.stat-card.primary .stat-value,
+.stat-card.success .stat-value,
+.stat-card.warning .stat-value,
+.stat-card.danger  .stat-value,
+.stat-card.info    .stat-value {
+  color: #fff !important;
+  text-shadow: 0 2px 8px rgba(0,0,0,.15) !important;
 }
 
-.stat-card.primary::before { background: linear-gradient(90deg,#6366f1,#8b5cf6) !important; }
-.stat-card.success::before { background: linear-gradient(90deg,#10b981,#34d399) !important; }
-.stat-card.warning::before { background: linear-gradient(90deg,#f59e0b,#fbbf24) !important; }
-.stat-card.danger::before  { background: linear-gradient(90deg,#ef4444,#f97316) !important; }
-.stat-card.info::before    { background: linear-gradient(90deg,#3b82f6,#06b6d4) !important; }
+.stat-card.primary .stat-label,
+.stat-card.success .stat-label,
+.stat-card.warning .stat-label,
+.stat-card.danger  .stat-label,
+.stat-card.info    .stat-label {
+  color: rgba(255,255,255,.82) !important;
+}
 
-/* Colored icon backgrounds */
-.stat-card.primary .stat-icon { background: linear-gradient(135deg,#6366f1,#8b5cf6) !important; box-shadow: 0 6px 18px rgba(99,102,241,.38) !important; }
-.stat-card.success .stat-icon { background: linear-gradient(135deg,#10b981,#34d399) !important; box-shadow: 0 6px 18px rgba(16,185,129,.35) !important; }
-.stat-card.warning .stat-icon { background: linear-gradient(135deg,#f59e0b,#fbbf24) !important; box-shadow: 0 6px 18px rgba(245,158,11,.35) !important; }
-.stat-card.danger  .stat-icon { background: linear-gradient(135deg,#ef4444,#f97316) !important; box-shadow: 0 6px 18px rgba(239,68,68,.35)  !important; }
-.stat-card.info    .stat-icon { background: linear-gradient(135deg,#3b82f6,#06b6d4) !important; box-shadow: 0 6px 18px rgba(59,130,246,.35)  !important; }
+.stat-card.primary .stat-trend,
+.stat-card.success .stat-trend,
+.stat-card.warning .stat-trend,
+.stat-card.danger  .stat-trend,
+.stat-card.info    .stat-trend {
+  background: rgba(255,255,255,.18) !important;
+  color: #fff !important;
+}
 
-/* Colored stat values */
-.stat-card.primary .stat-value { color: #4f46e5 !important; }
-.stat-card.success .stat-value { color: #059669 !important; }
-.stat-card.warning .stat-value { color: #d97706 !important; }
-.stat-card.danger  .stat-value { color: #dc2626 !important; }
-.stat-card.info    .stat-value { color: #2563eb !important; }
+/* Icon: white semi-transparent bg on gradient cards */
+.stat-card.primary .stat-icon,
+.stat-card.success .stat-icon,
+.stat-card.warning .stat-icon,
+.stat-card.danger  .stat-icon,
+.stat-card.info    .stat-icon {
+  background: rgba(255,255,255,.22) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.15) !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
 
-/* Dark mode: values back to white on dark bg */
-[data-theme="dark"] .stat-card .stat-value { color: var(--text-primary) !important; }
+.stat-card:hover .stat-icon {
+  transform: scale(1.15) rotate(-8deg) !important;
+}
 
 /* ══════════════════════════════════════════════════════════
-   TABLES  — colored header + animated rows
+   4. REGULAR CARDS
+   ══════════════════════════════════════════════════════════ */
+.card {
+  border-radius: 18px !important;
+  border-color: rgba(99,102,241,.1) !important;
+  transition: transform var(--up-t), box-shadow var(--up-t) !important;
+}
+
+.card:hover {
+  transform: translateY(-3px) !important;
+  border-color: rgba(99,102,241,.18) !important;
+  box-shadow: 0 12px 40px rgba(99,102,241,.12), 0 4px 16px rgba(0,0,0,.06) !important;
+}
+
+[data-theme="dark"] .card:hover {
+  box-shadow: 0 12px 40px rgba(99,102,241,.2), 0 4px 16px rgba(0,0,0,.3) !important;
+}
+
+/* ══════════════════════════════════════════════════════════
+   5. TABLES
    ══════════════════════════════════════════════════════════ */
 .table-wrapper {
   border-radius: 18px !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.02) !important;
   overflow: hidden !important;
+  border: 1px solid rgba(99,102,241,.1) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05) !important;
 }
 
 .data-table thead {
   background: linear-gradient(90deg,
-    rgba(99,102,241,.08) 0%,
-    rgba(139,92,246,.04) 100%) !important;
+    rgba(99,102,241,.08),
+    rgba(139,92,246,.04)) !important;
 }
 
 [data-theme="dark"] .data-table thead {
-  background: rgba(99,102,241,.12) !important;
+  background: rgba(99,102,241,.14) !important;
 }
 
 .data-table thead th {
-  font-size: .71rem !important;
+  font-size: .7rem !important;
   font-weight: 800 !important;
-  color: var(--primary) !important;
+  color: #4f46e5 !important;
   letter-spacing: .07em !important;
   text-transform: uppercase !important;
-  border-bottom: 2px solid rgba(99,102,241,.1) !important;
-  padding: 12px 16px !important;
-  white-space: nowrap !important;
+  padding: 13px 16px !important;
+  border-bottom: 2px solid rgba(99,102,241,.12) !important;
+}
+
+[data-theme="dark"] .data-table thead th {
+  color: #a5b4fc !important;
 }
 
 .data-table tbody tr {
+  border-bottom: 1px solid rgba(99,102,241,.05) !important;
   transition: background var(--up-t) !important;
-  animation: up-row-in .35s ease-out both !important;
+  animation: up-row-in .38s ease-out both !important;
 }
 
 .data-table tbody tr:nth-child(even) {
@@ -131,12 +231,13 @@
 }
 
 .data-table tbody tr:hover {
-  background: rgba(99,102,241,.05) !important;
+  background: rgba(99,102,241,.06) !important;
 }
 [data-theme="dark"] .data-table tbody tr:hover {
-  background: rgba(99,102,241,.1) !important;
+  background: rgba(99,102,241,.12) !important;
 }
 
+/* Row stagger */
 .data-table tbody tr:nth-child(1){animation-delay:.04s!important}
 .data-table tbody tr:nth-child(2){animation-delay:.07s!important}
 .data-table tbody tr:nth-child(3){animation-delay:.10s!important}
@@ -144,111 +245,109 @@
 .data-table tbody tr:nth-child(5){animation-delay:.16s!important}
 .data-table tbody tr:nth-child(6){animation-delay:.19s!important}
 .data-table tbody tr:nth-child(7){animation-delay:.22s!important}
-.data-table tbody tr:nth-child(8){animation-delay:.25s!important}
 
 /* ══════════════════════════════════════════════════════════
-   AVATARS — subtle ring
+   6. BADGES — outline style
    ══════════════════════════════════════════════════════════ */
-.avatar {
-  border: 2px solid rgba(99,102,241,.18) !important;
-  box-shadow: 0 2px 8px rgba(99,102,241,.1) !important;
+.badge { border: 1px solid transparent !important; }
+.badge-success  { border-color: rgba(16,185,129,.25) !important; }
+.badge-warning  { border-color: rgba(245,158,11,.25)  !important; }
+.badge-danger   { border-color: rgba(239,68,68,.25)   !important; }
+.badge-primary  { border-color: rgba(99,102,241,.25)  !important; }
+.badge-info     { border-color: rgba(59,130,246,.25)  !important; }
+
+/* ══════════════════════════════════════════════════════════
+   7. AVATAR RING
+   ══════════════════════════════════════════════════════════ */
+.table-avatar .avatar,
+td .avatar {
+  border: 2px solid rgba(99,102,241,.2) !important;
+  box-shadow: 0 2px 6px rgba(99,102,241,.1) !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   BADGES — slight border for depth
+   8. BUTTON SHIMMER (only visual, no layout change)
    ══════════════════════════════════════════════════════════ */
-.badge-success  { border: 1px solid rgba(16,185,129,.2)  !important; }
-.badge-warning  { border: 1px solid rgba(245,158,11,.2)  !important; }
-.badge-danger   { border: 1px solid rgba(239,68,68,.2)   !important; }
-.badge-primary  { border: 1px solid rgba(99,102,241,.2)  !important; }
-.badge-info     { border: 1px solid rgba(59,130,246,.2)  !important; }
-.badge-secondary{ border: 1px solid var(--border)        !important; }
+.btn { overflow: hidden !important; position: relative !important; }
+
+.btn-primary::after,
+.btn-success::after,
+.btn-danger::after,
+.btn-warning::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important; left: -130% !important;
+  width: 70% !important; height: 100% !important;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent) !important;
+  transition: left .55s ease !important;
+  pointer-events: none !important;
+}
+
+.btn-primary:hover::after,
+.btn-success:hover::after,
+.btn-danger:hover::after,
+.btn-warning:hover::after { left: 150% !important; }
 
 /* ══════════════════════════════════════════════════════════
-   MODAL — spring entrance
+   9. MODAL SPRING ENTRANCE
    ══════════════════════════════════════════════════════════ */
-.modal-box { animation: up-modal-in .3s cubic-bezier(.34,1.56,.64,1) !important; }
+.modal-box {
+  animation: up-modal-in .32s cubic-bezier(.34,1.56,.64,1) !important;
+  border-radius: 22px !important;
+}
 
 /* ══════════════════════════════════════════════════════════
-   PAGE CONTENT — entrance animation
+   10. PAGE ENTRANCE
    ══════════════════════════════════════════════════════════ */
 .page-content { animation: up-page-in .4s ease-out !important; }
 
 /* ══════════════════════════════════════════════════════════
-   LOGIN PAGE — enhance glass panel
+   11. LOGIN PANEL ENHANCEMENTS
    ══════════════════════════════════════════════════════════ */
 .login-form-panel.glass {
   border-radius: 24px !important;
-  box-shadow:
-    0 32px 80px rgba(0,0,0,.5),
-    0 0 0 1px rgba(255,255,255,.1),
-    inset 0 1px 0 rgba(255,255,255,.4) !important;
+  box-shadow: 0 32px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.4) !important;
 }
 
-/* Rainbow top stripe on login card */
 .login-form-panel.glass::before {
   content: '' !important;
   position: absolute !important;
   top: 0 !important; left: 0 !important; right: 0 !important;
   height: 3px !important;
-  background: linear-gradient(90deg,#6366f1,#ec4899,#06b6d4) !important;
+  background: linear-gradient(90deg, #6366f1, #ec4899, #06b6d4) !important;
   z-index: 10 !important;
   pointer-events: none !important;
 }
 
-/* Role card hover spring */
 .role-card {
-  transition: all var(--up-t-sp) !important;
+  transition: all var(--up-sp) !important;
 }
 .role-card:hover {
   border-color: var(--primary) !important;
-  box-shadow: 0 8px 28px rgba(99,102,241,.22) !important;
+  box-shadow: 0 8px 24px rgba(99,102,241,.2) !important;
   transform: translateY(-3px) scale(1.02) !important;
 }
 .role-card.selected,
 .role-card.active {
   border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(99,102,241,.18), 0 6px 20px rgba(99,102,241,.2) !important;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.2) !important;
 }
 .role-card:hover .role-card-icon {
   transform: scale(1.12) rotate(-5deg) !important;
-  transition: transform var(--up-t-sp) !important;
+  transition: transform var(--up-sp) !important;
 }
 
 /* ══════════════════════════════════════════════════════════
-   BUTTON ENHANCEMENTS — shimmer sweep on hover
-   ══════════════════════════════════════════════════════════ */
-.btn-primary::before,
-.btn-success::before,
-.btn-danger::before,
-.btn-warning::before {
-  content: '' !important;
-  position: absolute !important;
-  top: 0 !important; left: -120% !important;
-  width: 70% !important; height: 100% !important;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent) !important;
-  transition: left .5s ease !important;
-  pointer-events: none !important;
-}
-
-.btn-primary:hover::before,
-.btn-success:hover::before,
-.btn-danger:hover::before,
-.btn-warning:hover::before {
-  left: 150% !important;
-}
-
-/* ══════════════════════════════════════════════════════════
-   SCROLLBAR
+   12. SCROLLBAR
    ══════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar               { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track         { background: transparent; }
-::-webkit-scrollbar-thumb         { background: rgba(99,102,241,.22); border-radius: 10px; }
+::-webkit-scrollbar-thumb         { background: rgba(99,102,241,.22); border-radius:10px; }
 ::-webkit-scrollbar-thumb:hover   { background: rgba(99,102,241,.45); }
 .sidebar ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); }
 
 /* ══════════════════════════════════════════════════════════
-   ANIMATIONS
+   KEYFRAMES
    ══════════════════════════════════════════════════════════ */
 @keyframes up-stripe {
   0%   { background-position: 0% center; }
@@ -256,21 +355,21 @@
 }
 
 @keyframes up-page-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes up-card-in {
-  from { opacity: 0; transform: translateY(18px) scale(.97); }
+  from { opacity: 0; transform: translateY(22px) scale(.95); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes up-row-in {
-  from { opacity: 0; transform: translateX(8px); }
+  from { opacity: 0; transform: translateX(10px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes up-modal-in {
-  from { opacity: 0; transform: scale(.92) translateY(-14px); }
+  from { opacity: 0; transform: scale(.9) translateY(-16px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
