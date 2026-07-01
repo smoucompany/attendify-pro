@@ -261,7 +261,7 @@
 }
 
 /* Provider cards */
-.ai-provider-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ai-provider-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
 .ai-provider-card {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   padding: 10px 6px; border-radius: 10px;

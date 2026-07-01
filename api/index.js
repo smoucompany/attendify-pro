@@ -559,9 +559,10 @@ async function _buildBusinessContext() {
 }
 
 const _AI_PROVIDERS = {
-  OpenAI:   { kind: 'openai',    baseUrl: 'https://api.openai.com/v1/chat/completions',         defaultModel: 'gpt-4o-mini' },
-  DeepSeek: { kind: 'openai',    baseUrl: 'https://api.deepseek.com/chat/completions',           defaultModel: 'deepseek-chat' },
-  Claude:   { kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1/messages',               defaultModel: 'claude-sonnet-4-6' },
+  OpenAI:   { kind: 'openai',    baseUrl: 'https://api.openai.com/v1/chat/completions',              defaultModel: 'gpt-4o-mini' },
+  Groq:     { kind: 'openai',    baseUrl: 'https://api.groq.com/openai/v1/chat/completions',         defaultModel: 'llama-3.3-70b-versatile' },
+  DeepSeek: { kind: 'openai',    baseUrl: 'https://api.deepseek.com/chat/completions',               defaultModel: 'deepseek-chat' },
+  Claude:   { kind: 'anthropic', baseUrl: 'https://api.anthropic.com/v1/messages',                   defaultModel: 'claude-sonnet-4-6' },
   Gemini:   { kind: 'gemini',    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models', defaultModel: 'gemini-2.0-flash' },
 };
 
@@ -649,14 +650,14 @@ app.post('/api/ai/models', authenticate, async (req, res) => {
         .sort();
       return res.json({ models });
     }
-    if (provider === 'OpenAI' || provider === 'DeepSeek') {
-      const baseUrl = provider === 'DeepSeek'
-        ? 'https://api.deepseek.com/models'
+    if (provider === 'OpenAI' || provider === 'DeepSeek' || provider === 'Groq') {
+      const baseUrl = provider === 'DeepSeek' ? 'https://api.deepseek.com/models'
+        : provider === 'Groq' ? 'https://api.groq.com/openai/v1/models'
         : 'https://api.openai.com/v1/models';
       const r = await fetch(baseUrl, { headers: { Authorization: `Bearer ${cleanKey}` } });
       const j = await r.json();
       if (!r.ok) return res.status(502).json({ error: j.error?.message || 'فشل جلب النماذج' });
-      const models = (j.data || []).map(m => m.id).filter(id => /gpt|deepseek/i.test(id)).sort();
+      const models = (j.data || []).map(m => m.id).sort();
       return res.json({ models });
     }
     return res.json({ models: [] });

@@ -13,9 +13,10 @@ function renderMarkdownLite(text: string): string {
 
 // ── Provider cards data ───────────────────────────────────────────
 const PROVIDERS = [
+  { id: 'Groq',     label: 'Groq',      icon: '⚡', color: '#f55036', bg: 'rgba(245,80,54,.1)',   model: 'llama-3.3-70b-versatile' },
   { id: 'OpenAI',   label: 'OpenAI',    icon: '🤖', color: '#10a37f', bg: 'rgba(16,163,127,.1)',  model: 'gpt-4o-mini' },
-  { id: 'Claude',   label: 'Claude',    icon: '✦',  color: '#c25a1b', bg: 'rgba(194,90,27,.1)',   model: 'claude-sonnet-4-6' },
   { id: 'Gemini',   label: 'Gemini',    icon: '◈',  color: '#4285f4', bg: 'rgba(66,133,244,.1)',  model: 'gemini-2.0-flash' },
+  { id: 'Claude',   label: 'Claude',    icon: '✦',  color: '#c25a1b', bg: 'rgba(194,90,27,.1)',   model: 'claude-sonnet-4-6' },
   { id: 'DeepSeek', label: 'DeepSeek',  icon: '⬡',  color: '#6366f1', bg: 'rgba(99,102,241,.1)',  model: 'deepseek-chat' },
 ];
 
