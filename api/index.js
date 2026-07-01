@@ -567,14 +567,16 @@ const _AI_PROVIDERS = {
 
 async function _callProvider({ provider, apiKey, model, temperature, maxTokens, system, history, message }) {
   const cfg = _AI_PROVIDERS[provider] || _AI_PROVIDERS.OpenAI;
-  const useModel = model || cfg.defaultModel;
+  const useModel = (model || cfg.defaultModel).trim();
   const temp = typeof temperature === 'number' ? temperature : 0.7;
   const tokens = maxTokens || 1500;
+  // Strip BOM, zero-width chars, and whitespace from API key
+  const cleanKey = String(apiKey || '').replace(/[﻿​‌‍­‎‏\s]/g, '');
 
   if (cfg.kind === 'openai') {
     const r = await fetch(cfg.baseUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cleanKey}` },
       body: JSON.stringify({
         model: useModel,
         temperature: temp,
@@ -592,7 +594,7 @@ async function _callProvider({ provider, apiKey, model, temperature, maxTokens, 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'x-api-key': cleanKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -609,7 +611,7 @@ async function _callProvider({ provider, apiKey, model, temperature, maxTokens, 
   }
 
   if (cfg.kind === 'gemini') {
-    const r = await fetch(`${cfg.baseUrl}/${useModel}:generateContent?key=${apiKey}`, {
+    const r = await fetch(`${cfg.baseUrl}/${useModel}:generateContent?key=${cleanKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

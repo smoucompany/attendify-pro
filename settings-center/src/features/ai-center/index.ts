@@ -67,7 +67,7 @@ export function render(store: SettingsStore): HTMLElement {
       apiKeyInput.type = showKey ? 'text' : 'password';
       eyeBtn.innerHTML = showKey ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
     });
-    apiKeyInput.addEventListener('input', () => setVal({ apiKey: apiKeyInput.value }));
+    apiKeyInput.addEventListener('input', () => setVal({ apiKey: apiKeyInput.value.trim() }));
 
     const modelInput = h('input', {
       class: 'ai-field-input',
