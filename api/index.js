@@ -631,6 +631,40 @@ async function _callProvider({ provider, apiKey, model, temperature, maxTokens, 
   throw new Error('مزود الذكاء الاصطناعي غير مدعوم');
 }
 
+// List available models for a provider + apiKey
+app.post('/api/ai/models', authenticate, async (req, res) => {
+  try {
+    const ai = await _getAISettings();
+    if (!ai?.apiKey) return res.status(400).json({ error: 'لم يتم إعداد مفتاح API' });
+    const cleanKey = String(ai.apiKey).replace(/[﻿​‌‍­‎‏\s]/g, '');
+    const provider = ai.provider || 'OpenAI';
+
+    if (provider === 'Gemini') {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${cleanKey}`);
+      const j = await r.json();
+      if (!r.ok) return res.status(502).json({ error: j.error?.message || 'فشل جلب النماذج' });
+      const models = (j.models || [])
+        .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m => m.name.replace('models/', ''))
+        .sort();
+      return res.json({ models });
+    }
+    if (provider === 'OpenAI' || provider === 'DeepSeek') {
+      const baseUrl = provider === 'DeepSeek'
+        ? 'https://api.deepseek.com/models'
+        : 'https://api.openai.com/v1/models';
+      const r = await fetch(baseUrl, { headers: { Authorization: `Bearer ${cleanKey}` } });
+      const j = await r.json();
+      if (!r.ok) return res.status(502).json({ error: j.error?.message || 'فشل جلب النماذج' });
+      const models = (j.data || []).map(m => m.id).filter(id => /gpt|deepseek/i.test(id)).sort();
+      return res.json({ models });
+    }
+    return res.json({ models: [] });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 app.post('/api/ai/chat', authenticate, _rateLimitAI, async (req, res) => {
   try {
     const { message, history } = req.body || {};

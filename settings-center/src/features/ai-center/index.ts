@@ -75,7 +75,42 @@ export function render(store: SettingsStore): HTMLElement {
       placeholder: PROVIDERS.find(p => p.id === (v.provider || 'OpenAI'))?.model || 'gpt-4o-mini',
       value: String(v.model || ''),
     }) as HTMLInputElement;
-    modelInput.addEventListener('input', () => setVal({ model: modelInput.value }));
+    modelInput.addEventListener('input', () => setVal({ model: modelInput.value.trim() }));
+
+    // Model picker dropdown
+    const modelPicker = h('div', { class: 'ai-model-picker' });
+    const fetchModelsBtn = h('button', {
+      class: 'btn btn-outline-primary ai-fetch-btn',
+      type: 'button',
+      title: 'جلب النماذج المتاحة',
+    }, [fromHtml('<i class="fas fa-list"></i>'), ' النماذج المتاحة']);
+
+    fetchModelsBtn.addEventListener('click', async () => {
+      fetchModelsBtn.setAttribute('disabled', '');
+      fetchModelsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الجلب...';
+      modelPicker.innerHTML = '';
+      try {
+        const res = await (window as any).DB?.api()._fetch('/api/ai/models', { method: 'POST', body: '{}' });
+        const models: string[] = res?.data?.models || [];
+        if (models.length === 0) {
+          modelPicker.innerHTML = '<div class="ai-model-empty">لا توجد نماذج متاحة</div>';
+        } else {
+          models.forEach(m => {
+            const chip = h('button', { class: 'ai-model-chip', type: 'button' }, [m]);
+            chip.addEventListener('click', () => {
+              modelInput.value = m;
+              setVal({ model: m });
+              modelPicker.innerHTML = '';
+            });
+            modelPicker.append(chip);
+          });
+        }
+      } catch {
+        modelPicker.innerHTML = '<div class="ai-model-empty" style="color:#ef4444">تعذّر الجلب</div>';
+      }
+      fetchModelsBtn.removeAttribute('disabled');
+      fetchModelsBtn.innerHTML = '<i class="fas fa-list"></i> النماذج المتاحة';
+    });
 
     const tempInput = h('input', {
       class: 'ai-field-input',
@@ -153,6 +188,8 @@ export function render(store: SettingsStore): HTMLElement {
       h('div', { class: 'ai-field-group' }, [
         h('label', { class: 'ai-field-label' }, ['النموذج']),
         modelInput,
+        fetchModelsBtn,
+        modelPicker,
       ]),
       h('div', { class: 'ai-field-row-2' }, [
         h('div', { class: 'ai-field-group' }, [
