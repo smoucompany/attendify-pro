@@ -950,7 +950,12 @@ const DashboardModule = {
         </button>
         <button class="el-fab-btn el-fab-ai" onclick="DashboardModule._toggleAI()" title="${isAr?'مساعد AI':'AI Assistant'}">
           <div class="el-fab-ring"></div>
-          <i class="fas fa-sparkles"></i>
+          <div class="el-fab-ring2"></div>
+          <span class="el-fab-ai-icons">
+            <i class="fas fa-comment-dots"></i>
+            <i class="fas fa-sparkles"></i>
+          </span>
+          <span class="el-fab-ai-label">${isAr?'مساعد AI':'AI Assistant'}</span>
         </button>
       </div>
     `;

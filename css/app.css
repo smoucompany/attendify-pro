@@ -4101,21 +4101,68 @@ ul { list-style: none; }
   box-shadow: 0 4px 14px rgba(0,0,0,.1);
   font-size: 15px;
 }
+
+/* ── AI Assistant FAB — larger, layered icon, expands to a labeled pill on hover ── */
 .el-fab-ai {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  width: 56px;
+  height: 56px;
+  font-size: 22px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #d946ef 100%);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(99,102,241,.45);
+  box-shadow: 0 8px 24px rgba(139,92,246,.5), 0 0 0 1px rgba(255,255,255,.08) inset;
+  overflow: visible;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease, width .25s ease, border-radius .25s ease;
 }
+.el-fab-ai:hover {
+  transform: scale(1.08) translateY(-3px);
+  box-shadow: 0 12px 32px rgba(139,92,246,.6), 0 0 0 1px rgba(255,255,255,.12) inset;
+}
+.el-fab-ai .el-fab-ai-icons { position: relative; width: 22px; height: 22px; }
+.el-fab-ai .el-fab-ai-icons .fa-sparkles {
+  position: absolute; top: -9px; inset-inline-end: -11px;
+  font-size: 11px; color: #fde68a;
+  animation: elFabSparkle 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(253,230,138,.8));
+}
+@keyframes elFabSparkle {
+  0%,100% { opacity: .5; transform: scale(.85) rotate(0deg); }
+  50%      { opacity: 1;  transform: scale(1.15) rotate(12deg); }
+}
+.el-fab-ai-label {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0;
+  transition: max-width .25s ease, opacity .2s ease .05s, margin .25s ease;
+}
+.el-fab-ai:hover .el-fab-ai-label {
+  max-width: 110px;
+  opacity: 1;
+  margin-inline-start: 9px;
+}
+.el-fab-ai:hover { border-radius: 28px; padding-inline: 16px; width: auto; }
+
 .el-fab-ring {
   position: absolute;
-  inset: -5px;
+  inset: -6px;
   border-radius: 50%;
-  border: 2px solid rgba(99,102,241,.45);
+  border: 2px solid rgba(139,92,246,.5);
   animation: elFabRing 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.el-fab-ring2 {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(217,70,239,.35);
+  animation: elFabRing 2.5s ease-in-out infinite 1.25s;
+  pointer-events: none;
 }
 @keyframes elFabRing {
   0%,100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(1.2); opacity: 0; }
+  50%      { transform: scale(1.28); opacity: 0; }
 }
 
 /* ── RESPONSIVE ───────────────────────────────────────────────── */
