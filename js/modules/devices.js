@@ -8,9 +8,16 @@
 const DevicesModule = {
 
   _statusMeta(status) {
-    if (status === 'online')  return { label: 'متصل',      color: 'var(--success)', badge: 'badge-success' };
+    if (status === 'online')  return { label: 'متصل',      color: 'var(--success)', badge: 'badge-success badge-live' };
     if (status === 'offline') return { label: 'غير متصل',  color: 'var(--danger)',  badge: 'badge-danger'  };
     return { label: 'غير معروف', color: 'var(--text-muted)', badge: 'badge-secondary' };
+  },
+
+  _pingMeta(ms) {
+    if (ms == null) return { label: '—', color: 'var(--text-muted)' };
+    if (ms < 150)   return { label: `${ms} ms`, color: 'var(--success)' };
+    if (ms < 500)   return { label: `${ms} ms`, color: 'var(--warning, #f59e0b)' };
+    return { label: `${ms} ms`, color: 'var(--danger)' };
   },
 
   render(container) {
@@ -22,7 +29,7 @@ const DevicesModule = {
     container.innerHTML = `
       <div class="page-header">
         <div class="page-header-text">
-          <h1>أجهزة البصمة</h1>
+          <h1><i class="fas fa-fingerprint" style="color:#10b981;margin-left:8px"></i>أجهزة البصمة</h1>
           <p>إدارة ومزامنة أجهزة الحضور والانصراف — ${devices.length} جهاز</p>
         </div>
         <div class="page-header-actions">
@@ -32,21 +39,33 @@ const DevicesModule = {
       </div>
 
       <div class="stat-cards" style="margin-bottom:24px">
-        <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(99,102,241,.15);color:#6366f1"><i class="fas fa-fingerprint"></i></div>
-          <div class="stat-content"><div class="stat-value">${devices.length}</div><div class="stat-label">إجمالي الأجهزة</div></div>
+        <div class="stat-card primary stagger-item">
+          <div class="stat-icon gradient-primary"><i class="fas fa-fingerprint"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">${devices.length}</div>
+            <div class="stat-label">إجمالي الأجهزة</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(16,185,129,.15);color:#10b981"><i class="fas fa-signal"></i></div>
-          <div class="stat-content"><div class="stat-value">${online}</div><div class="stat-label">متصلة الآن</div></div>
+        <div class="stat-card success stagger-item">
+          <div class="stat-icon gradient-success"><i class="fas fa-signal"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">${online}</div>
+            <div class="stat-label">متصلة الآن</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(239,68,68,.15);color:#ef4444"><i class="fas fa-plug-circle-xmark"></i></div>
-          <div class="stat-content"><div class="stat-value">${offline}</div><div class="stat-label">غير متصلة</div></div>
+        <div class="stat-card danger stagger-item">
+          <div class="stat-icon gradient-danger"><i class="fas fa-plug-circle-xmark"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">${offline}</div>
+            <div class="stat-label">غير متصلة</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:rgba(245,158,11,.15);color:#f59e0b"><i class="fas fa-clock-rotate-left"></i></div>
-          <div class="stat-content"><div class="stat-value" style="font-size:15px">${lastSync ? new Date(lastSync).toLocaleString('ar') : '—'}</div><div class="stat-label">آخر مزامنة</div></div>
+        <div class="stat-card warning stagger-item">
+          <div class="stat-icon gradient-warning"><i class="fas fa-clock-rotate-left"></i></div>
+          <div class="stat-info">
+            <div class="stat-value" style="font-size:15px">${lastSync ? new Date(lastSync).toLocaleString('ar') : '—'}</div>
+            <div class="stat-label">آخر مزامنة</div>
+          </div>
         </div>
       </div>
 
@@ -65,35 +84,36 @@ const DevicesModule = {
 
   _card(d) {
     const meta = this._statusMeta(d.status);
+    const ping = this._pingMeta(d.responseTimeMs);
     return `
-      <div class="card stagger-item">
+      <div class="card stagger-item" style="border-top:3px solid ${meta.color}">
         <div class="card-body">
           <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
-            <div style="width:48px;height:48px;border-radius:14px;background:#6366f118;color:#6366f1;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+            <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#10b981dd,#10b98199);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 6px 16px rgba(16,185,129,.35)">
               <i class="fas fa-fingerprint"></i>
             </div>
             <div style="flex:1;min-width:0">
-              <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:3px">${d.name}</div>
+              <div style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
               <div style="font-size:12px;color:var(--text-muted)" dir="ltr">${d.ipAddress || '—'}:${d.port || 4370}</div>
             </div>
-            <span class="badge ${meta.badge} badge-dot">${meta.label}</span>
+            <span class="badge ${meta.badge} badge-dot" style="flex-shrink:0">${meta.label}</span>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:var(--text-muted);margin-bottom:14px">
-            <div><i class="fas fa-location-dot"></i> ${d.location || '—'}</div>
-            <div><i class="fas fa-building"></i> ${d.branch || '—'}</div>
-            <div><i class="fas fa-clock"></i> ${d.lastSeen ? new Date(d.lastSeen).toLocaleString('ar') : 'لم يتصل بعد'}</div>
-            <div><i class="fas fa-gauge-high"></i> ${d.responseTimeMs != null ? d.responseTimeMs + ' ms' : '—'}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--text-muted);margin-bottom:14px;padding:10px 12px;background:var(--bg-input);border-radius:10px">
+            <div style="display:flex;align-items:center;gap:6px"><i class="fas fa-location-dot" style="width:14px;color:var(--text-muted)"></i> ${d.location || '—'}</div>
+            <div style="display:flex;align-items:center;gap:6px"><i class="fas fa-building" style="width:14px;color:var(--text-muted)"></i> ${d.branch || '—'}</div>
+            <div style="display:flex;align-items:center;gap:6px"><i class="fas fa-clock" style="width:14px;color:var(--text-muted)"></i> ${d.lastSeen ? new Date(d.lastSeen).toLocaleString('ar') : 'لم يتصل بعد'}</div>
+            <div style="display:flex;align-items:center;gap:6px"><i class="fas fa-gauge-high" style="width:14px;color:${ping.color}"></i> <span style="color:${ping.color};font-weight:700">${ping.label}</span></div>
           </div>
 
-          ${d.lastError ? `<div style="font-size:11px;color:var(--danger);background:var(--danger-bg,rgba(239,68,68,.08));padding:6px 10px;border-radius:8px;margin-bottom:12px"><i class="fas fa-triangle-exclamation"></i> ${d.lastError}</div>` : ''}
+          ${d.lastError ? `<div style="font-size:11px;color:var(--danger);background:rgba(239,68,68,.08);padding:8px 10px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:6px"><i class="fas fa-triangle-exclamation"></i> ${d.lastError}</div>` : ''}
 
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="DevicesModule.sendCommand('${d.id}','sync')"><i class="fas fa-rotate"></i> مزامنة الآن</button>
             <button class="btn btn-secondary btn-sm" onclick="DevicesModule.sendCommand('${d.id}','test')"><i class="fas fa-plug"></i> اختبار</button>
             <button class="btn btn-secondary btn-sm" onclick="DevicesModule.sendCommand('${d.id}','restart')"><i class="fas fa-power-off"></i> إعادة تشغيل</button>
-            <button class="btn-icon btn" onclick="DevicesModule.editDevice('${d.id}')"><i class="fas fa-pencil"></i></button>
-            <button class="btn-icon btn" style="color:var(--danger)" onclick="DevicesModule.deleteDevice('${d.id}')"><i class="fas fa-trash"></i></button>
+            <button class="btn-icon btn" onclick="DevicesModule.editDevice('${d.id}')" title="تعديل"><i class="fas fa-pencil"></i></button>
+            <button class="btn-icon btn" style="color:var(--danger)" onclick="DevicesModule.deleteDevice('${d.id}')" title="حذف"><i class="fas fa-trash"></i></button>
           </div>
         </div>
       </div>
