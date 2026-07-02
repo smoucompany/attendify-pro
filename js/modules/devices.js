@@ -1,11 +1,14 @@
 /* =========================================================
    DEVICES MODULE — إدارة أجهزة البصمة (ZKTeco/Suprema)
-   يعرض حالة الأجهزة (متصل/غير متصل/آخر مزامنة) ويرسل أوامر
+   بحث/تصفية · عرض شبكة/جدول · تفاصيل الجهاز وسجله · أوامر حية
    (Sync Now / Test Connection / Restart) عبر device_events —
    تُنفَّذ فعلياً بواسطة خدمة المزامنة المحلية (sync-service/).
    ========================================================= */
 
 const DevicesModule = {
+  _view: 'grid',
+  _search: '',
+  _statusFilter: 'all',
 
   _statusMeta(status) {
     if (status === 'online')  return { label: 'متصل',      color: 'var(--success)', badge: 'badge-success badge-live' };
@@ -69,17 +72,94 @@ const DevicesModule = {
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
-        ${devices.length ? devices.map(d => this._card(d)).join('') : `
-          <div class="empty-state" style="grid-column:1/-1">
-            <div class="empty-icon"><i class="fas fa-fingerprint"></i></div>
-            <div class="empty-title">لا توجد أجهزة مضافة</div>
-            <p class="empty-desc">أضف جهاز البصمة الأول لبدء المزامنة</p>
-            <button class="btn btn-primary" onclick="DevicesModule.openAdd()"><i class="fas fa-plus"></i> إضافة جهاز</button>
-          </div>
-        `}
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-search">
+          <i class="fas fa-magnifying-glass"></i>
+          <input type="text" placeholder="بحث بالاسم أو IP..." id="dev-search" value="${this._search}"
+            oninput="DevicesModule._search=this.value; DevicesModule._renderList()">
+        </div>
+        <select class="toolbar-select" onchange="DevicesModule._statusFilter=this.value; DevicesModule._renderList()">
+          <option value="all"     ${this._statusFilter==='all'?'selected':''}>كل الحالات</option>
+          <option value="online"  ${this._statusFilter==='online'?'selected':''}>متصل</option>
+          <option value="offline" ${this._statusFilter==='offline'?'selected':''}>غير متصل</option>
+          <option value="unknown" ${this._statusFilter==='unknown'?'selected':''}>غير معروف</option>
+        </select>
+        <div class="toolbar-separator"></div>
+        <button class="btn btn-secondary btn-sm ${this._view==='grid'?'btn-outline-primary':''}"  onclick="DevicesModule._view='grid';  DevicesModule._renderList()" title="عرض شبكي"><i class="fas fa-grip"></i></button>
+        <button class="btn btn-secondary btn-sm ${this._view==='table'?'btn-outline-primary':''}" onclick="DevicesModule._view='table'; DevicesModule._renderList()" title="عرض جدولي"><i class="fas fa-table"></i></button>
       </div>
+
+      <div id="devices-list"></div>
     `;
+
+    this._renderList();
+  },
+
+  _filtered() {
+    const q = (this._search || '').trim().toLowerCase();
+    return DB.devices.filter(d => {
+      const matchSearch = !q || (d.name||'').toLowerCase().includes(q) || (d.ipAddress||'').includes(q);
+      const matchStatus = this._statusFilter === 'all' || (d.status || 'unknown') === this._statusFilter;
+      return matchSearch && matchStatus;
+    });
+  },
+
+  _renderList() {
+    const list = document.getElementById('devices-list');
+    if (!list) return;
+    const devices = this._filtered();
+
+    if (!DB.devices.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fas fa-fingerprint"></i></div>
+          <div class="empty-title">لا توجد أجهزة مضافة</div>
+          <p class="empty-desc">أضف جهاز البصمة الأول لبدء المزامنة</p>
+          <button class="btn btn-primary" onclick="DevicesModule.openAdd()"><i class="fas fa-plus"></i> إضافة جهاز</button>
+        </div>
+      `;
+      return;
+    }
+
+    if (!devices.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon"><i class="fas fa-magnifying-glass"></i></div>
+          <div class="empty-title">لا نتائج مطابقة</div>
+          <p class="empty-desc">جرّب تعديل كلمة البحث أو التصفية</p>
+        </div>
+      `;
+      return;
+    }
+
+    if (this._view === 'grid') {
+      list.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+          ${devices.map(d => this._card(d)).join('')}
+        </div>
+      `;
+    } else {
+      list.innerHTML = `
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>الجهاز</th>
+                <th>الحالة</th>
+                <th>الموقع / الفرع</th>
+                <th>آخر ظهور</th>
+                <th>Ping</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${devices.map(d => this._row(d)).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
   },
 
   _card(d) {
@@ -88,7 +168,7 @@ const DevicesModule = {
     return `
       <div class="card stagger-item" style="border-top:3px solid ${meta.color}">
         <div class="card-body">
-          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;cursor:pointer" onclick="DevicesModule.viewDevice('${d.id}')">
             <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#10b981dd,#10b98199);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 6px 16px rgba(16,185,129,.35)">
               <i class="fas fa-fingerprint"></i>
             </div>
@@ -118,6 +198,109 @@ const DevicesModule = {
         </div>
       </div>
     `;
+  },
+
+  _row(d) {
+    const meta = this._statusMeta(d.status);
+    const ping = this._pingMeta(d.responseTimeMs);
+    return `
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="DevicesModule.viewDevice('${d.id}')">
+            <div style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#10b981dd,#10b98199);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">
+              <i class="fas fa-fingerprint"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;color:var(--text-primary);font-size:13px">${d.name}</div>
+              <div style="font-size:11px;color:var(--text-muted)" dir="ltr">${d.ipAddress || '—'}:${d.port || 4370}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="badge ${meta.badge} badge-dot">${meta.label}</span></td>
+        <td style="font-size:12px;color:var(--text-secondary)">${d.location || '—'} ${d.branch ? '· ' + d.branch : ''}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${d.lastSeen ? new Date(d.lastSeen).toLocaleString('ar') : 'لم يتصل بعد'}</td>
+        <td><span style="color:${ping.color};font-weight:700;font-size:12px">${ping.label}</span></td>
+        <td>
+          <div style="display:flex;gap:4px">
+            <button class="btn-icon btn" onclick="DevicesModule.sendCommand('${d.id}','sync')" title="مزامنة الآن"><i class="fas fa-rotate"></i></button>
+            <button class="btn-icon btn" onclick="DevicesModule.sendCommand('${d.id}','test')" title="اختبار الاتصال"><i class="fas fa-plug"></i></button>
+            <button class="btn-icon btn" onclick="DevicesModule.editDevice('${d.id}')" title="تعديل"><i class="fas fa-pencil"></i></button>
+            <button class="btn-icon btn" style="color:var(--danger)" onclick="DevicesModule.deleteDevice('${d.id}')" title="حذف"><i class="fas fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  },
+
+  // ── تفاصيل الجهاز + سجله الخاص ──────────────────────────────
+  async viewDevice(id) {
+    const d = DB.devices.find(x => x.id === id);
+    if (!d) return;
+    const meta = this._statusMeta(d.status);
+    const ping = this._pingMeta(d.responseTimeMs);
+
+    App.openModal(d.name, `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:16px;background:${meta.color}11;border:1px solid ${meta.color}33;border-radius:12px">
+        <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#10b981dd,#10b98199);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+          <i class="fas fa-fingerprint"></i>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800;color:var(--text-primary)">${d.name}</div>
+          <div style="color:var(--text-muted);font-size:12px;margin-top:2px" dir="ltr">${d.ipAddress || '—'}:${d.port || 4370}</div>
+        </div>
+        <span class="badge ${meta.badge} badge-dot">${meta.label}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+        <div style="padding:10px 12px;background:var(--bg-input);border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">الموقع</div>
+          <div style="font-size:13px;font-weight:600">${d.location || '—'}</div>
+        </div>
+        <div style="padding:10px 12px;background:var(--bg-input);border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">الفرع</div>
+          <div style="font-size:13px;font-weight:600">${d.branch || '—'}</div>
+        </div>
+        <div style="padding:10px 12px;background:var(--bg-input);border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">زمن الاستجابة</div>
+          <div style="font-size:13px;font-weight:700;color:${ping.color}">${ping.label}</div>
+        </div>
+        <div style="padding:10px 12px;background:var(--bg-input);border-radius:10px">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">الرقم التسلسلي</div>
+          <div style="font-size:13px;font-weight:600" dir="ltr">${d.serialNumber || '—'}</div>
+        </div>
+      </div>
+
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted);margin-bottom:10px">آخر الأحداث</div>
+      <div id="dev-detail-history" style="min-height:80px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>
+
+      <div class="modal-footer" style="padding:0;margin-top:20px">
+        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">إغلاق</button>
+        <button type="button" class="btn btn-primary" onclick="DevicesModule.sendCommand('${d.id}','sync')"><i class="fas fa-rotate"></i> مزامنة الآن</button>
+      </div>
+    `);
+
+    const [hist, errs] = await Promise.all([
+      SupabaseDB._fetch('/api/data/device_sync_history'),
+      SupabaseDB._fetch('/api/data/sync_errors'),
+    ]);
+    const rows = [
+      ...(hist.data?.rows || []).map(r => r.data).filter(x => x.deviceId === id).map(x => ({ ...x, kind: 'sync', time: x.finishedAt })),
+      ...(errs.data?.rows || []).map(r => r.data).filter(x => x.deviceId === id).map(x => ({ ...x, kind: 'error', time: x.capturedAt })),
+    ].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0)).slice(0, 15);
+
+    const box = document.getElementById('dev-detail-history');
+    if (!box) return;
+    box.innerHTML = rows.length ? `
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:220px;overflow-y:auto;width:100%">
+        ${rows.map(r => `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--bg-input)">
+            <i class="fas ${r.kind==='error'?'fa-triangle-exclamation':'fa-rotate'}" style="color:${r.kind==='error'?'var(--danger)':'var(--success)'};width:16px"></i>
+            <div style="flex:1;font-size:12px">${r.message || (r.recordsImported != null ? `استورد ${r.recordsImported} سجل حضور` : '—')}</div>
+            <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">${r.time ? new Date(r.time).toLocaleString('ar') : '—'}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : `<div style="text-align:center;color:var(--text-muted);padding:10px;width:100%">لا توجد أحداث بعد</div>`;
   },
 
   // ── أوامر (Sync Now / Test Connection / Restart) ──────────

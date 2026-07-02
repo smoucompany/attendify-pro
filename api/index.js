@@ -632,10 +632,26 @@ app.post('/api/devices/:id/attendance-bulk', authenticateSyncService, async (req
   if (empErr) return res.status(500).json({ error: empErr.message });
 
   const byDeviceUserId = new Map();
+  const empById = new Map();
   (employees || []).forEach(e => {
+    empById.set(e.id, e.data);
     const duid = e.data?.deviceUserId;
     if (duid != null) byDeviceUserId.set(String(duid), e.id);
   });
+
+  // لحساب التأخير: نفس منطق الواجهة (js/modules/attendance.js) —
+  // وقت بداية وردية الموظف + مهلة السماح (lateThreshold) بالدقائق
+  const { data: shiftRows } = await supabaseAdmin.from('shifts').select('id,data');
+  const shiftById = new Map((shiftRows || []).map(s => [s.id, s.data]));
+  const lateThreshold = companyRow?.data?.lateThreshold || 15;
+  const toMins = (hm) => { const [h, m] = (hm || '00:00').split(':').map(Number); return h * 60 + m; };
+  const computeStatus = (empId, checkInHM) => {
+    const emp = empById.get(empId);
+    const shift = emp?.shift ? shiftById.get(emp.shift) : null;
+    const shiftStart = shift?.start || companyRow?.data?.workStart || '08:00';
+    const isLate = toMins(checkInHM) > toMins(shiftStart) + lateThreshold;
+    return { status: isLate ? 'late' : 'present', lateMin: isLate ? toMins(checkInHM) - toMins(shiftStart) : 0 };
+  };
 
   // نجمّع السجلات حسب (empId, date محلي) لتحديد أول/آخر بصمة في هذه الدفعة
   const byDay = new Map(); // key: `${empId}|${date}` -> {min, max}
@@ -669,6 +685,7 @@ app.post('/api/devices/:id/attendance-bulk', authenticateSyncService, async (req
     // نأخذ أبكر دخول وأحدث خروج بين ما هو محفوظ سابقاً وما وصل في هذه الدفعة
     const finalIn  = existing?.checkIn  && existing.checkIn  < newIn  ? existing.checkIn  : newIn;
     const finalOut = [existing?.checkOut, newOut].filter(Boolean).sort().pop() || null;
+    const { status, lateMin } = computeStatus(d.empId, finalIn);
 
     return {
       id: recId,
@@ -678,7 +695,7 @@ app.post('/api/devices/:id/attendance-bulk', authenticateSyncService, async (req
         checkIn:  finalIn,
         checkOut: finalOut,
         method: 'fingerprint',
-        status: existing?.status || 'present',
+        status, lateMin,
       },
     };
   });
