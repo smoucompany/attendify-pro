@@ -377,6 +377,14 @@ const EmployeesModule = {
             <input class="app-form-input" type="text" name="workEntity" value="${emp?.workEntity||''}" placeholder="${t('employees.workEntityPlaceholder')}">
           </div>
         </div>
+        <div class="app-form-group">
+          <label style="display:flex;align-items:center;gap:6px">
+            <i class="fas fa-fingerprint" style="color:#10b981;font-size:12px"></i>
+            رقم الموظف على جهاز البصمة
+            <span style="font-size:11px;color:var(--text-muted);font-weight:400">(deviceUserId — اختياري، لمزامنة الحضور من الجهاز)</span>
+          </label>
+          <input class="app-form-input" dir="ltr" type="text" name="deviceUserId" value="${emp?.deviceUserId||''}" placeholder="مثال: 1، أو الرقم المسجّل به الموظف على الجهاز">
+        </div>
         ${(() => {
           const parseHM  = (str, def) => { const p = (str||def).split(':').map(Number); return (isNaN(p[0]) || p.length < 2) ? def.split(':').map(Number) : p; };
           const workDays = (DB.company.workDays||['sat','sun','mon','tue','wed','thu']).length;
@@ -493,6 +501,7 @@ const EmployeesModule = {
         emp.hireDate = data.hireDate;
         emp.workLocation = data.workLocation || emp.workLocation || '';
         emp.workEntity   = data.workEntity   || emp.workEntity   || '';
+        emp.deviceUserId = data.deviceUserId || '';
         emp.shifts = [...form.querySelectorAll('input[name="shifts"]:checked')].map(c => c.value);
         emp.shift  = emp.shifts[0] || null;  // backward compat for attendance module
         const pr = DB.payroll.find(p => p.empId === id);
@@ -520,6 +529,7 @@ const EmployeesModule = {
         hireDate: data.hireDate || new Date().toISOString().split('T')[0],
         workLocation: data.workLocation || '',
         workEntity:   data.workEntity   || '',
+        deviceUserId: data.deviceUserId || '',
         shifts: [...(e.target).querySelectorAll('input[name="shifts"]:checked')].map(c => c.value),
         shift:  [...(e.target).querySelectorAll('input[name="shifts"]:checked')].map(c => c.value)[0] || null,
         avatar: fullName.charAt(0),
@@ -574,6 +584,7 @@ const EmployeesModule = {
           ['fas fa-building',     t('common.department'),   dept?.name||'—'],
           ['fas fa-location-dot', t('employees.workLocation'), emp.workLocation||'—'],
           ['fas fa-building-user', t('employees.workEntity'), emp.workEntity||'—'],
+          ['fas fa-fingerprint',  'جهاز البصمة',              emp.deviceUserId ? `مرتبط (#${emp.deviceUserId})` : 'غير مرتبط'],
           ['fas fa-envelope',     t('common.email'),        emp.email],
           ['fas fa-phone',        t('common.phone'),        emp.phone],
           ['fas fa-calendar',     t('employees.hireDate'),  App.formatDate(emp.hireDate)],
