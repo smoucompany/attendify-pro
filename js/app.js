@@ -611,6 +611,7 @@ const App = {
           leaves:        () => LeavesModule.render(content),
           requests:      () => RequestsModule.render(content),
           departments:   () => DepartmentsModule.render(content),
+          devices:       () => typeof DevicesModule !== 'undefined' ? DevicesModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-fingerprint"></i></div><div class="empty-title">أجهزة البصمة</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           reports:       () => ReportsModule.render(content),
           notifications: () => NotificationsModule.render(content),
           payroll:       () => PayrollModule.render(content),

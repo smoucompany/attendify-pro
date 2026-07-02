@@ -2209,7 +2209,7 @@ const SettingsModule = {
       {icon:'fab fa-whatsapp',    color:'#25d366', l:'WhatsApp Business',  d:'إرسال إشعارات وتنبيهات عبر WhatsApp',         connected:true,  cfg:'whatsapp'},
       {icon:'fas fa-comment-sms', color:'#3b82f6', l:'Twilio SMS',         d:'بوابة رسائل SMS للتنبيهات',                   connected:false, cfg:'twilio'},
       {icon:'fas fa-envelope',    color:'#6366f1', l:'SMTP Email',         d:'smtp.gmail.com:587 — TLS',                    connected:true,  cfg:'smtp'},
-      {icon:'fas fa-fingerprint', color:'#10b981', l:'جهاز البصمة',        d:'ZKTeco / Suprema Biometric Device',           connected:false, cfg:'bio'},
+      {icon:'fas fa-fingerprint', color:'#10b981', l:'جهاز البصمة',        d:'ZKTeco / Suprema Biometric Device',           connected: typeof DB!=='undefined' && (DB.devices||[]).some(x=>x.status==='online'), cfg:'bio'},
       {icon:'fas fa-face-smile',  color:'#8b5cf6', l:'Face Recognition AI',d:'نموذج التعرف على الوجه المحلي',               connected:true,  cfg:'face'},
       {icon:'fas fa-lock',        color:'#0078d4', l:'Active Directory',   d:'مزامنة المستخدمين مع LDAP/AD',                connected:true,  cfg:'ldap'},
       {icon:'fas fa-calendar',    color:'#0f9d58', l:'Google Calendar',    d:'مزامنة العطل والأحداث مع Google Calendar',    connected:false, cfg:'gcal'},
@@ -2233,6 +2233,11 @@ const SettingsModule = {
                 </span>
               </div>
               <div style="display:flex;gap:8px">
+                ${i.cfg==='bio' ? `
+                <button class="btn btn-primary btn-sm" style="flex:1" onclick="location.hash='#devices'">
+                  <i class="fas fa-fingerprint"></i> إدارة الأجهزة
+                </button>
+                ` : `
                 <button class="btn ${i.connected?'btn-danger':'btn-primary'} btn-sm" style="flex:1"
                   onclick="App.toast('${i.connected?'جارٍ فصل':'جارٍ ربط'} ${i.l}...','info')">
                   <i class="fas ${i.connected?'fa-link-slash':'fa-link'}"></i>
@@ -2241,6 +2246,7 @@ const SettingsModule = {
                 <button class="btn btn-secondary btn-sm" onclick="SettingsModule.configIntegration('${i.cfg}','${i.l}')">
                   <i class="fas fa-gear"></i>
                 </button>
+                `}
               </div>
             </div>
           </div>

@@ -28,6 +28,7 @@ const SupabaseDB = {
     deductions:    'deductions',
     loans:         'loans',
     locations:     'locations',
+    devices:       'devices',
     roles:         'roles',
     audit:         'audit_logs',
   },
@@ -209,7 +210,7 @@ const SupabaseDB = {
       const _snapKey = { departments:'departments', employees:'employees', shifts:'shifts',
         attendance:'attendance', leaves:'leaves', requests:'requests',
         notifications:'notifications', payroll:'payroll', deductions:'deductions',
-        locations:'locations', roles:'roles', audit:'audit_logs' };
+        locations:'locations', devices:'devices', roles:'roles', audit:'audit_logs' };
 
       let _needsUpload = false;
 
@@ -454,7 +455,7 @@ const SupabaseDB = {
       departments: 'departments', employees: 'employees', shifts: 'shifts',
       attendance: 'attendance', leaves: 'leaves', requests: 'requests',
       notifications: 'notifications', payroll: 'payroll', deductions: 'deductions',
-      locations: 'locations', roles: 'roles', audit: 'audit_logs',
+      locations: 'locations', devices: 'devices', roles: 'roles', audit: 'audit_logs',
     };
 
     let uploadedAny = false, failed = false;

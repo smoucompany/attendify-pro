@@ -99,7 +99,18 @@ const ALLOWED = new Set([
   'company','departments','employees','shifts','attendance',
   'leaves','requests','notifications','payroll','deductions','loans',
   'expenses','locations','roles','audit_logs',
+  'devices','device_sync_history','sync_errors','device_events',
 ]);
+
+// ── Sync Service Auth (مفتاح آلة-لآلة منفصل عن جلسة المستخدم) ──
+// خدمة المزامنة المحلية (تعمل داخل شبكة الفرع) تستخدم هذا المفتاح
+// بدل JWT المستخدم، لأنها عملية خلفية وليست جلسة متصفح.
+function authenticateSyncService(req, res, next) {
+  const key = req.headers['x-sync-key'];
+  const expected = cleanEnv('DEVICE_SYNC_API_KEY');
+  if (!expected || key !== expected) return res.status(401).json({ error: 'غير مصرّح' });
+  next();
+}
 
 // ── Health ───────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
@@ -209,7 +220,7 @@ app.get('/api/data/all', authenticate, async (req, res) => {
   const tables = [
     'company','departments','employees','shifts','attendance',
     'leaves','requests','notifications','payroll','deductions','loans',
-    'expenses','locations','roles','audit_logs',
+    'expenses','locations','roles','audit_logs','devices',
   ];
   try {
     const results = await Promise.all(tables.map(async (table) => {
@@ -469,6 +480,212 @@ app.post('/api/emp/request', _rateLimitLogin, async (req, res) => {
   const { error } = await supabaseAdmin.from('requests').upsert({ id, data: newData });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, id, request: newData });
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  Device Integration — ZKTeco/Suprema Sync
+//
+//  المزامنة الفعلية مع الجهاز (TCP/IP:4370) تتم عبر خدمة مستقلة
+//  (sync-service/) تعمل محلياً بنفس شبكة الفرع — Vercel serverless
+//  لا يمكنه الاحتفاظ باتصال TCP دائم. هذا الـ API هو الوسيط:
+//   - اللوحة (Dashboard) ← ترسل أوامر (sync/test/restart) كصفوف في device_events
+//   - خدمة المزامنة ← تستطلع الأوامر المعلّقة وتنفذها، ثم ترفع
+//     سجلات الحضور + heartbeat + أخطاء عبر مسارات محمية بمفتاح
+//     DEVICE_SYNC_API_KEY (وليس JWT المستخدم)
+// ═══════════════════════════════════════════════════════════════
+
+// ── لوحة التحكم: إرسال أمر لجهاز (Sync Now / Test Connection / Restart) ──
+app.post('/api/devices/:id/command', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { command, payload } = req.body || {};
+  if (!['sync','test','restart','enroll-employee','remove-employee'].includes(command)) return res.status(400).json({ error: 'أمر غير صالح' });
+
+  const { data: device } = await supabaseAdmin.from('devices').select('id').eq('id', id).maybeSingle();
+  if (!device) return res.status(404).json({ error: 'الجهاز غير موجود' });
+
+  const evId = `devev-${id}-${Date.now()}`;
+  const evData = {
+    id: evId, deviceId: id, type: 'command', command, payload: payload || null,
+    status: 'pending', requestedAt: new Date().toISOString(),
+  };
+  const { error } = await supabaseAdmin.from('device_events').upsert({ id: evId, data: evData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, id: evId, event: evData });
+});
+
+// ── خدمة المزامنة: جلب الأوامر المعلّقة لجهاز معيّن ──
+app.get('/api/devices/:id/commands/pending', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { data, error } = await supabaseAdmin
+    .from('device_events').select('id,data')
+    .order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  const commands = (data || [])
+    .map(r => r.data)
+    .filter(d => d?.deviceId === id && d?.type === 'command' && d?.status === 'pending');
+  res.json({ ok: true, commands });
+});
+
+// ── خدمة المزامنة: تحديث نتيجة تنفيذ أمر ──
+app.post('/api/devices/:id/command-result', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { commandId, status, message } = req.body || {};
+  if (!commandId || !['done','failed'].includes(status)) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const { data: ev } = await supabaseAdmin.from('device_events').select('id,data').eq('id', commandId).maybeSingle();
+  if (!ev || ev.data?.deviceId !== id) return res.status(404).json({ error: 'الأمر غير موجود' });
+
+  const newData = { ...ev.data, status, message: message || null, completedAt: new Date().toISOString() };
+  const { error } = await supabaseAdmin.from('device_events').upsert({ id: commandId, data: newData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── خدمة المزامنة: نبضة حياة (Heartbeat) — تحدّث حالة الجهاز ──
+app.post('/api/devices/:id/heartbeat', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { status, responseTimeMs, lastSyncCursor } = req.body || {};
+  if (!['online','offline'].includes(status)) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const { data: device } = await supabaseAdmin.from('devices').select('id,data').eq('id', id).maybeSingle();
+  if (!device) return res.status(404).json({ error: 'الجهاز غير موجود' });
+
+  const newData = {
+    ...device.data,
+    status,
+    lastSeen: new Date().toISOString(),
+    responseTimeMs: responseTimeMs ?? device.data?.responseTimeMs ?? null,
+    lastSyncCursor: lastSyncCursor ?? device.data?.lastSyncCursor ?? null,
+  };
+  const { error } = await supabaseAdmin.from('devices').upsert({ id, data: newData });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+// ── خدمة المزامنة: تسجيل خطأ اتصال/مزامنة ──
+app.post('/api/devices/:id/sync-error', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { message, stack, context } = req.body || {};
+  if (!message) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const errId = `serr-${id}-${Date.now()}`;
+  const errData = { id: errId, deviceId: id, message, stack: stack || null, context: context || null, severity: 'error', capturedAt: new Date().toISOString() };
+  const { error } = await supabaseAdmin.from('sync_errors').upsert({ id: errId, data: errData });
+  if (error) return res.status(500).json({ error: error.message });
+
+  // تحديث آخر خطأ على الجهاز نفسه لعرضه سريعاً في اللوحة
+  const { data: device } = await supabaseAdmin.from('devices').select('id,data').eq('id', id).maybeSingle();
+  if (device) {
+    await supabaseAdmin.from('devices').upsert({
+      id, data: { ...device.data, lastError: message, status: 'offline' },
+    });
+  }
+  res.json({ ok: true, id: errId });
+});
+
+// ── خدمة المزامنة: رفع سجل مزامنة (بداية/نهاية دورة) ──
+app.post('/api/devices/:id/sync-history', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { recordsFetched, recordsImported, status, responseTimeMs, triggeredBy } = req.body || {};
+  if (!['success','partial','failed'].includes(status)) return res.status(400).json({ error: 'بيانات ناقصة' });
+
+  const hId = `dsh-${id}-${Date.now()}`;
+  const hData = {
+    id: hId, deviceId: id,
+    recordsFetched: recordsFetched || 0, recordsImported: recordsImported || 0,
+    status, responseTimeMs: responseTimeMs ?? null,
+    triggeredBy: triggeredBy || 'schedule', finishedAt: new Date().toISOString(),
+  };
+  const { error } = await supabaseAdmin.from('device_sync_history').upsert({ id: hId, data: hData });
+  if (error) return res.status(500).json({ error: error.message });
+
+  const { data: device } = await supabaseAdmin.from('devices').select('id,data').eq('id', id).maybeSingle();
+  if (device) {
+    await supabaseAdmin.from('devices').upsert({
+      id, data: { ...device.data, lastSyncAt: hData.finishedAt, status: status === 'failed' ? 'offline' : 'online' },
+    });
+  }
+  res.json({ ok: true, id: hId });
+});
+
+// ── خدمة المزامنة: استيراد دفعة من سجلات الحضور (بصمات الجهاز) ──
+// كل سجل: { deviceUserId, timestamp } — نطابق deviceUserId مع
+// employees.data.deviceUserId، ونحدّث دخول/خروج اليوم (أول بصمة =
+// دخول، آخر بصمة = خروج) — نفس نموذج attendance الحالي في المشروع.
+app.post('/api/devices/:id/attendance-bulk', authenticateSyncService, async (req, res) => {
+  const { id } = req.params;
+  const { logs } = req.body || {};
+  if (!Array.isArray(logs) || !logs.length) return res.status(400).json({ error: 'لا توجد سجلات' });
+
+  // Vercel يشغّل العملية بتوقيت UTC — لازم نحوّل كل بصمة لتوقيت الشركة
+  // المحلي قبل استخراج التاريخ/الوقت، وإلا تنزاح البصمات القريبة من
+  // منتصف الليل ليوم خاطئ (وكل الأوقات تنزاح بفارق UTC).
+  const { data: companyRow } = await supabaseAdmin.from('company').select('data').eq('id', 'main').maybeSingle();
+  const timeZone = companyRow?.data?.timezone || 'Asia/Riyadh';
+  const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeFmt = new Intl.DateTimeFormat('en-GB',  { timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
+  const localDate = (ts) => dateFmt.format(ts);           // YYYY-MM-DD بتوقيت الشركة
+  const localTime = (ts) => timeFmt.format(ts);            // HH:MM بتوقيت الشركة
+
+  const { data: employees, error: empErr } = await supabaseAdmin
+    .from('employees').select('id,data');
+  if (empErr) return res.status(500).json({ error: empErr.message });
+
+  const byDeviceUserId = new Map();
+  (employees || []).forEach(e => {
+    const duid = e.data?.deviceUserId;
+    if (duid != null) byDeviceUserId.set(String(duid), e.id);
+  });
+
+  // نجمّع السجلات حسب (empId, date محلي) لتحديد أول/آخر بصمة في هذه الدفعة
+  const byDay = new Map(); // key: `${empId}|${date}` -> {min, max}
+  let matched = 0, unmatched = 0;
+  for (const log of logs) {
+    const empId = byDeviceUserId.get(String(log.deviceUserId));
+    if (!empId) { unmatched++; continue; }
+    const ts = new Date(log.timestamp);
+    if (isNaN(ts.getTime())) continue;
+    const date = localDate(ts);
+    const key  = `${empId}|${date}`;
+    const cur  = byDay.get(key);
+    if (!cur) byDay.set(key, { empId, date, min: ts, max: ts });
+    else { if (ts < cur.min) cur.min = ts; if (ts > cur.max) cur.max = ts; }
+    matched++;
+  }
+
+  if (!byDay.size) return res.json({ ok: true, imported: 0, matched, unmatched });
+
+  const dayKeys = Array.from(byDay.values());
+  const ids = dayKeys.map(d => `att-${d.empId}-${d.date}`);
+  const { data: existingRows } = await supabaseAdmin.from('attendance').select('id,data').in('id', ids);
+  const existingMap = new Map((existingRows || []).map(r => [r.id, r.data]));
+
+  const upserts = dayKeys.map(d => {
+    const recId    = `att-${d.empId}-${d.date}`;
+    const existing = existingMap.get(recId);
+    const newIn  = localTime(d.min);
+    const newOut = d.max.getTime() !== d.min.getTime() ? localTime(d.max) : null;
+
+    // نأخذ أبكر دخول وأحدث خروج بين ما هو محفوظ سابقاً وما وصل في هذه الدفعة
+    const finalIn  = existing?.checkIn  && existing.checkIn  < newIn  ? existing.checkIn  : newIn;
+    const finalOut = [existing?.checkOut, newOut].filter(Boolean).sort().pop() || null;
+
+    return {
+      id: recId,
+      data: {
+        ...(existing || {}),
+        id: recId, empId: d.empId, date: d.date,
+        checkIn:  finalIn,
+        checkOut: finalOut,
+        method: 'fingerprint',
+        status: existing?.status || 'present',
+      },
+    };
+  });
+
+  const { error } = await supabaseAdmin.from('attendance').upsert(upserts);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, imported: upserts.length, matched, unmatched });
 });
 
 // ── AI Assistant — Service Layer ────────────────────────────
