@@ -330,3 +330,97 @@ body::after {
   from { opacity: 0; transform: scale(.9) translateY(-16px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* ══════════════════════════════════════════════════════════
+   DEVICES HUB — master/detail layout لصفحة أجهزة البصمة
+   ══════════════════════════════════════════════════════════ */
+.devices-hub {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .devices-hub { grid-template-columns: 1fr; }
+}
+
+.devices-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 220px);
+  min-height: 420px;
+}
+
+.devices-sidebar-head {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.devices-sidebar-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px;
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+.device-item:hover  { background: var(--bg-input); }
+.device-item.active {
+  background: var(--primary-bg);
+  border-color: var(--primary-light);
+}
+
+.device-item-dot {
+  width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.devices-detail {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  min-height: 420px;
+  overflow: hidden;
+}
+
+.devices-detail-hero {
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+}
+.devices-detail-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  opacity: .92;
+  z-index: 0;
+}
+.devices-detail-hero > * { position: relative; z-index: 1; }
+
+.device-stat-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius-full);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
