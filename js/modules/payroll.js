@@ -375,27 +375,23 @@ const PayrollModule = {
 
       // الراتب اليومي = الراتب الشهري ÷ أيام الشهر الميلادية (30/31/28/29)
       const dailyRate  = (p.base || 0) / daysInMonth;
-      // سعر الساعة = من وردية الموظف، أو من ساعات الشركة كاحتياط
-      const empShift   = DB.shifts?.find(s => s.id === emp.shift);
-      const empShiftMins = empShift
-        ? (() => { const [sh,sm]=(empShift.startTime||'08:00').split(':').map(Number); const [eh,em]=(empShift.endTime||'17:00').split(':').map(Number); return Math.max(1,(eh*60+em)-(sh*60+sm)); })()
-        : workMins;
-      const hourlyRate = dailyRate / (empShiftMins / 60);
 
+      // حساب التأخر يومياً حسب وردية الموظف الفعلية لذلك اليوم بالذات (تدعم تعدد الورديات)
+      // وبعد خصم فترة السماح (lateThresh) من دقائق التأخير
       let lateMins = 0;
+      let lateDeduction = 0;
       empAtt.forEach(a => {
-        const saved = a.lateMin || a.lateMinutes || 0;
-        if (saved > 0) {
-          lateMins += saved;
-        } else if (a.status === 'late' && a.checkIn) {
-          const parts = a.checkIn.split(':');
-          const ch = parseInt(parts[0], 10);
-          const cm = parseInt(parts[1], 10);
-          if (!isNaN(ch) && !isNaN(cm)) {
-            const diff = (ch*60+cm) - (wsh*60+wsm);
-            if (diff > lateThresh) lateMins += diff;
-          }
-        }
+        const dayLateMin = DB.getLateMinutes(p.empId, a.date, a.checkIn);
+        if (dayLateMin <= 0) return;
+        const dayShift = DB.getEmployeeShift(p.empId, a.date);
+        const shiftStart = dayShift?.start || DB.company.workStart || '08:00';
+        const [sh, sm] = shiftStart.split(':').map(Number);
+        const dayShiftMins = dayShift
+          ? (() => { const [eh,em]=(dayShift.end||'17:00').split(':').map(Number); let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=24*60; return Math.max(1,d); })()
+          : workMins;
+        const dayHourlyRate = dailyRate / (dayShiftMins / 60);
+        lateMins += dayLateMin;
+        lateDeduction += (dayLateMin / 60) * dayHourlyRate;
       });
 
       const customDed = typeof DeductionsModule !== 'undefined'
@@ -409,7 +405,7 @@ const PayrollModule = {
       p.attendedDays    = attended;
       p.absentDays      = absentDays;
       p.absentDeduction = Math.round(absentDays * dailyRate);
-      p.lateDeduction   = Math.round((lateMins / 60) * hourlyRate);
+      p.lateDeduction   = Math.round(lateDeduction);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
       p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
@@ -494,27 +490,23 @@ const PayrollModule = {
 
       // الراتب اليومي = الراتب ÷ أيام الشهر الميلادية (30/31/28/29)
       const dailyRate  = (p.base || 0) / daysInMonth;
-      // سعر الساعة = من وردية الموظف، أو من ساعات الشركة كاحتياط
-      const empShift2   = DB.shifts?.find(s => s.id === emp.shift);
-      const empShiftMins2 = empShift2
-        ? (() => { const [sh,sm]=(empShift2.startTime||'08:00').split(':').map(Number); const [eh,em]=(empShift2.endTime||'17:00').split(':').map(Number); return Math.max(1,(eh*60+em)-(sh*60+sm)); })()
-        : workMinutesPerDay;
-      const hourlyRate = dailyRate / (empShiftMins2 / 60);
 
+      // حساب التأخر يومياً حسب وردية الموظف الفعلية لذلك اليوم (تدعم تعدد الورديات)
+      // وبعد خصم فترة السماح من دقائق التأخير
       let totalLateMinutes = 0;
+      let lateDeduction = 0;
       empAtt.forEach(a => {
-        const saved = a.lateMin || a.lateMinutes || 0;
-        if (saved > 0) {
-          totalLateMinutes += saved;
-        } else if ((a.status === 'late') && a.checkIn) {
-          const parts = a.checkIn.split(':');
-          const ch = parseInt(parts[0], 10);
-          const cm = parseInt(parts[1], 10);
-          if (!isNaN(ch) && !isNaN(cm)) {
-            const lateMin = (ch*60+cm) - (wsh*60+wsm);
-            if (lateMin > lateThreshold) totalLateMinutes += lateMin;
-          }
-        }
+        const dayLateMin = DB.getLateMinutes(p.empId, a.date, a.checkIn);
+        if (dayLateMin <= 0) return;
+        const dayShift = DB.getEmployeeShift(p.empId, a.date);
+        const shiftStart = dayShift?.start || DB.company.workStart || '08:00';
+        const [sh, sm] = shiftStart.split(':').map(Number);
+        const dayShiftMins = dayShift
+          ? (() => { const [eh,em]=(dayShift.end||'17:00').split(':').map(Number); let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=24*60; return Math.max(1,d); })()
+          : workMinutesPerDay;
+        const dayHourlyRate = dailyRate / (dayShiftMins / 60);
+        totalLateMinutes += dayLateMin;
+        lateDeduction += (dayLateMin / 60) * dayHourlyRate;
       });
 
       const customDed = typeof DeductionsModule !== 'undefined'
@@ -527,7 +519,7 @@ const PayrollModule = {
       p.attendedDays    = attendedDays;
       p.absentDays      = absentDays;
       p.absentDeduction = Math.round(absentDays * dailyRate);
-      p.lateDeduction   = Math.round((totalLateMinutes / 60) * hourlyRate);
+      p.lateDeduction   = Math.round(lateDeduction);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
       p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));

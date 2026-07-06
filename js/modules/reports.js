@@ -105,6 +105,7 @@ const ReportsModule = {
       { key:'leave',      icon:'fas fa-calendar-minus',  color:'gradient-danger',  desc: t('reports.descLeave') },
       { key:'payroll',    icon:'fas fa-money-bill-wave', color:'gradient-cyan',    desc: t('reports.descPayroll') },
       { key:'summary',    icon:'fas fa-chart-line',      color:'gradient-rose',    desc: t('reports.descSummary') },
+      { key:'employeeReport', icon:'fas fa-id-card',     color:'gradient-cyan',    desc: t('reports.descEmployeeReport') },
     ];
   },
 
@@ -144,13 +145,34 @@ const ReportsModule = {
             <label>${t('common.to')}</label>
             <input class="app-form-input" type="date" id="rpt-to" value="${to}">
           </div>
+          ${type === 'employeeReport' ? `
+          <div class="rpt-filter-group" style="position:relative">
+            <label>${t('reports.employeeFilter')}</label>
+            <button type="button" class="app-form-input" id="rpt-emp-trigger" onclick="ReportsModule._toggleEmpPicker()"
+              style="text-align:${currentLang==='ar'?'right':'left'};cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span id="rpt-emp-summary">${t('reports.allEmployees')}</span>
+              <i class="fas fa-chevron-down" style="font-size:11px;color:var(--text-muted)"></i>
+            </button>
+            <div id="rpt-emp-panel" style="display:none;position:absolute;top:100%;${currentLang==='ar'?'right':'left'}:0;z-index:50;background:var(--card-bg,#fff);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:8px;max-height:260px;overflow-y:auto;min-width:230px;margin-top:4px">
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 8px;cursor:pointer;font-weight:700;border-bottom:1px solid var(--border);margin-bottom:4px">
+                <input type="checkbox" id="rpt-emp-all" checked onchange="ReportsModule._toggleEmpAll(this.checked)">
+                ${t('reports.allEmployees')}
+              </label>
+              ${DB.employees.filter(e=>e.status!=='terminated').map(e=>`
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;font-size:13px">
+                  <input type="checkbox" class="rpt-emp-check" value="${e.id}" onchange="ReportsModule._empCheckChanged()">
+                  ${e.name}
+                </label>
+              `).join('')}
+            </div>
+          </div>` : `
           <div class="rpt-filter-group">
             <label>${t('reports.department')}</label>
             <select class="app-form-input" id="rpt-dept">
               <option value="all">${t('reports.allDepartments')}</option>
               ${DB.departments.map(d=>`<option value="${d.id}">${d.name}</option>`).join('')}
             </select>
-          </div>
+          </div>`}
           <div class="rpt-filter-actions">
             <button class="btn btn-primary" onclick="ReportsModule._buildReport('${type}')">
               <i class="fas fa-magnifying-glass"></i> ${t('reports.generate')}
@@ -181,16 +203,69 @@ const ReportsModule = {
       const from = document.getElementById('rpt-from')?.value;
       const to   = document.getElementById('rpt-to')?.value;
       const dept = document.getElementById('rpt-dept')?.value;
+      const emp  = this._getSelectedEmpIds();
       const handlers = {
-        attendance: () => this._attendanceReport(content, from, to, dept),
-        late:       () => this._lateReport(content, from, to, dept),
-        overtime:   () => this._overtimeReport(content, from, to, dept),
-        leave:      () => this._leaveReport(content, dept),
-        payroll:    () => this._payrollReport(content, dept),
-        summary:    () => this._summaryReport(content),
+        attendance:     () => this._attendanceReport(content, from, to, dept),
+        late:           () => this._lateReport(content, from, to, dept),
+        overtime:       () => this._overtimeReport(content, from, to, dept),
+        leave:          () => this._leaveReport(content, dept),
+        payroll:        () => this._payrollReport(content, dept),
+        summary:        () => this._summaryReport(content),
+        employeeReport: () => this._employeeReport(content, from, to, emp),
       };
       if (handlers[type]) handlers[type]();
     }, 80);
+  },
+
+  // ── EMPLOYEE MULTI-SELECT PICKER (لتقرير الموظف) ──────────
+
+  _getSelectedEmpIds() {
+    const allCb = document.getElementById('rpt-emp-all');
+    if (!allCb || allCb.checked) return 'all';
+    const ids = [...document.querySelectorAll('.rpt-emp-check:checked')].map(c => c.value);
+    return ids.length ? ids : 'all';
+  },
+
+  _toggleEmpPicker() {
+    const panel = document.getElementById('rpt-emp-panel');
+    if (!panel) return;
+    const willShow = panel.style.display === 'none';
+    panel.style.display = willShow ? 'block' : 'none';
+    if (willShow) {
+      const close = (e) => {
+        if (!panel.contains(e.target) && !e.target.closest('#rpt-emp-trigger')) {
+          panel.style.display = 'none';
+          document.removeEventListener('click', close);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', close), 0);
+    }
+  },
+
+  _toggleEmpAll(checked) {
+    if (checked) document.querySelectorAll('.rpt-emp-check').forEach(cb => cb.checked = false);
+    this._updateEmpSummary();
+  },
+
+  _empCheckChanged() {
+    // إذا اختار المستخدم موظفاً بعينه، أزل تحديد "الكل" تلقائياً.
+    // وإذا ألغى آخر تحديد فردي، ارجع تلقائياً لحالة "الكل".
+    const any   = document.querySelectorAll('.rpt-emp-check:checked').length > 0;
+    const allCb = document.getElementById('rpt-emp-all');
+    if (allCb) allCb.checked = !any;
+    this._updateEmpSummary();
+  },
+
+  _updateEmpSummary() {
+    const summary = document.getElementById('rpt-emp-summary');
+    if (!summary) return;
+    const allCb = document.getElementById('rpt-emp-all');
+    if (!allCb || allCb.checked) { summary.textContent = t('reports.allEmployees'); return; }
+    const checked = [...document.querySelectorAll('.rpt-emp-check:checked')];
+    if (!checked.length) { summary.textContent = currentLang==='ar'?'اختر موظفاً واحداً على الأقل':'Select at least one employee'; return; }
+    summary.textContent = checked.length === 1
+      ? (DB.getEmployee(checked[0].value)?.name || checked[0].value)
+      : `${checked.length} ${currentLang==='ar'?'موظفين محددين':'employees selected'}`;
   },
 
   // ── HELPERS ──────────────────────────────────────────────
@@ -210,9 +285,11 @@ const ReportsModule = {
   },
 
   // يُعيد سجلات الحضور الكاملة مع سجلات الغياب التلقائية
-  _buildFullRecords(from, to, dept) {
+  _buildFullRecords(from, to, dept, empId) {
     let emps = DB.employees.filter(e => e.status === 'active');
     if (dept && dept !== 'all') emps = emps.filter(e => e.dept === dept);
+    if (Array.isArray(empId)) { if (empId.length) emps = emps.filter(e => empId.includes(e.id)); }
+    else if (empId && empId !== 'all') emps = emps.filter(e => e.id === empId);
 
     const attMap = {};
     DB.attendance.filter(a => a.date >= from && a.date <= to).forEach(a => {
@@ -233,7 +310,11 @@ const ReportsModule = {
       emps.forEach(emp => {
         const rec = attMap[dateStr]?.[emp.id];
         if (rec) {
-          records.push({ ...rec });
+          // إعادة احتساب الحالة ديناميكياً حسب وردية الموظف الحالية (تدعم تعديل الورديات لاحقاً)
+          const status = (rec.checkIn && (rec.status === 'late' || rec.status === 'present'))
+            ? DB.computeAttendanceStatus(emp.id, dateStr, rec.checkIn)
+            : rec.status;
+          records.push({ ...rec, status });
         } else if (leaveDates[emp.id]?.has(dateStr)) {
           records.push({ empId: emp.id, date: dateStr, status: 'leave', checkIn: null, checkOut: null, method: 'auto', _virtual: true });
         } else {
@@ -287,19 +368,12 @@ const ReportsModule = {
 
   _lateReport(container, from, to, dept) {
     const ar = currentLang === 'ar';
-    let lates = DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
+    let lates = DB.attendance.filter(a => a.date >= from && a.date <= to && a.checkIn && DB.computeAttendanceStatus(a.empId, a.date, a.checkIn) === 'late');
     if (dept !== 'all') lates = lates.filter(a => DB.getEmployee(a.empId)?.dept === dept);
     this._cache = { type:'late', from, to, dept, records: lates };
 
-    // حساب دقائق التأخر لكل سجل بناءً على وردية الموظف الفعلية
-    const _lateMin = (a) => {
-      const emp = DB.getEmployee(a.empId);
-      const empShift = emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
-      const shiftStart = empShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
-      const [sh, sm] = shiftStart.split(':').map(Number);
-      const [ch, cm] = (a.checkIn || shiftStart).split(':').map(Number);
-      return Math.max(0, (ch*60+cm) - (sh*60+sm));
-    };
+    // حساب دقائق التأخر لكل سجل بناءً على وردية الموظف الفعلية، بعد خصم فترة السماح
+    const _lateMin = (a) => DB.getLateMinutes(a.empId, a.date, a.checkIn);
     const _dailyRate = (empId) => {
       const base = DB.payroll.find(p => p.empId === empId)?.base || DB.getEmployee(empId)?.salary || 0;
       return base / 30 / 8;
@@ -371,6 +445,92 @@ const ReportsModule = {
             `<span style="color:var(--danger);font-weight:700">${ded>0?App.formatCurrency(ded):'—'}</span>`,
           ];
         })
+      )}
+    `;
+  },
+
+  // تقرير حضور/تأخير/غياب مستقل لكل موظف (للطباعة كصفحة منفصلة لكل موظف)
+  _employeeReport(container, from, to, empId) {
+    const records = this._buildFullRecords(from, to, 'all', empId);
+    this._cache = { type:'employeeReport', from, to, empId, records };
+
+    const _lateMin = (a) => DB.getLateMinutes(a.empId, a.date, a.checkIn);
+
+    // تجميع لكل موظف
+    const empMap = {};
+    records.forEach(a => {
+      if (!empMap[a.empId]) empMap[a.empId] = { present:0, late:0, absent:0, leave:0, noFp:0, lateMin:0 };
+      const e = empMap[a.empId];
+      if (a.status === 'present') e.present++;
+      else if (a.status === 'late') { e.late++; e.lateMin += _lateMin(a); }
+      else if (a.status === 'absent') e.absent++;
+      else if (a.status === 'leave') e.leave++;
+      else if (a.status === 'no_fingerprint') e.noFp++;
+    });
+
+    const present = records.filter(a => a.status === 'present').length;
+    const late    = records.filter(a => a.status === 'late').length;
+    const absent  = records.filter(a => a.status === 'absent').length;
+    const total   = records.length;
+    const pct     = total > 0 ? Math.round(((present+late)/total)*100) : 0;
+
+    container.innerHTML = `
+      ${this._miniStats([
+        {v:Object.keys(empMap).length, l:t('reports.totalEmployees'),  c:'#6366f1', i:'fas fa-users'},
+        {v:present,                    l:t('reports.present'),        c:'#10b981', i:'fas fa-user-check'},
+        {v:late,                       l:t('reports.late'),           c:'#f59e0b', i:'fas fa-clock'},
+        {v:absent,                     l:t('reports.absent'),         c:'#ef4444', i:'fas fa-user-xmark'},
+        {v:pct+'%',                    l:t('reports.attendanceRate'), c:'#8b5cf6', i:'fas fa-percent'},
+      ])}
+      <div class="card" style="margin-top:8px">
+        <div class="card-header"><h3 style="font-size:13px;font-weight:700">${t('reports.lateSummaryByEmployee')}</h3></div>
+        <div class="table-wrapper" style="border:none">
+          <table class="data-table">
+            <thead><tr>
+              <th>${t('reports.employee')}</th>
+              <th>${t('reports.present')}</th>
+              <th>${t('reports.late')}</th>
+              <th>${t('reports.absent')}</th>
+              <th>${t('reports.onLeave')}</th>
+              <th>${t('attendance.noFingerprint')}</th>
+              <th>${t('reports.lateMin')}</th>
+              <th>${t('reports.attendanceRate')}</th>
+            </tr></thead>
+            <tbody>
+              ${Object.entries(empMap).map(([eid, d]) => {
+                const emp   = DB.getEmployee(eid);
+                const eTotal = d.present + d.late + d.absent + d.leave;
+                const eRate  = eTotal > 0 ? Math.round(((d.present+d.late)/eTotal)*100) : 0;
+                return `<tr>
+                  <td><div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600">${emp?.name||'—'}</span></div></td>
+                  <td><span style="color:var(--success);font-weight:700">${d.present}</span></td>
+                  <td><span style="color:var(--warning);font-weight:700">${d.late}</span></td>
+                  <td><span style="color:var(--danger);font-weight:700">${d.absent}</span></td>
+                  <td><span style="color:var(--info,#06b6d4);font-weight:700">${d.leave}</span></td>
+                  <td><span style="color:var(--text-muted)">${d.noFp}</span></td>
+                  <td><span style="color:var(--warning)">${d.lateMin} ${currentLang==='ar'?'د':'m'}</span></td>
+                  <td><span style="font-weight:700;color:${eRate>=80?'var(--success)':eRate>=60?'var(--warning)':'var(--danger)'}">${eRate}%</span></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      ${this._tableCard(
+        [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.checkOut'), t('reports.hours'), t('reports.status')],
+        records.slice(0,150).map(a => {
+          const emp  = DB.getEmployee(a.empId);
+          const hrs  = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
+          return [
+            `<div style="display:flex;align-items:center;gap:8px">${App.renderAvatar(emp, 28, 8)}<span style="font-weight:600;font-size:13px">${emp?.name||'—'}</span></div>`,
+            `<span style="font-family:var(--font-en);color:var(--text-muted);font-size:12px">${a.date}</span>`,
+            a.checkIn ? `<span style="color:var(--success);font-weight:700;font-family:var(--font-en)">${a.checkIn}</span>` : '<span style="color:var(--text-muted)">—</span>',
+            a.checkOut ? `<span style="color:var(--danger);font-family:var(--font-en)">${a.checkOut}</span>` : '<span style="color:var(--text-muted)">—</span>',
+            `<span style="font-family:var(--font-en)">${hrs}</span>`,
+            App.getStatusBadge(a.status||'present'),
+          ];
+        }),
+        records.length > 150 ? `<div class="rpt-more-note"><i class="fas fa-info-circle"></i> ${t('reports.showingFirst100').replace('{n}', records.length)}</div>` : ''
       )}
     `;
   },
@@ -464,10 +624,7 @@ const ReportsModule = {
       const attRecs = DB.attendance.filter(a => a.empId === emp.id && a.date >= from && a.date <= to);
 
       // عدد أيام الغياب الفعلي
-      const empShift   = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
-      const shiftStart = empShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
       const lateThresh = DB.company.lateThreshold || 15;
-      const [sh, sm]   = shiftStart.split(':').map(Number);
 
       // أيام الإجازة الموافق عليها
       const leaveDays = new Set();
@@ -487,16 +644,19 @@ const ReportsModule = {
         if (!rec) {
           absentDays++;
         } else {
-          // حساب التأخر
+          const dayShift   = DB.getEmployeeShift(emp.id, dateStr);
+          const shiftStart = dayShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
+          const [sh, sm]   = shiftStart.split(':').map(Number);
+          // حساب التأخر (بعد خصم فترة السماح)
           if (rec.checkIn) {
             const [ch, cm] = rec.checkIn.split(':').map(Number);
             const diff = (ch*60+cm) - (sh*60+sm);
-            if (diff > lateThresh) lateMins += diff;
+            if (diff > lateThresh) lateMins += (diff - lateThresh);
           }
           // حساب الأوفرتايم
           if (rec.workedMins) {
-            const shiftHours = empShift ? (() => {
-              const [eh, em] = (empShift.end||'17:00').split(':').map(Number);
+            const shiftHours = dayShift ? (() => {
+              const [eh, em] = (dayShift.end||'17:00').split(':').map(Number);
               let d = (eh*60+em) - (sh*60+sm); if (d < 0) d += 24*60; return d;
             })() : 8*60;
             const ot = rec.workedMins - shiftHours;
@@ -596,8 +756,7 @@ const ReportsModule = {
     const totalOTMins = DB.attendance
       .filter(a => a.date >= from && a.date <= to && a.workedMins > 0)
       .reduce((s, a) => {
-        const emp      = DB.getEmployee(a.empId);
-        const shift    = emp?.shift ? DB.shifts.find(sh => sh.id === emp.shift) : null;
+        const shift    = DB.getEmployeeShift(a.empId, a.date);
         const shiftH   = shift ? (() => { const [sh,sm]=(shift.start||'08:00').split(':').map(Number); const [eh,em]=(shift.end||'17:00').split(':').map(Number); let d=(eh*60+em)-(sh*60+sm); if(d<0)d+=24*60; return d; })() : 8*60;
         return s + Math.max(0, a.workedMins - shiftH);
       }, 0);
@@ -708,10 +867,13 @@ const ReportsModule = {
 
     if (type === 'attendance') {
       const rows = DB.attendance.filter(a=>(!from||a.date>=from)&&(!to||a.date<=to));
+      data = rows.map(a=>{ const e=DB.getEmployee(a.empId); const status = a.checkIn ? (DB.computeAttendanceStatus(a.empId,a.date,a.checkIn)||a.status) : a.status; return { [ar?'الموظف':'Employee']:e?.name||'—', [ar?'التاريخ':'Date']:a.date, [ar?'دخول':'Check-in']:a.checkIn||'—', [ar?'خروج':'Check-out']:a.checkOut||'—', [ar?'الطريقة':'Method']:a.method||'manual', [ar?'الحالة':'Status']:status }; });
+    } else if (type === 'employeeReport') {
+      const rows = this._buildFullRecords(from, to, 'all', this._getSelectedEmpIds());
       data = rows.map(a=>{ const e=DB.getEmployee(a.empId); return { [ar?'الموظف':'Employee']:e?.name||'—', [ar?'التاريخ':'Date']:a.date, [ar?'دخول':'Check-in']:a.checkIn||'—', [ar?'خروج':'Check-out']:a.checkOut||'—', [ar?'الطريقة':'Method']:a.method||'manual', [ar?'الحالة':'Status']:a.status }; });
     } else if (type === 'late') {
-      const rows = DB.attendance.filter(a=>a.status==='late'&&(!from||a.date>=from)&&(!to||a.date<=to));
-      data = rows.map(a=>{ const e=DB.getEmployee(a.empId); const [h,m]=(a.checkIn||'08:00').split(':').map(Number); const min=Math.max(0,(h*60+m)-8*60); return { [ar?'الموظف':'Employee']:e?.name||'—', [ar?'التاريخ':'Date']:a.date, [ar?'وقت الدخول':'Check-in']:a.checkIn, [ar?'التأخر (دقيقة)':'Late (min)']:min }; });
+      const rows = DB.attendance.filter(a=>a.checkIn&&(!from||a.date>=from)&&(!to||a.date<=to)&&DB.computeAttendanceStatus(a.empId,a.date,a.checkIn)==='late');
+      data = rows.map(a=>{ const e=DB.getEmployee(a.empId); const min=DB.getLateMinutes(a.empId,a.date,a.checkIn); return { [ar?'الموظف':'Employee']:e?.name||'—', [ar?'التاريخ':'Date']:a.date, [ar?'وقت الدخول':'Check-in']:a.checkIn, [ar?'التأخر (دقيقة)':'Late (min)']:min }; });
     } else if (type === 'payroll') {
       data = DB.payroll.map(p=>{ const e=DB.getEmployee(p.empId); return { [ar?'الموظف':'Employee']:e?.name||'—', [ar?'الأساسي':'Base']:p.base, [ar?'الإسكان':'Housing']:p.housing, [ar?'المواصلات':'Transport']:p.transport, [ar?'الطعام':'Food']:p.food, [ar?'خصم غياب':'Absence Ded']:p.absentDeduction, [ar?'خصم تأخر':'Late Ded']:p.lateDeduction, [ar?'الصافي':'Net']:p.total }; });
     } else if (type === 'leave') {
@@ -823,7 +985,8 @@ const ReportsModule = {
     const ar = currentLang === 'ar';
     let data = [];
     if (type==='attendance') data = DB.attendance.filter(a=>(!from||a.date>=from)&&(!to||a.date<=to));
-    else if (type==='late')  data = DB.attendance.filter(a=>a.status==='late'&&(!from||a.date>=from)&&(!to||a.date<=to));
+    else if (type==='employeeReport') data = this._buildFullRecords(from, to, 'all', this._getSelectedEmpIds());
+    else if (type==='late')  data = DB.attendance.filter(a=>a.checkIn&&(!from||a.date>=from)&&(!to||a.date<=to)&&DB.computeAttendanceStatus(a.empId,a.date,a.checkIn)==='late');
     else if (type==='leave') data = DB.leaves;
     else if (type==='payroll') data = DB.payroll;
     else if (type==='overtime') data = DB.attendance.filter(a=>a.overtime);
@@ -852,7 +1015,7 @@ const ReportsModule = {
     const rangeStr  = `${from} — ${to}`;
 
     // ── بناء بيانات الجدول من نفس المصدر المعروض على الشاشة ──
-    let headers = [], rows = [], footerRow = null, rowMeta = [];
+    let headers = [], rows = [], footerRow = null, rowMeta = [], groupPageBreak = false, customKpis = null;
     // rowMeta: [{deptId, deptName, deptColor}] — موازٍ لـ rows لتجميع الجدول حسب القسم
 
     const _deptMeta = (empId) => {
@@ -876,15 +1039,11 @@ const ReportsModule = {
 
     } else if (type === 'late') {
       const lates = (this._cache.type === 'late' && this._cache.records) ? this._cache.records
-        : DB.attendance.filter(a => a.status === 'late' && a.date >= from && a.date <= to);
+        : DB.attendance.filter(a => a.date >= from && a.date <= to && a.checkIn && DB.computeAttendanceStatus(a.empId, a.date, a.checkIn) === 'late');
       headers = [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.lateMin')];
       rows = lates.map(a => {
         const e   = DB.getEmployee(a.empId);
-        const sh  = e?.shift ? DB.shifts.find(s => s.id === e.shift) : null;
-        const ws  = sh?.start || DB.company.workPeriods?.[0]?.start || '08:00';
-        const [sh2,sm2] = ws.split(':').map(Number);
-        const [ch,cm]   = (a.checkIn||ws).split(':').map(Number);
-        const min = Math.max(0, (ch*60+cm)-(sh2*60+sm2));
+        const min = DB.getLateMinutes(a.empId, a.date, a.checkIn);
         return [e?.name||'—', a.date, a.checkIn||'—', min+' '+(currentLang==='ar'?'د':'m')];
       });
       rowMeta = lates.map(a => _deptMeta(a.empId));
@@ -937,6 +1096,48 @@ const ReportsModule = {
       rows = ots.map(a => { const e=DB.getEmployee(a.empId); return [e?.name||'—', a.date, `${Math.floor((parseInt(a.overtime)||0)/60)}:${String((parseInt(a.overtime)||0)%60).padStart(2,'0')}`]; });
       rowMeta = ots.map(a => _deptMeta(a.empId));
 
+    } else if (type === 'employeeReport') {
+      // تجميع حسب الموظف (كل موظف على صفحة مستقلة عند الطباعة)
+      // يُعاد بناء السجلات دائماً من التحديد الحالي في القائمة المنسدلة، بدلاً من الاعتماد
+      // على ذاكرة تخزين قديمة قد لا تطابق آخر تحديد للموظفين قبل الطباعة مباشرة
+      const empId = this._getSelectedEmpIds();
+      const recs = this._buildFullRecords(from, to, 'all', empId);
+      headers = [t('reports.employee'), t('reports.date'), t('reports.checkIn'), t('reports.checkOut'), t('reports.hours'), t('reports.lateMin'), t('reports.status')];
+      rows = recs.map(a => {
+        const e   = DB.getEmployee(a.empId);
+        const hrs = a.workedMins > 0 ? `${Math.floor(a.workedMins/60)}:${String(a.workedMins%60).padStart(2,'0')}` : '—';
+        let lateStr = '—';
+        if (a.status === 'late' && a.checkIn) {
+          lateStr = `+${DB.getLateMinutes(a.empId, a.date, a.checkIn)} ${currentLang==='ar'?'د':'m'}`;
+        }
+        return [e?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', hrs, lateStr, a.status];
+      });
+      rowMeta = recs.map(a => {
+        const e = DB.getEmployee(a.empId);
+        return { deptId: a.empId, deptName: e?.name || '—', deptColor: DB.getDepartment(e?.dept)?.hex || '#6366f1' };
+      });
+      groupPageBreak = true;
+
+      // ── KPIs محسوبة من سجلات التقرير نفسه (وليس إحصائيات اليوم العامة) ──
+      const presentDays = recs.filter(a => a.status === 'present').length;
+      const lateDays    = recs.filter(a => a.status === 'late').length;
+      const absentDays  = recs.filter(a => a.status === 'absent').length;
+      const noFpDays    = recs.filter(a => a.status === 'no_fingerprint').length;
+      const totalLateMin = recs.reduce((sum, a) => {
+        if (a.status !== 'late' || !a.checkIn) return sum;
+        return sum + DB.getLateMinutes(a.empId, a.date, a.checkIn);
+      }, 0);
+      const totalDays = recs.length;
+      const attRate = totalDays > 0 ? Math.round(((presentDays+lateDays) / totalDays) * 100) : 0;
+
+      customKpis = [
+        { v: presentDays,          l: currentLang==='ar'?'أيام الحضور':'Present days' },
+        { v: absentDays,           l: currentLang==='ar'?'أيام الغياب':'Absent days' },
+        { v: noFpDays,             l: t('attendance.noFingerprint') },
+        { v: `${totalLateMin} ${currentLang==='ar'?'د':'m'}`, l: currentLang==='ar'?'إجمالي وقت التأخير':'Total late time' },
+        { v: `${attRate}%`,        l: t('reports.attendanceRate') },
+      ];
+
     } else {
       const s = DB.getAttendanceStats();
       headers = [t('reports.kpiLabel'), t('reports.kpiValue')];
@@ -977,6 +1178,23 @@ const ReportsModule = {
     const savedSigs = DB.company.signatures || [];
     const sigBoxes  = savedSigs.length ? savedSigs
       : [{ name: adminName, role: t('reports.preparedBy'), title: adminEmail, signature: null }];
+    const sigZoneHtml = (embedded) => `
+      <div class="sig-zone" style="${embedded ? 'padding-inline:4mm' : ''}">
+        <div class="sig-hdr-row">
+          <span class="sig-hdr-text">${t('reports.officialSignatures')}</span>
+        </div>
+        <div class="sig-grid" style="grid-template-columns:repeat(${Math.min(sigBoxes.length,4)},1fr)">
+          ${sigBoxes.map(s=>`
+          <div class="sig-col">
+            <div class="sig-role-badge">${_esc(s.role||'')}</div>
+            <div class="sig-name">${_esc(s.name||'───────────')}</div>
+            ${s.title ? `<div class="sig-title">${_esc(s.title)}</div>` : ''}
+            <div class="sig-img-wrap">${s.signature ? `<img src="${s.signature}" style="max-height:34px;max-width:100px;object-fit:contain" alt="">` : ''}</div>
+            <div class="sig-line"></div>
+            <div class="sig-stamp">${t('reports.stamp')}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
     const logoSm = company.logo
       ? `<img src="${company.logo}" class="ph-logo-img" alt="">`
       : `<div class="ph-logo-ph">${(company.name||'A').charAt(0)}</div>`;
@@ -985,7 +1203,7 @@ const ReportsModule = {
     const qrUrl  = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${qrData}&color=1a2e4a&bgcolor=ffffff`;
 
     const html = `<!DOCTYPE html>
-<html lang="${ar?'ar':'en'}" dir="${ar?'rtl':'ltr'}" data-tpl="pro" data-orient="portrait">
+<html lang="${ar?'ar':'en'}" dir="${ar?'rtl':'ltr'}" data-tpl="pro" data-orient="portrait" ${groupPageBreak ? 'data-pagebreak="1"' : ''}>
 <head>
 <meta charset="UTF-8">
 <title>${t('reports.'+type)} — ${_esc(company.name||'')}</title>
@@ -1001,15 +1219,15 @@ const ReportsModule = {
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
 body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direction:${ar?'rtl':'ltr'};background:#E2E8F0;color:#0F172A;line-height:1.5}
 
-/* ── CSS Variables per template ── */
-/* تنفيذي — Executive */
-[data-tpl="pro"]  { --P:#1B2B4B;--PA:#3B82F6;--PL:#EFF6FF;--TX:#0F172A;--TM:#475569;--BD:#CBD5E1;--BG:#F8FAFC;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
-/* شركات — Corporate */
-[data-tpl="slate"]{ --P:#1e1b4b;--PA:#7c3aed;--PL:#f5f3ff;--TX:#0F172A;--TM:#64748B;--BD:#ddd6fe;--BG:#fafaf9;--BW:#FFFFFF;--OK:#059669;--WR:#D97706;--ER:#DC2626;--IN:#7c3aed; }
-/* حكومي — Government */
-[data-tpl="sage"] { --P:#1a3a2a;--PA:#b45309;--PL:#fffbeb;--TX:#0c1a0f;--TM:#3F6954;--BD:#d4b483;--BG:#fefcf3;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
+/* ── CSS Variables per template (فاخر ومؤسسي معاصر — light, refined) ── */
+/* تنفيذي — Executive (أزرق) */
+[data-tpl="pro"]  { --P:#1B2B4B;--PA:#2563EB;--PL:#EFF6FF;--PL2:#DBEAFE;--TX:#111827;--TM:#6B7280;--BD:#E5E7EB;--BG:#F9FAFB;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
+/* شركات — Corporate (بنفسجي) */
+[data-tpl="slate"]{ --P:#312E81;--PA:#7C3AED;--PL:#F5F3FF;--PL2:#EDE9FE;--TX:#111827;--TM:#6B7280;--BD:#E9E4FB;--BG:#FAFAFB;--BW:#FFFFFF;--OK:#059669;--WR:#D97706;--ER:#DC2626;--IN:#7c3aed; }
+/* حكومي — Government (أخضر وذهبي) */
+[data-tpl="sage"] { --P:#14532D;--PA:#B45309;--PL:#FFFBEB;--PL2:#FEF3C7;--TX:#111827;--TM:#6B7280;--BD:#E7E1CE;--BG:#FEFCF6;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
 /* ── Document shell ── */
-.doc { width: 210mm; margin: 28px auto 56px; background: #fff; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+.doc { width: 210mm; margin: 28px auto 56px; background: #fff; box-shadow: 0 12px 48px rgba(15,23,42,0.12); }
 .doc > thead, .doc > tfoot, .doc > tbody { display: table-row-group; }
 .doc > thead > tr > td, .doc > tfoot > tr > td, .doc > tbody > tr > td { padding: 0; vertical-align: top; }
 
@@ -1049,100 +1267,79 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .tb-btn-print:hover { background: #2563EB; }
 .tb-ref { font-size: 8px; color: #475569; background: #1E293B; border-radius: 4px; padding: 4px 9px; letter-spacing: 0.5px; font-variant-numeric: tabular-nums; }
 
-/* ── HEADER ── */
-.doc-hdr { border-bottom: 3px solid var(--P); }
-.hdr-accent { height: 5px; background: linear-gradient(90deg, var(--P) 0%, var(--PA) 50%, var(--P) 100%); }
+/* ── HEADER (فاتح ومصقول) ── */
+.doc-hdr { background: var(--BW); border-bottom: 1px solid var(--BD); }
+.hdr-accent { height: 4px; background: linear-gradient(90deg, var(--P) 0%, var(--PA) 100%); }
 .hdr-main {
-  background: var(--P);
-  padding: 16px 14mm;
+  background: var(--BW);
+  padding: 20px 14mm 18px;
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
-  gap: 20px;
+  gap: 22px;
 }
-[data-tpl="pro"]   .hdr-main { background: linear-gradient(135deg, #1B2B4B 0%, #243b6a 100%); }
-[data-tpl="slate"] .hdr-main { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); }
-[data-tpl="sage"]  .hdr-main { background: linear-gradient(135deg, #1a3a2a 0%, #14532d 60%, #1a3a2a 100%); }
-[data-tpl="sage"]  .hdr-rpt-title { color: #fcd34d; }
-[data-tpl="sage"]  .hdr-accent { background: linear-gradient(90deg, #1a3a2a, #b45309, #1a3a2a); }
 
 /* company block */
-.hdr-co { display: flex; align-items: center; gap: 12px; }
-.hdr-logo-img { width: 52px; height: 52px; border-radius: 10px; object-fit: contain; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); padding: 4px; }
-.hdr-logo-ph  { width: 52px; height: 52px; border-radius: 10px; background: rgba(255,255,255,0.12); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 900; color: rgba(255,255,255,0.9); border: 1.5px solid rgba(255,255,255,0.2); }
-.hdr-co-name  { font-size: 16px; font-weight: 900; color: #FFFFFF; line-height: 1.1; letter-spacing: -0.2px; }
-.hdr-co-sub   { font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 3px; }
-.hdr-co-info  { font-size: 8.5px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+.hdr-co { display: flex; align-items: center; gap: 13px; }
+.hdr-logo-img { width: 50px; height: 50px; border-radius: 12px; object-fit: contain; background: var(--PL); border: 1px solid var(--BD); padding: 5px; }
+.hdr-logo-ph  { width: 50px; height: 50px; border-radius: 12px; background: linear-gradient(135deg, var(--P), var(--PA)); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; color: #fff; }
+.hdr-co-name  { font-size: 15.5px; font-weight: 800; color: var(--TX); line-height: 1.15; letter-spacing: -0.2px; }
+.hdr-co-sub   { font-size: 8.5px; color: var(--TM); margin-top: 3px; }
+.hdr-co-info  { font-size: 8px; color: var(--TM); margin-top: 3px; opacity: 0.85; }
 
 /* center: report title */
-.hdr-title-block { text-align: center; padding: 0 16px; }
-.hdr-rpt-label { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
-.hdr-rpt-title { font-size: 18px; font-weight: 900; color: #FFFFFF; line-height: 1.1; }
-.hdr-rpt-range { font-size: 9px; color: rgba(255,255,255,0.5); margin-top: 4px; letter-spacing: 0.3px; }
-
-[data-tpl="pro"] .hdr-rpt-title   { color: #FFFFFF; }
-[data-tpl="slate"] .hdr-rpt-title { color: #FFFFFF; }
-[data-tpl="sage"] .hdr-rpt-title  { color: var(--PA); }
+.hdr-title-block { text-align: center; padding: 0 16px; border-inline: 1px solid var(--BD); }
+.hdr-rpt-label { font-size: 8px; font-weight: 800; color: var(--PA); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+.hdr-rpt-title { font-size: 17px; font-weight: 900; color: var(--P); line-height: 1.15; }
+.hdr-rpt-range { font-size: 8.5px; color: var(--TM); margin-top: 5px; letter-spacing: 0.3px; font-weight: 600; }
 
 /* right: QR + meta */
-.hdr-qr-block { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-.hdr-qr { width: 60px; height: 60px; background: #fff; padding: 3px; display: block; border-radius: 6px; }
-.hdr-ref  { font-size: 7.5px; color: rgba(255,255,255,0.35); letter-spacing: 0.5px; margin-top: 2px; text-align: ${currentLang==='ar'?'right':'left'}; }
-.hdr-date { font-size: 8px; color: rgba(255,255,255,0.4); text-align: ${currentLang==='ar'?'right':'left'}; }
+.hdr-qr-block { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.hdr-qr { width: 54px; height: 54px; background: #fff; padding: 3px; display: block; border-radius: 8px; border: 1px solid var(--BD); }
+.hdr-ref  { font-size: 7px; color: var(--TM); letter-spacing: 0.5px; margin-top: 2px; text-align: ${currentLang==='ar'?'right':'left'}; font-variant-numeric: tabular-nums; }
+.hdr-date { font-size: 7.5px; color: var(--TM); text-align: ${currentLang==='ar'?'right':'left'}; opacity: 0.8; }
 
 /* ── META STRIP ── */
 .meta-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-bottom: 2px solid var(--P);
+  border-bottom: 1px solid var(--BD);
   background: var(--BG);
 }
-.ms-cell { padding: 9px 14px; border-inline-end: 1px solid var(--BD); }
+.ms-cell { padding: 10px 14px; border-inline-end: 1px solid var(--BD); }
 .ms-cell:last-child { border-inline-end: none; }
-.ms-cell:first-child { background: var(--P); }
-.ms-cell:first-child .ms-lbl { color: rgba(255,255,255,0.5); }
-.ms-cell:first-child .ms-val { color: #fff; }
-.ms-lbl { font-size: 7.5px; font-weight: 700; color: var(--PA); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+.ms-lbl { font-size: 7.5px; font-weight: 800; color: var(--PA); text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 4px; }
 .ms-val { font-size: 11px; font-weight: 800; color: var(--TX); }
 
 /* ── DOC BODY ── */
 .doc-body { padding: 14px 14mm 6px; }
 
 /* ── KPI STRIP ── */
-.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
 .kpi-card {
   background: var(--BW); border: 1px solid var(--BD);
-  border-radius: 8px; padding: 12px 14px;
-  position: relative; overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-inline-start: 3px solid var(--PA);
+  border-radius: 9px; padding: 13px 15px;
+  position: relative;
 }
-.kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
-[data-tpl="pro"] .kpi-card:nth-child(1)::before { background: #3B82F6; }
-[data-tpl="pro"] .kpi-card:nth-child(2)::before { background: #10B981; }
-[data-tpl="pro"] .kpi-card:nth-child(3)::before { background: #F59E0B; }
-[data-tpl="pro"] .kpi-card:nth-child(4)::before { background: #8B5CF6; }
-[data-tpl="slate"] .kpi-card:nth-child(1)::before { background: #7c3aed; }
-[data-tpl="slate"] .kpi-card:nth-child(2)::before { background: #10B981; }
-[data-tpl="slate"] .kpi-card:nth-child(3)::before { background: #F59E0B; }
-[data-tpl="slate"] .kpi-card:nth-child(4)::before { background: #EC4899; }
-[data-tpl="sage"] .kpi-card:nth-child(1)::before { background: #1a3a2a; }
-[data-tpl="sage"] .kpi-card:nth-child(2)::before { background: #b45309; }
-[data-tpl="sage"] .kpi-card:nth-child(3)::before { background: #0369a1; }
-[data-tpl="sage"] .kpi-card:nth-child(4)::before { background: #7c3aed; }
-.kpi-n { font-size: 26px; font-weight: 900; color: var(--P); letter-spacing: -0.5px; line-height: 1; margin-top: 4px; }
-.kpi-l { font-size: 8.5px; color: var(--TM); margin-top: 5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-card:nth-child(2) { border-inline-start-color: var(--OK); }
+.kpi-card:nth-child(3) { border-inline-start-color: var(--ER); }
+.kpi-card:nth-child(4) { border-inline-start-color: var(--WR); }
+.kpi-card:nth-child(5) { border-inline-start-color: var(--IN); }
+.kpi-n { font-size: 24px; font-weight: 900; color: var(--P); letter-spacing: -0.5px; line-height: 1; }
+.kpi-l { font-size: 8.5px; color: var(--TM); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
 /* ── TABLE ── */
-.tbl-wrap { border: 1px solid var(--BD); border-radius: 8px; overflow: hidden; margin-bottom: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.tbl-wrap { border: 1px solid var(--BD); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
 .dt { width: 100%; border-collapse: collapse; }
 .dt thead th {
   padding: 10px 12px;
   text-align: ${ar?'right':'left'};
-  font-size: 9px; font-weight: 700; color: #fff;
-  background: var(--P); letter-spacing: 0.4px; white-space: nowrap;
+  font-size: 8.5px; font-weight: 800; color: var(--P);
+  background: var(--PL); letter-spacing: 0.5px; white-space: nowrap;
+  border-bottom: 2px solid var(--PA);
+  text-transform: uppercase;
 }
-.dt thead th:first-child { ${ar?'border-radius: 0 8px 0 0':'border-radius: 8px 0 0 0'}; }
-.dt thead th:last-child  { ${ar?'border-radius: 8px 0 0 0':'border-radius: 0 8px 0 0'}; }
 .dt tbody td {
   padding: 8px 12px;
   font-size: 9.5px; color: var(--TX);
@@ -1153,26 +1350,27 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .dt tbody tr:last-child td { border-bottom: none; }
 .dt tfoot td {
   padding: 10px 12px;
-  font-size: 9.5px; font-weight: 800; color: #fff;
-  background: var(--P);
+  font-size: 9.5px; font-weight: 800; color: var(--P);
+  background: var(--PL);
   border-top: 2px solid var(--PA);
 }
 
 /* ── DEPT GROUP HEADERS ── */
 .dept-grp-hdr td {
   padding: 7px 11px !important;
-  background: var(--PL) !important;
-  border-top: 2px solid var(--PA) !important;
+  background: var(--PL2) !important;
+  border-top: 1px solid var(--BD) !important;
   border-bottom: 1px solid var(--BD) !important;
-  font-size: 9px !important; font-weight: 700 !important;
+  font-size: 9px !important; font-weight: 800 !important;
   color: var(--P) !important;
 }
 .dept-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-inline-end: 6px; }
 .dept-count { font-weight: 400; opacity: 0.6; font-size: 8.5px; margin-inline-start: 6px; }
-.dept-grp-subtotal td { background: rgba(0,0,0,0.025) !important; font-weight: 700 !important; font-size: 9px !important; color: var(--P) !important; border-top: 1px dashed var(--BD) !important; }
+.dept-grp-subtotal td { background: var(--BG) !important; font-weight: 700 !important; font-size: 9px !important; color: var(--TM) !important; border-top: 1px dashed var(--BD) !important; }
+[data-pagebreak="1"] .dept-grp-hdr:not(.grp-first) { page-break-before: always; break-before: page; }
 
 /* ── STATUS BADGES ── */
-.bs { display: inline-flex; align-items: center; padding: 2px 7px; font-size: 8.5px; font-weight: 700; border-radius: 3px; white-space: nowrap; }
+.bs { display: inline-flex; align-items: center; padding: 2.5px 8px; font-size: 8.5px; font-weight: 700; border-radius: 20px; white-space: nowrap; }
 .bs::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; margin-inline-end: 5px; display: inline-block; }
 .bs-present,.bs-approved { background: #DCFCE7; color: #15803D; }
 .bs-late,.bs-pending     { background: #FEF3C7; color: #B45309; }
@@ -1180,14 +1378,14 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .bs-leave                { background: #DBEAFE; color: #1D4ED8; }
 
 /* ── SIGNATURE ZONE ── */
-.sig-zone { border-top: 3px solid var(--P); padding: 16px 14mm; background: var(--BG); }
+.sig-zone { border-top: 1px solid var(--BD); padding: 18px 14mm; background: var(--BW); }
 .sig-hdr-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 .sig-hdr-row::before,.sig-hdr-row::after { content:''; flex:1; height:1px; background:var(--BD); }
-.sig-hdr-text { font-size: 8px; font-weight: 800; color: var(--P); text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; background:var(--PL); padding:4px 12px; border-radius:4px; }
+.sig-hdr-text { font-size: 8px; font-weight: 800; color: var(--PA); text-transform: uppercase; letter-spacing: 2px; white-space: nowrap; }
 .sig-grid { display: grid; gap: 0; }
 .sig-col { text-align: center; padding: 8px 14px; border-inline-end: 1px solid var(--BD); }
 .sig-col:last-child { border-inline-end: none; }
-.sig-role-badge { display: inline-block; font-size: 7.5px; font-weight: 700; color: #fff; background: var(--P); padding: 3px 10px; border-radius: 3px; margin-bottom: 8px; letter-spacing: 0.3px; }
+.sig-role-badge { display: inline-block; font-size: 7.5px; font-weight: 800; color: var(--PA); background: var(--PL); padding: 3px 11px; border-radius: 20px; margin-bottom: 9px; letter-spacing: 0.3px; }
 .sig-name  { font-size: 11.5px; font-weight: 800; color: var(--TX); margin-bottom: 2px; }
 .sig-title { font-size: 8px; color: var(--TM); margin-bottom: 12px; }
 .sig-img-wrap { height: 36px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
@@ -1195,19 +1393,20 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .sig-stamp { width: 52px; height: 52px; border: 1.5px dashed var(--PA); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 8px auto 0; font-size: 7px; color: var(--PA); font-weight: 600; }
 
 /* ── FOOTER ── */
-.ftr-accent { height: 4px; background: linear-gradient(90deg, var(--P), var(--PA), var(--P)); }
+.ftr-accent { height: 3px; background: linear-gradient(90deg, var(--P), var(--PA)); }
 .doc-ftr {
-  background: var(--P);
+  background: var(--BG);
+  border-top: 1px solid var(--BD);
   padding: 10px 14mm;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
 }
-.ftr-co   { font-size: 10.5px; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.ftr-info { font-size: 8px; color: rgba(255,255,255,0.4); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
-.ftr-conf { font-size: 7px; color: rgba(255,255,255,0.2); margin-top: 4px; }
+.ftr-co   { font-size: 10px; font-weight: 800; color: var(--P); margin-bottom: 2px; }
+.ftr-info { font-size: 7.5px; color: var(--TM); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.ftr-conf { font-size: 7px; color: var(--TM); opacity: 0.6; margin-top: 4px; }
 .ftr-right { text-align: ${ar?'left':'right'}; flex-shrink: 0; }
-.ftr-page { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.7); }
-.ftr-ref  { font-size: 7.5px; color: rgba(255,255,255,0.25); margin-top: 2px; letter-spacing: 0.4px; }
-.ftr-by   { font-size: 7.5px; color: rgba(255,255,255,0.25); }
+.ftr-page { font-size: 11px; font-weight: 800; color: var(--P); }
+.ftr-ref  { font-size: 7.5px; color: var(--TM); opacity: 0.7; margin-top: 2px; letter-spacing: 0.4px; }
+.ftr-by   { font-size: 7.5px; color: var(--TM); opacity: 0.7; }
 
 /* ── SPACER ── */
 .pg-spacer { height: 0; }
@@ -1260,12 +1459,13 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
     var usable = pageH - hdrH - ftrH;
     if (usable <= 0) return;
     var sgH  = sg.offsetHeight;
+    var GAP  = mmPx(8); // مسافة فاصلة بين قسم الاعتماد وتذييل الصفحة (رقم الصفحة)
     sp.style.height = '0';
     var shell = document.querySelector('.doc');
     var total = shell ? shell.scrollHeight : document.body.scrollHeight;
     var last  = total % usable;
     if (last === 0) last = usable;
-    var need = usable - last - sgH;
+    var need = usable - last - sgH - GAP;
     if (need < 0) need += usable;
     if (need < 0) need = 0;
     sp.style.height = need + 'px';
@@ -1375,14 +1575,17 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 <div class="meta-strip">
   <div class="ms-cell"><div class="ms-lbl">${t('reports.reportType')}</div><div class="ms-val">${t('reports.'+type)}</div></div>
   <div class="ms-cell"><div class="ms-lbl">${t('reports.period')}</div><div class="ms-val" style="font-size:10px">${from} — ${to}</div></div>
-  <div class="ms-cell"><div class="ms-lbl">${t('reports.records')}</div><div class="ms-val">${rows.length} ${rowMeta.length ? `<span style="font-size:8.5px;font-weight:500;opacity:.65">| ${new Set(rowMeta.map(m=>m.deptId)).size} ${t('reports.dept')}</span>` : ''}</div></div>
+  <div class="ms-cell"><div class="ms-lbl">${t('reports.records')}</div><div class="ms-val">${rows.length} ${rowMeta.length ? `<span style="font-size:8.5px;font-weight:500;opacity:.65">| ${new Set(rowMeta.map(m=>m.deptId)).size} ${groupPageBreak ? t('reports.employee') : t('reports.dept')}</span>` : ''}</div></div>
   <div class="ms-cell"><div class="ms-lbl">${t('reports.preparedBy')}</div><div class="ms-val" style="font-size:10px">${_esc(adminName)}</div></div>
 </div>
 
 <div class="doc-body">
 
   <!-- KPI Strip -->
-  ${type !== 'summary' ? `
+  ${customKpis ? `
+  <div class="kpi-strip" style="grid-template-columns:repeat(${customKpis.length},1fr)">
+    ${customKpis.map(k => `<div class="kpi-card"><div class="kpi-n">${k.v}</div><div class="kpi-l">${k.l}</div></div>`).join('')}
+  </div>` : type !== 'summary' ? `
   <div class="kpi-strip">
     <div class="kpi-card"><div class="kpi-n">${activeCount}</div><div class="kpi-l">${t('reports.activeEmployees')}</div></div>
     <div class="kpi-card"><div class="kpi-n">${rows.length}</div><div class="kpi-l">${t('reports.totalRecords')}</div></div>
@@ -1395,11 +1598,11 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
     <table class="dt">
       <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
       <tbody>${(()=>{
-        const _statusAr = { present:'حاضر', late:'متأخر', absent:'غائب', leave:'إجازة', approved:'معتمد', pending:'معلق', rejected:'مرفوض', 'on_leave':'في إجازة', holiday:'إجازة رسمية' };
-        const _statusEn = { present:'Present', late:'Late', absent:'Absent', leave:'On Leave', approved:'Approved', pending:'Pending', rejected:'Rejected', 'on_leave':'On Leave', holiday:'Holiday' };
+        const _statusAr = { present:'حاضر', late:'متأخر', absent:'غائب', leave:'إجازة', approved:'معتمد', pending:'معلق', rejected:'مرفوض', 'on_leave':'في إجازة', holiday:'إجازة رسمية', no_fingerprint:'لا يوجد بصمة' };
+        const _statusEn = { present:'Present', late:'Late', absent:'Absent', leave:'On Leave', approved:'Approved', pending:'Pending', rejected:'Rejected', 'on_leave':'On Leave', holiday:'Holiday', no_fingerprint:'No Fingerprint' };
         const renderCell = cell => {
           const sv = String(cell);
-          const cl = {'present':'bs-present','حاضر':'bs-present','late':'bs-late','متأخر':'bs-late','absent':'bs-absent','غائب':'bs-absent','leave':'bs-leave','إجازة':'bs-leave','approved':'bs-present','معتمد':'bs-present','pending':'bs-late','معلق':'bs-late','rejected':'bs-absent','مرفوض':'bs-absent','on_leave':'bs-leave','holiday':'bs-leave'}[sv];
+          const cl = {'present':'bs-present','حاضر':'bs-present','late':'bs-late','متأخر':'bs-late','absent':'bs-absent','غائب':'bs-absent','leave':'bs-leave','إجازة':'bs-leave','approved':'bs-present','معتمد':'bs-present','pending':'bs-late','معلق':'bs-late','rejected':'bs-absent','مرفوض':'bs-absent','on_leave':'bs-leave','holiday':'bs-leave','no_fingerprint':'bs-leave'}[sv];
           const label = cl ? (ar ? (_statusAr[sv] || sv) : (_statusEn[sv] || sv)) : sv;
           return `<td>${cl ? `<span class="bs ${cl}">${label}</span>` : sv}</td>`;
         };
@@ -1411,14 +1614,24 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
           groups[m.deptId].rows.push(row);
         });
         const colCount = headers.length;
-        return order.map(did=>{
+        return order.map((did,idx)=>{
           const g = groups[did];
-          const deptHdr = `<tr class="dept-grp-hdr"><td colspan="${colCount}" style="text-align:center">
+          const deptHdr = `<tr class="dept-grp-hdr${idx===0?' grp-first':''}"><td colspan="${colCount}" style="text-align:center">
             <span class="dept-dot" style="background:${g.deptColor}"></span>
             <strong>${g.deptName}</strong>
           </td></tr>`;
           const dataRows = g.rows.map(r=>`<tr>${r.map(renderCell).join('')}</tr>`).join('');
-          return deptHdr + dataRows;
+          let subtotalRow = '', sigRow = '';
+          if (groupPageBreak) {
+            const counts = { present:0, late:0, absent:0, leave:0, no_fingerprint:0 };
+            g.rows.forEach(r => { const s = r[r.length-1]; if (counts[s] !== undefined) counts[s]++; });
+            subtotalRow = `<tr class="dept-grp-subtotal"><td colspan="${colCount}">
+              ${t('reports.present')}: ${counts.present} · ${t('reports.late')}: ${counts.late} · ${t('reports.absent')}: ${counts.absent} · ${t('reports.onLeave')}: ${counts.leave} · ${t('attendance.noFingerprint')}: ${counts.no_fingerprint}
+            </td></tr>`;
+            // الاعتماد يظهر في نهاية آخر صفحة لكل موظف (يبقى كوحدة واحدة غير مقسّمة بين صفحتين)
+            sigRow = `<tr class="sig-row"><td colspan="${colCount}" style="padding:0">${sigZoneHtml(true)}</td></tr>`;
+          }
+          return deptHdr + dataRows + subtotalRow + sigRow;
         }).join('');
       })()}</tbody>
       ${footerRow ? `<tfoot><tr>${footerRow.map(c=>`<td><strong>${c}</strong></td>`).join('')}</tr></tfoot>` : ''}
@@ -1427,26 +1640,13 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 
 </div>
 
+${groupPageBreak ? '' : `
 <!-- Spacer -->
 <div class="pg-spacer"></div>
 
 <!-- Signature Zone -->
-<div class="sig-zone">
-  <div class="sig-hdr-row">
-    <span class="sig-hdr-text">${t('reports.officialSignatures')}</span>
-  </div>
-  <div class="sig-grid" style="grid-template-columns:repeat(${Math.min(sigBoxes.length,4)},1fr)">
-    ${sigBoxes.map(s=>`
-    <div class="sig-col">
-      <div class="sig-role-badge">${_esc(s.role||'')}</div>
-      <div class="sig-name">${_esc(s.name||'───────────')}</div>
-      ${s.title ? `<div class="sig-title">${_esc(s.title)}</div>` : ''}
-      <div class="sig-img-wrap">${s.signature ? `<img src="${s.signature}" style="max-height:34px;max-width:100px;object-fit:contain" alt="">` : ''}</div>
-      <div class="sig-line"></div>
-      <div class="sig-stamp">${t('reports.stamp')}</div>
-    </div>`).join('')}
-  </div>
-</div>
+${sigZoneHtml()}
+`}
 
 </td></tr></tbody>
 </table>

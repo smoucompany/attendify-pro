@@ -243,9 +243,8 @@ const WhatsApp = {
 
   async notifyLate(emp, att) {
     if (!this.config.enabled) return;
-    const msg = this.fill(this.templates.late.text, this._data(emp, {
-      minutes: att?.lateMinutes || att?.lateMin || '?',
-    }));
+    const minutes = att?.checkIn ? DB.getLateMinutes(emp.id, att.date, att.checkIn) : (att?.lateMinutes || att?.lateMin || '?');
+    const msg = this.fill(this.templates.late.text, this._data(emp, { minutes }));
     return this.send(emp.phone, msg);
   },
 

@@ -355,7 +355,7 @@ const DashboardModule = {
 
     // Most late employee this month
     const lateCounts = {};
-    DB.attendance.filter(a => a.date >= monthStart && a.status === 'late')
+    DB.attendance.filter(a => a.date >= monthStart && a.checkIn && DB.computeAttendanceStatus(a.empId, a.date, a.checkIn) === 'late')
       .forEach(a => { lateCounts[a.empId] = (lateCounts[a.empId]||0) + 1; });
     const topLate = Object.entries(lateCounts).sort((a,b) => b[1]-a[1])[0];
     if (topLate && topLate[1] >= 4) {
@@ -778,7 +778,7 @@ const DashboardModule = {
 
     // Late today
     if (m.includes('متأخر') || m.includes('late')) {
-      const lates = DB.attendance.filter(a=>a.date===todayStr&&a.status==='late');
+      const lates = DB.getTodayAttendance().filter(a=>a.status==='late');
       const names = lates.map(a=>DB.getEmployee(a.empId)?.name).filter(Boolean).slice(0,5);
       return isAr
         ? `🕐 المتأخرون اليوم (${stats.late}):<br>${names.length ? names.join('<br>') : 'لا أحد'}`

@@ -170,13 +170,66 @@ const DB = {
     return this.departments.find(d => d.id === id);
   },
 
+  // يُعيد وردية الموظف الصحيحة ليوم مُحدَّد (يدعم تعدد الورديات حسب أيام الأسبوع)
+  // emp.shifts = ['shiftId', ...] أو [{shiftId, days:[]}] — كل قالب وردية يحمل قائمة days الخاصة به
+  getEmployeeShift(empId, dateStr) {
+    const emp = typeof empId === 'object' ? empId : this.getEmployee(empId);
+    if (!emp) return null;
+    const ids = Array.isArray(emp.shifts)
+      ? emp.shifts.map(a => (typeof a === 'string' ? a : a?.shiftId)).filter(Boolean)
+      : (emp.shift ? [emp.shift] : []);
+    if (!ids.length) return null;
+
+    const dayKey = dateStr
+      ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
+      : null;
+
+    let matched = null;
+    if (dayKey) {
+      ids.forEach(sid => {
+        const tpl = this.shifts.find(s => s.id === sid);
+        if (!tpl) return;
+        const days = (tpl.days && tpl.days.length) ? tpl.days : ['sat','sun','mon','tue','wed','thu'];
+        if (days.includes(dayKey)) matched = tpl;
+      });
+    }
+    return matched || this.shifts.find(s => s.id === ids[0]) || null;
+  },
+
+  // يُعيد دقائق التأخير الفعلية (بعد خصم فترة السماح) لسجل حضور مُعطى، مقابل وردية
+  // الموظف الصحيحة ليوم السجل. يدعم الورديات الليلية التي يقع فيها الدخول بعد منتصف
+  // الليل (يوم لاحق زمنياً لكن بنفس تاريخ السجل) — دون هذا الدعم يظهر الفارق سالباً
+  // جداً فيُحسب الموظف "حاضر" رغم تأخره الفعلي.
+  getLateMinutes(empId, dateStr, checkIn) {
+    if (!checkIn) return 0;
+    const shift = this.getEmployeeShift(empId, dateStr);
+    const shiftStart = shift?.start || this.company.workStart || '08:00';
+    const [sh, sm] = shiftStart.split(':').map(Number);
+    const [ch, cm] = checkIn.split(':').map(Number);
+    let diff = (ch*60+cm) - (sh*60+sm);
+    if (diff < -12*60) diff += 24*60; // دخول بعد منتصف الليل لوردية ليلية
+    const grace = this.company.lateThreshold || 15;
+    return Math.max(0, diff - grace);
+  },
+
+  // يُعيد حالة الحضور (present/late) بناءً على وردية الموظف الحالية ليوم السجل،
+  // بدلاً من الاعتماد على قيمة status المخزّنة وقت إنشاء السجل (والتي قد تصبح قديمة
+  // إذا تغيّرت وردية الموظف لاحقاً). يُستخدم فقط للسجلات التي فيها checkIn فعلي.
+  computeAttendanceStatus(empId, dateStr, checkIn) {
+    if (!checkIn) return null;
+    return this.getLateMinutes(empId, dateStr, checkIn) > 0 ? 'late' : 'present';
+  },
+
   getEmployeesByDept(deptId) {
     return this.employees.filter(e => e.dept === deptId);
   },
 
   getTodayAttendance() {
     const today = new Date().toISOString().split('T')[0];
-    return this.attendance.filter(a => a.date === today);
+    return this.attendance.filter(a => a.date === today).map(a => {
+      if (!a.checkIn || (a.status !== 'late' && a.status !== 'present')) return a;
+      return { ...a, status: this.computeAttendanceStatus(a.empId, a.date, a.checkIn) };
+    });
   },
 
   getAttendanceStats() {

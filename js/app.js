@@ -647,6 +647,7 @@ const App = {
           orgchart:      () => typeof OrgChartModule  !== 'undefined' ? OrgChartModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-sitemap"></i></div><div class="empty-title">الهيكل التنظيمي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           calendar:      () => typeof CalendarModule  !== 'undefined' ? CalendarModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-calendar-days"></i></div><div class="empty-title">تقويم الفريق</div><p class="empty-desc">الوحدة غير محملة</p></div>',
           expenses:      () => typeof ExpensesModule  !== 'undefined' ? ExpensesModule.render(content)  : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-receipt"></i></div><div class="empty-title">المصروفات</div><p class="empty-desc">الوحدة غير محملة</p></div>',
+          'ai-analytics': () => typeof AIAnalyticsModule !== 'undefined' ? AIAnalyticsModule.render(content) : content.innerHTML = '<div class="empty-state"><div class="empty-icon"><i class="fas fa-brain"></i></div><div class="empty-title">تحليل الحضور الذكي</div><p class="empty-desc">الوحدة غير محملة</p></div>',
         };
 
         if (modules[page]) {
@@ -1101,6 +1102,7 @@ const App = {
       present:  { class: 'badge-success',  label: t('attendance.present') },
       late:     { class: 'badge-warning',  label: t('attendance.late') },
       absent:   { class: 'badge-danger',   label: t('attendance.absent') },
+      no_fingerprint: { class: 'badge-secondary', label: t('attendance.noFingerprint') },
       pending:  { class: 'badge-warning',  label: t('common.pending') },
       approved: { class: 'badge-success',  label: t('common.approved') },
       rejected: { class: 'badge-danger',   label: t('common.rejected') },

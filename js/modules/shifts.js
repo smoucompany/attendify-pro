@@ -68,9 +68,14 @@ const ShiftsModule = {
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
                   ${isOvernight ? `<span style="font-size:10px;background:rgba(255,255,255,0.2);color:white;padding:2px 8px;border-radius:6px;font-weight:700">🌙 ${t('shifts.overnight')}</span>` : ''}
-                  <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')" style="background:rgba(255,255,255,0.15);color:white;border-radius:8px;width:30px;height:30px">
-                    <i class="fas fa-pencil" style="font-size:12px"></i>
-                  </button>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn-icon btn" onclick="ShiftsModule.editShift('${s.id}')" title="${t('common.edit')}" style="background:rgba(255,255,255,0.15);color:white;border-radius:8px;width:30px;height:30px">
+                      <i class="fas fa-pencil" style="font-size:12px"></i>
+                    </button>
+                    <button class="btn-icon btn" onclick="ShiftsModule.deleteShift('${s.id}')" title="${t('common.delete')}" style="background:rgba(255,255,255,0.15);color:white;border-radius:8px;width:30px;height:30px">
+                      <i class="fas fa-trash" style="font-size:12px"></i>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -516,5 +521,25 @@ const ShiftsModule = {
     DB.save();
     App.closeModal();
     this.render(document.getElementById('page-content'));
+  },
+
+  deleteShift(id) {
+    const shift = DB.shifts.find(s => s.id === id);
+    if (!shift) return;
+    App.confirm(
+      currentLang==='ar'
+        ? `هل تريد حذف وردية "${shift.name}"؟ سيتم إلغاء تعيينها من جميع الموظفين المرتبطين بها.`
+        : `Delete shift "${shift.name}"? It will be unassigned from all employees using it.`,
+      () => {
+        DB.employees.forEach(e => {
+          if (Array.isArray(e.shifts)) e.shifts = e.shifts.filter(sid => (typeof sid === 'string' ? sid : sid?.shiftId) !== id);
+          if (e.shift === id) e.shift = e.shifts?.[0] || null;
+        });
+        DB.shifts = DB.shifts.filter(s => s.id !== id);
+        DB.save();
+        App.toast(currentLang==='ar'?'تم حذف الوردية':'Shift deleted', 'success');
+        this.render(document.getElementById('page-content'));
+      }
+    );
   },
 };

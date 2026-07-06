@@ -5,7 +5,8 @@
 
 const AttendanceModule = {
   _view: 'table',
-  _dateFilter: new Date().toISOString().split('T')[0],
+  _dateFrom: new Date().toISOString().split('T')[0],
+  _dateTo: new Date().toISOString().split('T')[0],
   _empFilter: 'all',
   _statusFilter: 'all',
   _checkedIn: false,
@@ -24,6 +25,7 @@ const AttendanceModule = {
         <div class="page-header-actions">
           <button class="btn btn-secondary" onclick="AttendanceModule.exportData()"><i class="fas fa-file-excel"></i> ${t('common.export')}</button>
           <button class="btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white" onclick="AttendanceModule.openFaceCheckin()"><i class="fas fa-face-smile"></i> ${t('attendance.faceCheckin')}</button>
+          <button class="btn btn-secondary" onclick="AttendanceModule.openBulkEntry()"><i class="fas fa-calendar-days"></i> ${currentLang==='ar'?'إدخال حضور لعدة أيام':'Bulk Entry'}</button>
           <button class="btn btn-primary" onclick="AttendanceModule.openManual()"><i class="fas fa-plus"></i> ${t('attendance.addRecord')}</button>
         </div>
       </div>
@@ -97,8 +99,14 @@ const AttendanceModule = {
           <input type="text" placeholder="${t('common.search')}..." id="att-search"
             oninput="AttendanceModule._search=this.value; AttendanceModule._renderTable()">
         </div>
-        <input type="date" class="toolbar-select" value="${this._dateFilter}"
-          onchange="AttendanceModule._dateFilter=this.value; AttendanceModule._renderTable()">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--text-muted)">${t('common.from')}</span>
+          <input type="date" class="toolbar-select" value="${this._dateFrom}"
+            onchange="AttendanceModule._dateFrom=this.value; if(AttendanceModule._dateTo<AttendanceModule._dateFrom) AttendanceModule._dateTo=AttendanceModule._dateFrom; AttendanceModule._renderTable()">
+          <span style="font-size:12px;color:var(--text-muted)">${t('common.to')}</span>
+          <input type="date" class="toolbar-select" value="${this._dateTo}"
+            onchange="AttendanceModule._dateTo=this.value; if(AttendanceModule._dateTo<AttendanceModule._dateFrom) AttendanceModule._dateFrom=AttendanceModule._dateTo; AttendanceModule._renderTable()">
+        </div>
         <select class="toolbar-select" onchange="AttendanceModule._statusFilter=this.value; AttendanceModule._renderTable()">
           <option value="all">${t('common.all')}</option>
           <option value="present">${t('attendance.present')}</option>
@@ -106,8 +114,8 @@ const AttendanceModule = {
           <option value="absent">${t('attendance.absent')}</option>
         </select>
         <select class="toolbar-select" onchange="AttendanceModule._empFilter=this.value; AttendanceModule._renderTable()">
-          <option value="all">${t('common.all')} ${t('nav.employees')}</option>
-          ${DB.employees.slice(0,10).map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+          <option value="all" ${this._empFilter==='all'?'selected':''}>${t('common.all')} ${t('nav.employees')}</option>
+          ${DB.employees.slice(0,10).map(e=>`<option value="${e.id}" ${e.id===this._empFilter?'selected':''}>${e.name}</option>`).join('')}
         </select>
         <div class="toolbar-separator"></div>
         <button class="btn btn-secondary btn-sm" onclick="AttendanceModule.exportData()">
@@ -148,25 +156,37 @@ const AttendanceModule = {
 
     const search = (this._search || '').toLowerCase();
 
-    // Build merged list: all active employees + their attendance record for the selected date
-    const isToday = this._dateFilter === new Date().toISOString().split('T')[0];
-    const dayName = new Date(this._dateFilter + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
     const workDays = DB.company.workDays || ['sat','sun','mon','tue','wed','thu'];
-    const isWorkDay = workDays.includes(dayName);
 
-    // Check if date is an official holiday
-    const isHoliday = (DB.company.holidays || []).some(h => h.date === this._dateFilter);
+    // Build the list of dates in the selected range (inclusive)
+    const dateFromRaw = this._dateFrom || new Date().toISOString().split('T')[0];
+    const dateToRaw   = this._dateTo   || dateFromRaw;
+    const rangeStart = dateFromRaw <= dateToRaw ? dateFromRaw : dateToRaw;
+    const rangeEnd   = dateFromRaw <= dateToRaw ? dateToRaw   : dateFromRaw;
+    const dates = [];
+    for (let d = new Date(rangeStart + 'T12:00:00'); d <= new Date(rangeEnd + 'T12:00:00'); d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().split('T')[0]);
+    }
+    const isRange = dates.length > 1;
 
-    const rows = DB.employees
+    const employees = DB.employees
       .filter(e => e.status !== 'terminated')
       .filter(e => this._empFilter === 'all' || e.id === this._empFilter)
-      .filter(e => !search || e.name.toLowerCase().includes(search) || (e.no||'').includes(search))
-      .map(emp => {
-        const rec  = DB.attendance.find(a => a.date === this._dateFilter && a.empId === emp.id);
+      .filter(e => !search || e.name.toLowerCase().includes(search) || (e.no||'').includes(search));
+
+    // Build merged list: every employee × every date in the range, with the matching attendance record (if any)
+    let rows = [];
+    for (const date of dates) {
+      const dayName   = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+      const isWorkDay = workDays.includes(dayName);
+      const isHoliday = (DB.company.holidays || []).some(h => h.date === date);
+
+      for (const emp of employees) {
+        const rec  = DB.attendance.find(a => a.date === date && a.empId === emp.id);
         const dept = DB.getDepartment(emp.dept);
 
         // Determine effective status
-        let status, checkIn, checkOut, method, overtime, recId;
+        let status, checkIn, checkOut, method, overtime, recId, lateMin;
         if (rec) {
           status   = rec.status;
           checkIn  = rec.checkIn;
@@ -174,6 +194,13 @@ const AttendanceModule = {
           method   = rec.method;
           overtime = rec.overtime;
           recId    = rec.id;
+          // إعادة احتساب الحالة ديناميكياً حسب وردية الموظف الحالية (تدعم تعديل الورديات لاحقاً)
+          if (checkIn && (status === 'late' || status === 'present')) {
+            status = DB.computeAttendanceStatus(emp?.id, date, checkIn);
+          }
+          if (status === 'late' && checkIn) {
+            lateMin = DB.getLateMinutes(emp?.id, date, checkIn);
+          }
         } else if (!isWorkDay || isHoliday) {
           status = 'holiday';
         } else {
@@ -181,9 +208,11 @@ const AttendanceModule = {
           status = 'absent';
         }
 
-        return { emp, dept, rec, status, checkIn, checkOut, method, overtime, recId };
-      })
-      .filter(row => this._statusFilter === 'all' || row.status === this._statusFilter);
+        rows.push({ date, emp, dept, rec, status, checkIn, checkOut, method, overtime, recId, lateMin });
+      }
+    }
+    rows = rows.filter(row => this._statusFilter === 'all' || row.status === this._statusFilter);
+    rows.sort((a, b) => b.date.localeCompare(a.date) || a.emp.name.localeCompare(b.emp.name));
 
     if (!DB.employees.filter(e => e.status !== 'terminated').length) {
       container.innerHTML = `<div class="empty-state"><div class="empty-icon"><i class="fas fa-users"></i></div><div class="empty-title">${t('employees.noEmployees')}</div></div>`;
@@ -198,6 +227,7 @@ const AttendanceModule = {
         not_arrived: `<span class="badge badge-secondary badge-dot">${t('attendance.notArrived')}</span>`,
         holiday:     `<span class="badge badge-info badge-dot">${t('attendance.holiday')}</span>`,
         on_leave:    `<span class="badge badge-warning badge-dot">${t('attendance.onLeave')}</span>`,
+        no_fingerprint: `<span class="badge badge-secondary badge-dot">${t('attendance.noFingerprint')}</span>`,
       };
       return map[s] || `<span class="badge badge-secondary">${s}</span>`;
     };
@@ -207,6 +237,7 @@ const AttendanceModule = {
         <table class="data-table">
           <thead>
             <tr>
+              ${isRange ? `<th>${t('common.date')}</th>` : ''}
               <th>${t('common.name')}</th>
               <th>${t('common.department')}</th>
               <th>${t('attendance.checkInTime')}</th>
@@ -219,13 +250,14 @@ const AttendanceModule = {
             </tr>
           </thead>
           <tbody>
-            ${rows.map(({ emp, dept, rec, status, checkIn, checkOut, method, overtime, recId }) => {
+            ${rows.map(({ date, emp, dept, rec, status, checkIn, checkOut, method, overtime, recId, lateMin }) => {
               const dur = this._calcDuration(checkIn, checkOut);
               const rowBg = status === 'absent' ? 'background:rgba(239,68,68,0.04)' :
                             status === 'late'   ? 'background:rgba(245,158,11,0.04)' :
                             status === 'not_arrived' ? 'background:rgba(148,163,184,0.04)' : '';
               return `
                 <tr class="stagger-item" style="${rowBg}">
+                  ${isRange ? `<td><span style="font-family:var(--font-en);font-weight:600;color:var(--text-secondary)">${date}</span></td>` : ''}
                   <td>
                     <div class="table-avatar">
                       ${App.renderAvatar(emp, 36, 10)}
@@ -240,13 +272,17 @@ const AttendanceModule = {
                   <td><span style="font-family:var(--font-en);font-weight:600;color:var(--danger)">${checkOut||'—'}</span></td>
                   <td><span style="font-family:var(--font-en);color:var(--text-primary);font-weight:600">${dur||'—'}</span></td>
                   <td>${method ? App.getMethodIcon(method)+' <span style="font-size:11px;color:var(--text-muted)">'+method+'</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
-                  <td>${overtime ? `<span class="badge badge-info">${overtime} د</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+                  <td>${
+                    status === 'late'
+                      ? (lateMin ? `<span class="badge badge-warning">${lateMin} ${currentLang==='ar'?'د تأخير':'min late'}</span>` : '<span style="color:var(--text-muted)">—</span>')
+                      : (overtime ? `<span class="badge badge-info">${overtime} د</span>` : '<span style="color:var(--text-muted)">—</span>')
+                  }</td>
                   <td>${statusBadge(status)}</td>
                   <td>
                     <div style="display:flex;gap:4px">
                       ${(status==='absent'||status==='not_arrived') ? `
                         <button class="btn btn-success btn-sm" title="${t('attendance.checkIn')}"
-                          onclick="AttendanceModule._quickCheckIn('${emp.id}')">
+                          onclick="AttendanceModule._quickCheckIn('${emp.id}','${date}')">
                           <i class="fas fa-clock"></i>
                         </button>` : ''}
                       ${(status==='late'||status==='absent') ? `
@@ -259,7 +295,7 @@ const AttendanceModule = {
                         <button class="btn-icon btn" onclick="AttendanceModule.deleteRecord('${recId}')" title="${t('common.delete')}" style="color:var(--danger)"><i class="fas fa-trash"></i></button>
                       ` : `
                         <button class="btn-icon btn" title="${t('attendance.addRecord')}"
-                          onclick="AttendanceModule._quickCheckIn('${emp.id}')">
+                          onclick="AttendanceModule._quickCheckIn('${emp.id}','${date}')">
                           <i class="fas fa-plus" style="color:var(--primary)"></i>
                         </button>
                       `}
@@ -281,9 +317,10 @@ const AttendanceModule = {
     `;
   },
 
-  _quickCheckIn(empId) {
+  _quickCheckIn(empId, date) {
+    date = date || this._dateFrom;
     // منع التسجيل المكرر لنفس الموظف في نفس اليوم
-    const existing = DB.attendance.find(a => a.empId === empId && a.date === this._dateFilter);
+    const existing = DB.attendance.find(a => a.empId === empId && a.date === date);
     if (existing) {
       App.toast(currentLang === 'ar' ? 'تم تسجيل الحضور مسبقاً لهذا الموظف' : 'Already checked in today', 'warning');
       return;
@@ -291,17 +328,13 @@ const AttendanceModule = {
 
     const now  = new Date();
     const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    const workStart = DB.company.workStart || '08:00';
-    const late = time > workStart;
-    const [wh, wm] = workStart.split(':').map(Number);
-    const [ch, cm] = time.split(':').map(Number);
-    const lateMin  = late ? (ch*60+cm) - (wh*60+wm) : 0;
+    const lateMin = DB.getLateMinutes(empId, date, time);
 
     DB.attendance.push({
-      id: DB.nextId('a'), empId, date: this._dateFilter,
+      id: DB.nextId('a'), empId, date,
       checkIn: time, checkOut: null,
-      status: late && lateMin > (DB.company.lateThreshold||15) ? 'late' : 'present',
-      method: 'manual', overtime: 0, lateMin: late ? lateMin : 0,
+      status: lateMin > 0 ? 'late' : 'present',
+      method: 'manual', overtime: 0, lateMin,
     });
     DB.save();
     App.toast(`${DB.getEmployee(empId)?.name} — ${currentLang==='ar'?'تم تسجيل الحضور':'Checked in'} ${time}`, 'success');
@@ -343,11 +376,7 @@ const AttendanceModule = {
     if (existing) {
       existing.checkIn = nowTime;
     } else {
-      const empShift = (() => {
-        const u = App.state?.user;
-        const emp = u ? DB.getEmployee(u.id) : null;
-        return emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
-      })();
+      const empShift = DB.getEmployeeShift(adminId, today);
       const shiftStart = empShift?.start || DB.company.workStart || '08:00';
       const [sh,sm] = shiftStart.split(':').map(Number);
       const [ch,cm] = nowTime.split(':').map(Number);
@@ -378,8 +407,7 @@ const AttendanceModule = {
       existing.checkOut   = nowTime;
       existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
       const u = App.state?.user;
-      const empForOT = u ? DB.getEmployee(u.id) : null;
-      const shiftForOT = empForOT?.shift ? DB.shifts.find(s => s.id === empForOT.shift) : null;
+      const shiftForOT = u ? DB.getEmployeeShift(u.id, today) : null;
       if (shiftForOT?.start && shiftForOT?.end) {
         const shiftMins = this._shiftMinutes(shiftForOT.start, shiftForOT.end);
         const ot = existing.workedMins - shiftMins;
@@ -469,7 +497,7 @@ const AttendanceModule = {
       existing.checkOut   = nowTime;
       existing.workedMins = this._shiftMinutes(existing.checkIn, nowTime);
       // حساب الأوفرتايم
-      const empShiftForOT = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      const empShiftForOT = DB.getEmployeeShift(emp.id, today);
       if (empShiftForOT?.start && empShiftForOT?.end) {
         const shiftMins = this._shiftMinutes(empShiftForOT.start, empShiftForOT.end);
         const ot = existing.workedMins - shiftMins;
@@ -479,7 +507,7 @@ const AttendanceModule = {
       const otNote = existing.overtime ? ` (+${Math.floor(existing.overtime/60)}:${String(existing.overtime%60).padStart(2,'0')} ${currentLang==='ar'?'إضافي':'OT'})` : '';
       App.toast(`✅ ${currentLang==='ar'?'تم تسجيل انصراف':'Checkout recorded for'} ${emp.name} ${currentLang==='ar'?'الساعة':'at'} ${nowTime}${otNote}`, 'success');
     } else if (!existing) {
-      const empShift    = emp.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+      const empShift    = DB.getEmployeeShift(emp.id, today);
       const shiftStart  = empShift?.start || DB.company.workStart || '08:00';
       const [sh, sm]    = shiftStart.split(':').map(Number);
       const [ch, cm]    = nowTime.split(':').map(Number);
@@ -495,7 +523,7 @@ const AttendanceModule = {
       const lateNote = isLate ? (currentLang==='ar'?' (متأخر)':' (late)') : '';
       App.toast(`✅ ${currentLang==='ar'?'تم تسجيل حضور':'Checked in:'} ${emp.name} ${nowTime}${lateNote}`, isLate?'warning':'success');
       if (isLate) {
-        const lateMins = (ch*60+cm) - (sh*60+sm);
+        const lateMins = Math.max(0, (ch*60+cm) - (sh*60+sm) - (DB.company.lateThreshold||15));
         DB.addNotification({ title: 'موظف متأخر', desc: `${emp.name} تأخر ${lateMins} دقيقة — وصل الساعة ${nowTime}`, type: 'attendance', icon: 'fas fa-clock', iconBg: 'gradient-warning' });
       }
     } else {
@@ -795,7 +823,7 @@ const AttendanceModule = {
 
     // تحديد وقت بداية وردية الموظف
     const emp = DB.employees.find(em => em.id === data.empId);
-    const empShift = emp?.shift ? DB.shifts.find(s => s.id === emp.shift) : null;
+    const empShift = DB.getEmployeeShift(emp?.id, data.date);
     const shiftStart = empShift?.start || DB.company.workStart || '08:00';
     const [sh, sm] = shiftStart.split(':').map(Number);
     const [ch, cm] = (data.checkIn||'00:00').split(':').map(Number);
@@ -829,6 +857,223 @@ const AttendanceModule = {
     App.closeModal();
     App.toast(t('attendance.addRecord') + ' — ' + (currentLang==='ar'?'تم بنجاح':'Added'), 'success');
     this._renderTable();
+  },
+
+  // ─── BULK MULTI-DAY ENTRY ─────────────────────────────────
+  openBulkEntry() {
+    const today = new Date().toISOString().split('T')[0];
+    App.openModal(currentLang==='ar'?'تسجيل حضور وانصراف لعدة أيام':'Bulk Attendance Entry', `
+      <div style="padding:4px">
+        <div class="app-form-group">
+          <label>${t('common.name')}</label>
+          <select class="app-form-input app-form-select" id="bulk-emp" onchange="AttendanceModule._renderBulkRows()">
+            <option value="">${currentLang==='ar'?'— اختر الموظف —':'— Select employee —'}</option>
+            ${DB.employees.filter(e=>e.status!=='terminated').map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="app-form-row">
+          <div class="app-form-group">
+            <label>${t('common.from')}</label>
+            <input class="app-form-input" type="date" id="bulk-from" value="${today}" onchange="AttendanceModule._renderBulkRows()">
+          </div>
+          <div class="app-form-group">
+            <label>${t('common.to')}</label>
+            <input class="app-form-input" type="date" id="bulk-to" value="${today}" onchange="AttendanceModule._renderBulkRows()">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;padding:10px;background:rgba(99,102,241,0.06);border-radius:10px">
+          <div class="app-form-group" style="margin-bottom:0;flex:1">
+            <label style="font-size:11px">${currentLang==='ar'?'وقت حضور افتراضي':'Default check-in'}</label>
+            <input class="app-form-input" type="time" id="bulk-default-in" value="08:00">
+          </div>
+          <div class="app-form-group" style="margin-bottom:0;flex:1">
+            <label style="font-size:11px">${currentLang==='ar'?'وقت انصراف افتراضي':'Default check-out'}</label>
+            <input class="app-form-input" type="time" id="bulk-default-out" value="17:00">
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="AttendanceModule._applyBulkDefaults()">
+            ${currentLang==='ar'?'تطبيق على الكل':'Apply to all'}
+          </button>
+        </div>
+
+        <div id="bulk-rows-wrapper" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+          <div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">
+            ${currentLang==='ar'?'اختر الموظف والفترة لعرض الأيام':'Select employee and date range to show days'}
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding:0;margin-top:20px">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
+          <button type="button" class="btn btn-primary" onclick="AttendanceModule._saveBulkEntry()"><i class="fas fa-save"></i> ${currentLang==='ar'?'حفظ الكل':'Save all'}</button>
+        </div>
+      </div>
+    `, { size: 'lg' });
+  },
+
+  _renderBulkRows() {
+    const wrapper = document.getElementById('bulk-rows-wrapper');
+    if (!wrapper) return;
+    const empId = document.getElementById('bulk-emp')?.value;
+    const from  = document.getElementById('bulk-from')?.value;
+    const to    = document.getElementById('bulk-to')?.value;
+    if (!empId || !from || !to) {
+      wrapper.innerHTML = `<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px">${currentLang==='ar'?'اختر الموظف والفترة لعرض الأيام':'Select employee and date range to show days'}</div>`;
+      return;
+    }
+
+    const emp        = DB.getEmployee(empId);
+    const workDays    = DB.company.workDays || ['sat','sun','mon','tue','wed','thu'];
+
+    const start = from <= to ? from : to;
+    const end   = from <= to ? to   : from;
+    const dates = [];
+    for (let d = new Date(start + 'T12:00:00'); d <= new Date(end + 'T12:00:00'); d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().split('T')[0]);
+    }
+
+    const dayLabel = (date) => new Date(date + 'T12:00:00').toLocaleDateString(currentLang==='ar'?'ar-SA':'en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    wrapper.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead style="position:sticky;top:0;background:var(--card-bg,#fff);z-index:1">
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="padding:8px"><input type="checkbox" id="bulk-check-all" checked onchange="AttendanceModule._toggleAllBulkRows(this.checked)"></th>
+            <th style="padding:8px;text-align:${currentLang==='ar'?'right':'left'}">${t('common.date')}</th>
+            <th style="padding:8px">${t('attendance.checkInTime')}</th>
+            <th style="padding:8px">${t('attendance.checkOutTime')}</th>
+            <th style="padding:8px">${t('attendance.noFingerprint')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${dates.map(date => {
+            const dayName   = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase();
+            const isWorkDay = workDays.includes(dayName);
+            const isHoliday = (DB.company.holidays || []).some(h => h.date === date);
+            const offDay    = !isWorkDay || isHoliday;
+            const existing  = DB.attendance.find(a => a.date === date && a.empId === empId);
+            const dayShift  = DB.getEmployeeShift(empId, date);
+            const defaultIn  = dayShift?.start || DB.company.workStart || '08:00';
+            const defaultOut = dayShift?.end   || DB.company.workEnd   || '17:00';
+            const noFp       = existing?.status === 'no_fingerprint';
+            return `
+              <tr class="bulk-row" data-date="${date}" style="border-bottom:1px solid var(--border);${offDay?'opacity:.5':''}">
+                <td style="padding:8px"><input type="checkbox" class="bulk-row-check" ${offDay?'':'checked'}></td>
+                <td style="padding:8px">${dayLabel(date)}${offDay ? ` <span style="font-size:11px;color:var(--text-muted)">(${isHoliday?(currentLang==='ar'?'عطلة':'Holiday'):(currentLang==='ar'?'إجازة أسبوعية':'Weekly off')})</span>` : ''}</td>
+                <td style="padding:8px"><input type="time" class="app-form-input bulk-checkin" style="padding:6px 8px" value="${existing?.checkIn || (offDay?'':defaultIn)}" ${noFp?'disabled':''}></td>
+                <td style="padding:8px"><input type="time" class="app-form-input bulk-checkout" style="padding:6px 8px" value="${existing?.checkOut || (offDay?'':defaultOut)}" ${noFp?'disabled':''}></td>
+                <td style="padding:8px;text-align:center">
+                  <input type="checkbox" class="bulk-no-fingerprint" ${noFp?'checked':''}
+                    onchange="const r=this.closest('.bulk-row');r.querySelector('.bulk-checkin').disabled=this.checked;r.querySelector('.bulk-checkout').disabled=this.checked;">
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  },
+
+  _toggleAllBulkRows(checked) {
+    document.querySelectorAll('#bulk-rows-wrapper .bulk-row-check').forEach(cb => cb.checked = checked);
+  },
+
+  _applyBulkDefaults() {
+    const inVal  = document.getElementById('bulk-default-in')?.value;
+    const outVal = document.getElementById('bulk-default-out')?.value;
+    document.querySelectorAll('#bulk-rows-wrapper .bulk-row').forEach(row => {
+      if (!row.querySelector('.bulk-row-check')?.checked) return;
+      if (inVal)  row.querySelector('.bulk-checkin').value  = inVal;
+      if (outVal) row.querySelector('.bulk-checkout').value = outVal;
+    });
+  },
+
+  _saveBulkEntry() {
+    const empId = document.getElementById('bulk-emp')?.value;
+    if (!empId) { App.toast(currentLang==='ar'?'اختر موظفاً أولاً':'Select an employee first', 'warning'); return; }
+    const emp = DB.getEmployee(empId);
+    if (!emp) return;
+
+    const from = document.getElementById('bulk-from')?.value;
+    const to   = document.getElementById('bulk-to')?.value;
+
+    const lateThreshold = DB.company.lateThreshold || 15;
+
+    let saved = 0;
+    document.querySelectorAll('#bulk-rows-wrapper .bulk-row').forEach(row => {
+      if (!row.querySelector('.bulk-row-check')?.checked) return;
+      const date       = row.dataset.date;
+      const noFp       = row.querySelector('.bulk-no-fingerprint')?.checked;
+      const existing   = DB.attendance.find(a => a.date === date && a.empId === empId);
+
+      if (noFp) {
+        // لا يوجد بصمة: يُسجَّل حضور الموظف بدون أوقات دخول/خروج فعلية
+        if (existing) {
+          existing.checkIn = null; existing.checkOut = null;
+          existing.status = 'no_fingerprint'; existing.workedMins = 0; existing.overtime = null;
+          existing.method = 'manual';
+        } else {
+          DB.attendance.push({
+            id: DB.nextId('att'), empId, date,
+            checkIn: null, checkOut: null,
+            status: 'no_fingerprint',
+            method: 'manual', workedMins: 0, overtime: null,
+            location: currentLang==='ar'?'يدوي':'Manual', notes: '',
+          });
+        }
+        saved++;
+        return;
+      }
+
+      const checkIn  = row.querySelector('.bulk-checkin')?.value;
+      const checkOut = row.querySelector('.bulk-checkout')?.value;
+      if (!checkIn) {
+        // بدون وقت حضور = غياب — احذف أي سجل سابق لهذا اليوم بدلاً من تركه كما هو
+        if (existing) {
+          const idx = DB.attendance.indexOf(existing);
+          if (idx !== -1) DB.attendance.splice(idx, 1);
+          saved++;
+        }
+        return;
+      }
+
+      const empShift     = DB.getEmployeeShift(empId, date);
+      const shiftStart   = empShift?.start || DB.company.workStart || '08:00';
+      const [sh, sm]     = shiftStart.split(':').map(Number);
+      const shiftMins    = empShift ? this._shiftMinutes(empShift.start, empShift.end) : (8 * 60);
+      const [ch, cm]     = checkIn.split(':').map(Number);
+      const isLate       = (ch*60+cm) > (sh*60+sm+lateThreshold);
+      const workedMins   = checkOut ? this._shiftMinutes(checkIn, checkOut) : 0;
+      const overtimeMins = checkOut ? Math.max(0, workedMins - shiftMins) : 0;
+
+      if (existing) {
+        existing.checkIn    = checkIn;
+        existing.checkOut   = checkOut || null;
+        existing.status     = isLate ? 'late' : 'present';
+        existing.workedMins = workedMins;
+        existing.overtime   = overtimeMins > 0 ? overtimeMins : null;
+      } else {
+        DB.attendance.push({
+          id: DB.nextId('att'), empId, date,
+          checkIn, checkOut: checkOut || null,
+          status: isLate ? 'late' : 'present',
+          method: 'manual', workedMins,
+          overtime: overtimeMins > 0 ? overtimeMins : null,
+          location: currentLang==='ar'?'يدوي':'Manual', notes: '',
+        });
+      }
+      saved++;
+    });
+
+    if (!saved) { App.toast(currentLang==='ar'?'لم يتم اختيار أي يوم بوقت حضور':'No days with check-in time selected', 'warning'); return; }
+
+    DB.save();
+    App.closeModal();
+    App.toast(`${currentLang==='ar'?'تم حفظ':'Saved'} ${saved} ${currentLang==='ar'?'يوم بنجاح':'day(s) successfully'}`, 'success');
+
+    if (from) this._dateFrom = from;
+    if (to)   this._dateTo   = to;
+    this._empFilter = empId;
+    this.render(document.getElementById('page-content'));
   },
 
   editRecord(id) {
@@ -880,8 +1125,7 @@ const AttendanceModule = {
       rec.workedMins = this._shiftMinutes(rec.checkIn, rec.checkOut);
       // حساب الأوفرتايم إن لم يُدخله المستخدم يدوياً
       if (!data.overtime) {
-        const emp2 = DB.getEmployee(rec.empId);
-        const sh2  = emp2?.shift ? DB.shifts.find(s => s.id === emp2.shift) : null;
+        const sh2  = DB.getEmployeeShift(rec.empId, rec.date);
         if (sh2?.start && sh2?.end) {
           const shMins = this._shiftMinutes(sh2.start, sh2.end);
           const ot = rec.workedMins - shMins;
@@ -905,7 +1149,7 @@ const AttendanceModule = {
   },
 
   sendBulkWA() {
-    const date   = this._dateFilter || new Date().toISOString().split('T')[0];
+    const date   = this._dateFrom || new Date().toISOString().split('T')[0];
     const dayAtt = DB.attendance.filter(a => a.date === date);
 
     // Find absent employees (active, not in attendance)
