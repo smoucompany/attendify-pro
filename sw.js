@@ -6,9 +6,9 @@
      • API calls      → Network First → offline queue
    ================================================================ */
 
-const VERSION   = 'attendify-v28';
-const CDN_CACHE = 'attendify-cdn-v28';
-const API_CACHE = 'attendify-api-v28';
+const VERSION   = 'attendify-v29';
+const CDN_CACHE = 'attendify-cdn-v29';
+const API_CACHE = 'attendify-api-v29';
 
 // كل الملفات الثابتة المطلوب تخزينها عند التثبيت
 const STATIC_ASSETS = [
@@ -44,6 +44,12 @@ const STATIC_ASSETS = [
   '/js/modules/gps.js',
   '/js/modules/audit.js',
   '/js/modules/profile.js',
+  '/js/modules/devices.js',
+  '/js/modules/orgchart.js',
+  '/js/modules/calendar.js',
+  '/js/modules/expenses.js',
+  '/js/modules/ai-analytics.js',
+  '/js/modules/backup.js',
   '/assets/icon.svg',
   '/manifest.json',
   '/font/arabic/thmanyahsans-Regular.otf',

@@ -1,5 +1,8 @@
 node_modules
 backend
+django_backend
+employee_orig_backup.html
+.claude
 generate_report.py
 generate_template.py
 attendify_report.pdf
