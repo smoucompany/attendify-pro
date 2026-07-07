@@ -969,6 +969,7 @@ ul { list-style: none; }
 /* ─── MAIN CONTENT ───────────────────────────────────────── */
 .main-content {
   flex: 1;
+  min-width: 0; /* flex items default to min-width:auto — without this, a wide child (e.g. a data table) refuses to shrink and forces the whole layout (and the mobile viewport) wider than the screen */
   margin-right: var(--sidebar-w);
   min-height: 100vh;
   display: flex;
