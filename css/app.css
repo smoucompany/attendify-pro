@@ -2537,6 +2537,8 @@ ul { list-style: none; }
   .top-header { padding: 0 10px; gap: 6px; }
   .mobile-toggle-btn { display: flex !important; }
   .header-center, .header-datetime { display: none !important; }
+  /* أزرار أدوات ثانوية (لغة، مزامنة يدوية، ضبط كلمات المرور) تُخفى على الموبايل — كانت تتراكب مع زر القائمة */
+  .header-lang-wrapper, #sync-indicator, .header-util-btn { display: none !important; }
   .header-end { gap: 4px; }
   .header-user-name { display: none; }
   .hdr-btn { width: 36px; height: 36px; font-size: 15px; }
