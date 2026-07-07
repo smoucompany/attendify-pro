@@ -5,6 +5,7 @@
 
 const express  = require('express');
 const cors     = require('cors');
+const crypto   = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
@@ -95,6 +96,42 @@ async function authenticate(req, res, next) {
   next();
 }
 
+// ── Employee Session Tokens (HMAC — بديل خفيف بدل JWT كامل) ───
+// يُصدر عند /api/emp/login ويُطلب على كل endpoint يخص بيانات موظف محدد
+// لمنع أي شخص يعرف/يخمّن empId من قراءة بيانات موظف آخر (IDOR)
+const _EMP_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 يوم — يدعم تسجيل دخول عبر أجهزة متعددة
+function _empSessionSecret() {
+  return cleanEnv('EMP_SESSION_SECRET') || cleanEnv('SUPABASE_SERVICE_KEY') || 'attendify-fallback-secret';
+}
+function signEmpToken(empId) {
+  const expiry = Date.now() + _EMP_TOKEN_TTL_MS;
+  const payload = `${empId}.${expiry}`;
+  const sig = crypto.createHmac('sha256', _empSessionSecret()).update(payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+function verifyEmpToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [empId, expiryStr, sig] = parts;
+  const expiry = Number(expiryStr);
+  if (!empId || !Number.isFinite(expiry) || Date.now() > expiry) return null;
+  const expected = crypto.createHmac('sha256', _empSessionSecret()).update(`${empId}.${expiryStr}`).digest('base64url');
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  return empId;
+}
+// يتحقق أن التوكن صالح وأن صاحبه هو نفس الموظف المطلوب بياناته (من params أو body)
+function authenticateEmployee(req, res, next) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  const empId = verifyEmpToken(token);
+  if (!empId) return res.status(401).json({ error: 'انتهت الجلسة — الرجاء تسجيل الدخول مجدداً' });
+  const targetId = req.params.empId || req.body?.empId;
+  if (targetId && String(targetId) !== String(empId)) return res.status(403).json({ error: 'غير مصرّح بالوصول لبيانات موظف آخر' });
+  req.empId = empId;
+  next();
+}
+
 const ALLOWED = new Set([
   'company','departments','employees','shifts','attendance',
   'leaves','requests','notifications','payroll','deductions','loans',
@@ -115,8 +152,8 @@ function authenticateSyncService(req, res, next) {
 // ── Health ───────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// ── Employee Login Diagnostics (no auth — safe, returns counts only) ──
-app.get('/api/emp/ping', async (req, res) => {
+// ── Employee Login Diagnostics (admin auth required — never expose passwords) ──
+app.get('/api/emp/ping', authenticate, async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('employees').select('id, data').order('created_at', { ascending: true });
@@ -126,7 +163,7 @@ app.get('/api/emp/ping', async (req, res) => {
       id: r.id,
       no: r.data?.no,
       name: r.data?.name?.split(' ')[0] || '—',
-      pass: r.data?.password || '(كود الموظف)',
+      hasCustomPassword: !!r.data?.password,
     }));
     res.json({ ok: true, count: rows.length, sample });
   } catch(e) {
@@ -370,14 +407,14 @@ app.post('/api/emp/login', _rateLimitLogin, async (req, res) => {
     return res.status(401).json({ error: 'كلمة المرور غير صحيحة — كلمة المرور الافتراضية هي كود الموظف' });
   }
 
-  // إرجاع بيانات الموظف بدون كلمة المرور
+  // إرجاع بيانات الموظف بدون كلمة المرور + توكن جلسة موقّع (يمنع IDOR على باقي مسارات البوابة)
   const { password: _pw, ...safeEmp } = emp;
-  res.json({ ok: true, emp: safeEmp });
+  res.json({ ok: true, emp: safeEmp, token: signEmpToken(id) });
 });
 
 // ── Employee Portal: جلب بيانات الموظف الحالي وسجل حضوره ──────
 // يُستخدم بعد تسجيل الدخول لتحديث البيانات من السيرفر
-app.get('/api/emp/data/:empId', _rateLimitEmpData, async (req, res) => {
+app.get('/api/emp/data/:empId', _rateLimitEmpData, authenticateEmployee, async (req, res) => {
   const { empId } = req.params;
   if (!empId) return res.status(400).json({ error: 'معرّف الموظف مطلوب' });
 
@@ -406,7 +443,7 @@ app.get('/api/emp/data/:empId', _rateLimitEmpData, async (req, res) => {
 
 // ── Employee Portal: تسجيل الحضور والانصراف ──────────────────
 // endpoint عام محمي بـ rate limit — يحفظ سجل الحضور في Supabase
-app.post('/api/emp/checkin', _rateLimitLogin, async (req, res) => {
+app.post('/api/emp/checkin', _rateLimitLogin, authenticateEmployee, async (req, res) => {
   const { empId, date, checkIn, checkOut, method, status, lateMin, overtime } = req.body || {};
   if (!empId || !date) return res.status(400).json({ error: 'بيانات ناقصة' });
 
@@ -444,7 +481,7 @@ app.post('/api/emp/checkin', _rateLimitLogin, async (req, res) => {
 });
 
 // ── Employee Portal: طلب إجازة ──────────────────────────────────
-app.post('/api/emp/leave', _rateLimitLogin, async (req, res) => {
+app.post('/api/emp/leave', _rateLimitLogin, authenticateEmployee, async (req, res) => {
   const { empId, type, from, to, days, reason, appliedOn } = req.body || {};
   if (!empId || !from || !to) return res.status(400).json({ error: 'بيانات ناقصة' });
 
@@ -463,7 +500,7 @@ app.post('/api/emp/leave', _rateLimitLogin, async (req, res) => {
 });
 
 // ── Employee Portal: طلب سلفة / طلب عام ──────────────────────────
-app.post('/api/emp/request', _rateLimitLogin, async (req, res) => {
+app.post('/api/emp/request', _rateLimitLogin, authenticateEmployee, async (req, res) => {
   const { empId, type, amount, reason, date } = req.body || {};
   if (!empId || !type) return res.status(400).json({ error: 'بيانات ناقصة' });
 

@@ -507,7 +507,10 @@ const EmployeesModule = {
         const pr = DB.payroll.find(p => p.empId === id);
         if (pr && emp.salary) {
           pr.base  = emp.salary;
-          pr.total = Math.max(0, pr.base + (pr.housing||0) + (pr.transport||0) + (pr.food||0) + (pr.overtime||0) - (pr.absentDeduction||0) - (pr.lateDeduction||0));
+          const customDed = typeof DeductionsModule !== 'undefined' ? DeductionsModule.getTotal(id, pr.period) : (pr.customDeduction||0);
+          const loanDed   = typeof LoansModule !== 'undefined' ? LoansModule.getInstallmentFor(id, pr.period) : (pr.loanDeduction||0);
+          pr.total = Math.max(0, pr.base + (pr.housing||0) + (pr.transport||0) + (pr.food||0) + (pr.overtime||0)
+            - (pr.absentDeduction||0) - (pr.lateDeduction||0) - customDed - loanDed);
         }
         DB.save();
         App.toast(`${t('common.edit')} ${fullName} ${currentLang==='ar'?'تم بنجاح':'updated'}`, 'success');

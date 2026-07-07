@@ -161,7 +161,7 @@ const LeavesModule = {
                     <div class="table-avatar">
                       ${App.renderAvatar(emp, 36, 10)}
                       <div class="avatar-info">
-                        <div class="avatar-name">${emp?.name||'—'}</div>
+                        <div class="avatar-name">${_esc(emp?.name||'—')}</div>
                         <div class="avatar-sub">${App.formatDate(l.appliedOn)}</div>
                       </div>
                     </div>
@@ -271,8 +271,8 @@ const LeavesModule = {
     App.openModal(t('leaves.details'), `
       <div style="text-align:center;margin-bottom:20px">
         <div style="margin:0 auto 10px;width:60px">${App.renderAvatar(emp, 60, 14)}</div>
-        <div style="font-size:16px;font-weight:700">${emp?.name}</div>
-        <div style="font-size:12px;color:var(--text-muted)">${emp?.position}</div>
+        <div style="font-size:16px;font-weight:700">${_esc(emp?.name||'')}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${_esc(emp?.position||'')}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         ${[
@@ -291,7 +291,7 @@ const LeavesModule = {
       </div>
       <div style="background:var(--bg-input);border-radius:8px;padding:12px;margin-bottom:16px">
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${t('leaves.reason')}</div>
-        <div style="font-size:13.5px;color:var(--text-primary)">${leave.reason}</div>
+        <div style="font-size:13.5px;color:var(--text-primary)">${_esc(leave.reason||'')}</div>
       </div>
       ${leave.status === 'pending' ? `
         <div style="display:flex;gap:10px">

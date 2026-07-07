@@ -120,8 +120,8 @@ const DevicesModule = {
         <div class="device-item ${active ? 'active' : ''}" onclick="DevicesModule.select('${d.id}')">
           <span class="device-item-dot" style="background:${meta.color};color:${meta.color}"></span>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div>
-            <div style="font-size:11px;color:var(--text-muted)" dir="ltr">${d.ipAddress || '—'}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(d.name||'')}</div>
+            <div style="font-size:11px;color:var(--text-muted)" dir="ltr">${_esc(d.ipAddress || '—')}</div>
           </div>
           <span style="font-size:11px;font-weight:700;color:${ping.color};flex-shrink:0">${ping.label}</span>
         </div>
@@ -158,8 +158,8 @@ const DevicesModule = {
             <i class="fas fa-fingerprint"></i>
           </div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:19px;font-weight:800">${d.name}</div>
-            <div style="opacity:.9;font-size:12px;margin-top:2px" dir="ltr">${d.ipAddress || '—'}:${d.port || 4370}</div>
+            <div style="font-size:19px;font-weight:800">${_esc(d.name||'')}</div>
+            <div style="opacity:.9;font-size:12px;margin-top:2px" dir="ltr">${_esc(d.ipAddress || '—')}:${_esc(String(d.port || 4370))}</div>
           </div>
           <span class="badge ${meta.badge} badge-dot" style="background:rgba(255,255,255,.22);color:#fff">${meta.label}</span>
         </div>
@@ -175,16 +175,16 @@ const DevicesModule = {
           <button class="btn-icon btn" style="color:var(--danger)" onclick="DevicesModule.deleteDevice('${d.id}')" title="حذف"><i class="fas fa-trash"></i></button>
         </div>
 
-        ${d.lastError ? `<div style="font-size:12px;color:var(--danger);background:rgba(239,68,68,.08);padding:10px 12px;border-radius:10px;margin-bottom:18px;display:flex;align-items:center;gap:8px"><i class="fas fa-triangle-exclamation"></i> ${d.lastError}</div>` : ''}
+        ${d.lastError ? `<div style="font-size:12px;color:var(--danger);background:rgba(239,68,68,.08);padding:10px 12px;border-radius:10px;margin-bottom:18px;display:flex;align-items:center;gap:8px"><i class="fas fa-triangle-exclamation"></i> ${_esc(d.lastError)}</div>` : ''}
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:22px">
           <div style="padding:12px;background:var(--bg-input);border-radius:12px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px"><i class="fas fa-location-dot"></i> الموقع</div>
-            <div style="font-size:13px;font-weight:700">${d.location || '—'}</div>
+            <div style="font-size:13px;font-weight:700">${_esc(d.location || '—')}</div>
           </div>
           <div style="padding:12px;background:var(--bg-input);border-radius:12px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px"><i class="fas fa-building"></i> الفرع</div>
-            <div style="font-size:13px;font-weight:700">${d.branch || '—'}</div>
+            <div style="font-size:13px;font-weight:700">${_esc(d.branch || '—')}</div>
           </div>
           <div style="padding:12px;background:var(--bg-input);border-radius:12px">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px"><i class="fas fa-gauge-high"></i> زمن الاستجابة</div>

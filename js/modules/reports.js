@@ -623,9 +623,6 @@ const ReportsModule = {
       // سجلات الحضور في الفترة
       const attRecs = DB.attendance.filter(a => a.empId === emp.id && a.date >= from && a.date <= to);
 
-      // عدد أيام الغياب الفعلي
-      const lateThresh = DB.company.lateThreshold || 15;
-
       // أيام الإجازة الموافق عليها
       const leaveDays = new Set();
       DB.leaves.filter(l => l.empId === emp.id && l.status === 'approved').forEach(l => {
@@ -644,17 +641,13 @@ const ReportsModule = {
         if (!rec) {
           absentDays++;
         } else {
-          const dayShift   = DB.getEmployeeShift(emp.id, dateStr);
-          const shiftStart = dayShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
-          const [sh, sm]   = shiftStart.split(':').map(Number);
-          // حساب التأخر (بعد خصم فترة السماح)
-          if (rec.checkIn) {
-            const [ch, cm] = rec.checkIn.split(':').map(Number);
-            const diff = (ch*60+cm) - (sh*60+sm);
-            if (diff > lateThresh) lateMins += (diff - lateThresh);
-          }
+          // التأخر يُحسب عبر الدالة المركزية (تدعم الورديات الليلية) — نفس المستخدمة في صفحتي الحضور والرواتب
+          lateMins += DB.getLateMinutes(emp.id, dateStr, rec.checkIn);
           // حساب الأوفرتايم
           if (rec.workedMins) {
+            const dayShift   = DB.getEmployeeShift(emp.id, dateStr);
+            const shiftStart = dayShift?.start || DB.company.workPeriods?.[0]?.start || '08:00';
+            const [sh, sm]   = shiftStart.split(':').map(Number);
             const shiftHours = dayShift ? (() => {
               const [eh, em] = (dayShift.end||'17:00').split(':').map(Number);
               let d = (eh*60+em) - (sh*60+sm); if (d < 0) d += 24*60; return d;
@@ -665,15 +658,21 @@ const ReportsModule = {
         }
       });
 
-      const dailyRate      = base / 30;
+      // الراتب اليومي = الراتب ÷ أيام الشهر الميلادية الفعلية لشهر بداية الفترة (نفس منطق صفحة الرواتب)
+      const [fromY, fromM] = from.split('-').map(Number);
+      const daysInMonth    = Math.max(28, new Date(fromY, fromM, 0).getDate());
+      const period         = from.slice(0, 7);
+      const dailyRate      = base / daysInMonth;
       const hourlyRate     = dailyRate / 8;
       const absentDed      = Math.round(dailyRate * absentDays);
       const lateDed        = Math.round(hourlyRate * (lateMins / 60));
       const overtimeBonus  = Math.round(hourlyRate * (overtimeMins / 60) * 1.5);
-      const totalDed       = absentDed + lateDed;
+      const customDed      = typeof DeductionsModule !== 'undefined' ? DeductionsModule.getTotal(emp.id, period) : 0;
+      const loanDed        = typeof LoansModule !== 'undefined' ? LoansModule.getInstallmentFor(emp.id, period) : 0;
+      const totalDed       = absentDed + lateDed + customDed + loanDed;
       const net            = Math.max(0, base + allow + overtimeBonus - totalDed);
 
-      return { emp, base, allow, housing, transp, food, absentDays, lateMins, absentDed, lateDed, overtimeBonus, totalDed, net, workDays: workingDayCount };
+      return { emp, base, allow, housing, transp, food, absentDays, lateMins, absentDed, lateDed, overtimeBonus, customDed, loanDed, totalDed, net, workDays: workingDayCount };
     });
 
     const totalBase  = rows.reduce((s, r) => s + r.base, 0);

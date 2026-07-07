@@ -376,11 +376,7 @@ const AttendanceModule = {
     if (existing) {
       existing.checkIn = nowTime;
     } else {
-      const empShift = DB.getEmployeeShift(adminId, today);
-      const shiftStart = empShift?.start || DB.company.workStart || '08:00';
-      const [sh,sm] = shiftStart.split(':').map(Number);
-      const [ch,cm] = nowTime.split(':').map(Number);
-      const isLate  = (ch*60+cm) > (sh*60+sm + (DB.company.lateThreshold||15));
+      const isLate  = DB.getLateMinutes(adminId, today, nowTime) > 0;
       DB.attendance.push({
         id: DB.nextId('att'), empId: adminId, date: today,
         checkIn: nowTime, checkOut: null,
@@ -507,11 +503,8 @@ const AttendanceModule = {
       const otNote = existing.overtime ? ` (+${Math.floor(existing.overtime/60)}:${String(existing.overtime%60).padStart(2,'0')} ${currentLang==='ar'?'إضافي':'OT'})` : '';
       App.toast(`✅ ${currentLang==='ar'?'تم تسجيل انصراف':'Checkout recorded for'} ${emp.name} ${currentLang==='ar'?'الساعة':'at'} ${nowTime}${otNote}`, 'success');
     } else if (!existing) {
-      const empShift    = DB.getEmployeeShift(emp.id, today);
-      const shiftStart  = empShift?.start || DB.company.workStart || '08:00';
-      const [sh, sm]    = shiftStart.split(':').map(Number);
-      const [ch, cm]    = nowTime.split(':').map(Number);
-      const isLate      = (ch*60+cm) > (sh*60+sm + (DB.company.lateThreshold||15));
+      const lateMins    = DB.getLateMinutes(emp.id, today, nowTime);
+      const isLate      = lateMins > 0;
       DB.attendance.push({
         id: DB.nextId('att'), empId, date: today,
         checkIn: nowTime, checkOut: null,
@@ -523,7 +516,6 @@ const AttendanceModule = {
       const lateNote = isLate ? (currentLang==='ar'?' (متأخر)':' (late)') : '';
       App.toast(`✅ ${currentLang==='ar'?'تم تسجيل حضور':'Checked in:'} ${emp.name} ${nowTime}${lateNote}`, isLate?'warning':'success');
       if (isLate) {
-        const lateMins = Math.max(0, (ch*60+cm) - (sh*60+sm) - (DB.company.lateThreshold||15));
         DB.addNotification({ title: 'موظف متأخر', desc: `${emp.name} تأخر ${lateMins} دقيقة — وصل الساعة ${nowTime}`, type: 'attendance', icon: 'fas fa-clock', iconBg: 'gradient-warning' });
       }
     } else {
@@ -824,11 +816,7 @@ const AttendanceModule = {
     // تحديد وقت بداية وردية الموظف
     const emp = DB.employees.find(em => em.id === data.empId);
     const empShift = DB.getEmployeeShift(emp?.id, data.date);
-    const shiftStart = empShift?.start || DB.company.workStart || '08:00';
-    const [sh, sm] = shiftStart.split(':').map(Number);
-    const [ch, cm] = (data.checkIn||'00:00').split(':').map(Number);
-    const late = (DB.company.lateThreshold || 15);
-    const isLate = (ch*60+cm) > (sh*60+sm+late);
+    const isLate = DB.getLateMinutes(data.empId, data.date, data.checkIn) > 0;
 
     // حساب ساعات العمل (مع دعم الوردية الليلية)
     const workedMins = (data.checkIn && data.checkOut)
@@ -996,8 +984,6 @@ const AttendanceModule = {
     const from = document.getElementById('bulk-from')?.value;
     const to   = document.getElementById('bulk-to')?.value;
 
-    const lateThreshold = DB.company.lateThreshold || 15;
-
     let saved = 0;
     document.querySelectorAll('#bulk-rows-wrapper .bulk-row').forEach(row => {
       if (!row.querySelector('.bulk-row-check')?.checked) return;
@@ -1037,11 +1023,8 @@ const AttendanceModule = {
       }
 
       const empShift     = DB.getEmployeeShift(empId, date);
-      const shiftStart   = empShift?.start || DB.company.workStart || '08:00';
-      const [sh, sm]     = shiftStart.split(':').map(Number);
       const shiftMins    = empShift ? this._shiftMinutes(empShift.start, empShift.end) : (8 * 60);
-      const [ch, cm]     = checkIn.split(':').map(Number);
-      const isLate       = (ch*60+cm) > (sh*60+sm+lateThreshold);
+      const isLate       = DB.getLateMinutes(empId, date, checkIn) > 0;
       const workedMins   = checkOut ? this._shiftMinutes(checkIn, checkOut) : 0;
       const overtimeMins = checkOut ? Math.max(0, workedMins - shiftMins) : 0;
 

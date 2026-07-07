@@ -846,7 +846,7 @@
           });
           const json = await res.json().catch(() => ({}));
           if (res.ok && json.ok) {
-            LoginSwitch._afterEmpAuth(json.emp);
+            LoginSwitch._afterEmpAuth(json.emp, json.token);
             return;
           }
           if (res.status === 401) {
@@ -886,7 +886,9 @@
         LoginSwitch._afterEmpAuth(emp);
       },
 
-      _afterEmpAuth(emp) {
+      _afterEmpAuth(emp, token) {
+        if (token) sessionStorage.setItem('emp-session-token', token);
+        else sessionStorage.removeItem('emp-session-token');
         // Find assigned role
         const empRole = DB.roles.find(r => Array.isArray(r.users) && r.users.includes(emp.id));
         const perms   = empRole?.permissions || {};

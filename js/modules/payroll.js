@@ -328,11 +328,15 @@ const PayrollModule = {
     //        فبراير 28 يوم → راتب يومي = 2500÷28 = 89.29 ﷺ
 
     // ── أيام العمل المنقضية حتى اليوم (لحساب الأيام المتوقعة) ──
+    // نستثني أيام العطل الرسمية بالإضافة لأيام الراحة الأسبوعية (نفس منطق تقرير الرواتب)
+    const holidays = new Set((DB.company.holidays || []).map(h => h.date || h));
     let workdaysElapsed = 0;
     const lastDay = (year === today.getFullYear() && month === today.getMonth()+1)
       ? today.getDate() : daysInMonth;
     for (let d = 1; d <= lastDay; d++) {
-      if (allowedDays.has(new Date(year, month-1, d).getDay())) workdaysElapsed++;
+      const dt = new Date(year, month-1, d);
+      const ds = dt.toISOString().split('T')[0];
+      if (allowedDays.has(dt.getDay()) && !holidays.has(ds)) workdaysElapsed++;
     }
     if (!workdaysElapsed) workdaysElapsed = 1;
 
@@ -408,7 +412,8 @@ const PayrollModule = {
       p.lateDeduction   = Math.round(lateDeduction);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
-      p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
+      p.total = Math.max(0, (p.base||0) + (p.housing||0) + (p.transport||0) + (p.food||0) + (p.overtime||0)
+        - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
     });
     DB.save();
   },
@@ -429,9 +434,13 @@ const PayrollModule = {
     const daysInMonth = Math.max(28, new Date(year, month, 0).getDate());
 
     // أيام العمل الكاملة للشهر — هذا هو المقام الصحيح للراتب اليومي
+    // نستثني أيام العطل الرسمية بالإضافة لأيام الراحة الأسبوعية (نفس منطق تقرير الرواتب)
+    const holidaysRun = new Set((DB.company.holidays || []).map(h => h.date || h));
     let workdaysInPeriod = 0;
     for (let d = 1; d <= daysInMonth; d++) {
-      if (allowedDays.has(new Date(year, month-1, d).getDay())) workdaysInPeriod++;
+      const dt = new Date(year, month-1, d);
+      const ds = dt.toISOString().split('T')[0];
+      if (allowedDays.has(dt.getDay()) && !holidaysRun.has(ds)) workdaysInPeriod++;
     }
     if (!workdaysInPeriod) workdaysInPeriod = 22;
 
@@ -522,7 +531,8 @@ const PayrollModule = {
       p.lateDeduction   = Math.round(lateDeduction);
       p.customDeduction = customDed;
       p.loanDeduction   = loanDed;
-      p.total = Math.max(0, (p.base||0) - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
+      p.total = Math.max(0, (p.base||0) + (p.housing||0) + (p.transport||0) + (p.food||0) + (p.overtime||0)
+        - (p.absentDeduction||0) - (p.lateDeduction||0) - (customDed||0) - (loanDed||0));
     });
 
     if (bar) bar.style.width = '100%';

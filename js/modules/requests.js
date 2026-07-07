@@ -99,9 +99,9 @@ const RequestsModule = {
                     <span class="badge ${prio.c}">${prio.l}</span>
                     ${App.getStatusBadge(r.status)}
                   </div>
-                  <p style="font-size:13.5px;color:var(--text-primary);margin-bottom:8px;line-height:1.6">${r.desc}</p>
+                  <p style="font-size:13.5px;color:var(--text-primary);margin-bottom:8px;line-height:1.6">${_esc(r.desc)}</p>
                   <div style="display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-muted)">
-                    <span><i class="fas fa-user"></i> ${emp?.name||''}</span>
+                    <span><i class="fas fa-user"></i> ${_esc(emp?.name||'')}</span>
                     <span><i class="fas fa-calendar"></i> ${App.formatDate(r.date)}</span>
                     <span><i class="fas fa-building"></i> ${DB.getDepartment(emp?.dept)?.name||''}</span>
                   </div>

@@ -1209,6 +1209,12 @@ function switchLoginTab(type, btn) {
   document.getElementById('field-email').style.display = type === 'email' ? '' : 'none';
 }
 
+/* ── EMPLOYEE SESSION TOKEN (يُرسل مع طلبات بوابة الموظف لمنع IDOR) ── */
+function _empAuthHeaders() {
+  const token = sessionStorage.getItem('emp-session-token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+
 /* ── LOGIN ── */
 async function empLogin(e) {
   e.preventDefault();
@@ -1237,6 +1243,7 @@ async function empLogin(e) {
     const json = await res.json().catch(() => ({}));
     if (res.ok && json.ok) {
       restore();
+      if (json.token) sessionStorage.setItem('emp-session-token', json.token);
       return _loginEmp(json.emp);
     }
     // Server responded (any status) → show its error and stop
@@ -1308,7 +1315,7 @@ function _loginEmp(emp) {
   showToast(`أهلاً ${emp.name} 👋`, 'success');
 
   // جلب بيانات الموظف الحديثة من السيرفر (حضور، ورديات، إجازات)
-  fetch(`/api/emp/data/${emp.id}`)
+  fetch(`/api/emp/data/${emp.id}`, { headers: _empAuthHeaders() })
     .then(r => r.ok ? r.json() : null)
     .then(json => {
       if (!json?.ok) return;
@@ -1838,7 +1845,7 @@ function _doCheckin(method) {
 function _syncAttendance(payload) {
   fetch('/api/emp/checkin', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ..._empAuthHeaders() },
     body: JSON.stringify(payload),
   }).catch(() => {}); // لا نوقف المستخدم إذا فشل الاتصال
 }
@@ -1928,7 +1935,7 @@ function submitLoanRequest(e) {
 
   fetch('/api/emp/request', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ..._empAuthHeaders() },
     body: JSON.stringify({ empId: currentEmp.id, type: d.type, amount, reason: d.reason || '', date }),
   }).then(r => r.json()).then(json => {
     if (json?.ok && json.request?.id) {
@@ -1965,7 +1972,7 @@ function submitLeave(e) {
 
   fetch('/api/emp/leave', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ..._empAuthHeaders() },
     body: JSON.stringify({ empId: currentEmp.id, type: d.type, from: d.from,
                            to: d.to, days, reason: d.reason || '', appliedOn }),
   }).then(r => r.json()).then(json => {

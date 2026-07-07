@@ -896,6 +896,7 @@ const App = {
       const { ok, data } = await Supabase._fetch('/api/emp/reset-passwords', { method: 'POST' });
       if (ok) {
         App.toast(`تم إعادة ضبط ${data.updated} موظف ✓ — كلمة المرور الآن = كود الموظف`, 'success', 6000);
+        DB.logAudit(App.state.user?.id, 'إعادة ضبط كلمات المرور', 'الموظفون', `تمت إعادة ضبط كلمات مرور ${data.updated} موظف إلى كود الموظف الافتراضي`);
       } else {
         App.toast('فشل إعادة الضبط: ' + (data?.error || 'خطأ غير معروف'), 'error');
       }
@@ -917,7 +918,7 @@ const App = {
     toast.id = id;
     toast.innerHTML = `
       <i class="fas ${icons[type] || icons.info}"></i>
-      <div style="flex:1">${message}</div>
+      <div style="flex:1">${_esc(message)}</div>
       <span style="cursor:pointer;opacity:.5;font-size:12px;padding:2px 4px" onclick="App._removeToast('${id}')"><i class="fas fa-xmark"></i></span>
     `;
 
@@ -1326,7 +1327,7 @@ const App = {
       <div style="text-align:center;padding:16px 0">
         <div style="font-size:48px;margin-bottom:16px">⚠️</div>
         <p style="font-size:16px;color:var(--text-primary);font-weight:600;margin-bottom:8px">تأكيد الإجراء</p>
-        <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">${message}</p>
+        <p style="font-size:14px;color:var(--text-muted);margin-bottom:24px">${_esc(message)}</p>
         <div style="display:flex;gap:10px;justify-content:center">
           <button class="btn btn-danger" onclick="App._confirmCb?.(); App._confirmCb=null; App.closeModal()">تأكيد</button>
           <button class="btn btn-secondary" onclick="App._confirmCb=null; App.closeModal()">إلغاء</button>
