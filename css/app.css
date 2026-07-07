@@ -2634,7 +2634,7 @@ ul { list-style: none; }
   /* ─ Header ─ */
   .top-header { padding: 0 8px; }
   .hdr-btn { width: 32px; height: 32px; font-size: 13px; }
-  .header-lang-switch { display: none; }
+  .header-lang-select { display: none; }
 
   /* ─ Stat cards: keep 2 columns ─ */
   .stat-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
