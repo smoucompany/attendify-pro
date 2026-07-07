@@ -1003,6 +1003,53 @@ const ReportsModule = {
 
   // ── PRINT VIEW ───────────────────────────────────────────
 
+  // ── SVG mini-charts for the print document (لا تعتمد على أي مكتبة JS — آمنة تماماً عند الطباعة) ──
+  _svgDonut(pct, color, trackColor, label) {
+    const size = 84, stroke = 10, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+    const clamped = Math.max(0, Math.min(100, pct || 0));
+    const off = c * (1 - clamped / 100);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="${stroke}"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+        stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" stroke-linecap="round"
+        transform="rotate(-90 ${size/2} ${size/2})"/>
+      <text x="50%" y="46%" text-anchor="middle" font-size="19" font-weight="900" fill="${color}" font-family="F,Cairo,Arial">${Math.round(clamped)}%</text>
+      <text x="50%" y="63%" text-anchor="middle" font-size="7" fill="#6B7280" font-family="F,Cairo,Arial">${_esc(label||'')}</text>
+    </svg>`;
+  },
+
+  _svgBars(items, width) {
+    width = width || 270;
+    const barH = 13, gap = 7, leftW = 68;
+    const max = Math.max(1, ...items.map(i => i.value));
+    const rows = items.map((it, i) => {
+      const y = i * (barH + gap);
+      const w = Math.max(2, (width - leftW - 34) * (it.value / max));
+      return `
+        <text x="${leftW-8}" y="${y+barH-3}" text-anchor="end" font-size="8" fill="#374151" font-family="F,Cairo,Arial" font-weight="700">${_esc(it.label)}</text>
+        <rect x="${leftW}" y="${y}" width="${width-leftW-34}" height="${barH}" rx="4" fill="#F1F5F9"/>
+        <rect x="${leftW}" y="${y}" width="${w.toFixed(1)}" height="${barH}" rx="4" fill="${it.color}"/>
+        <text x="${leftW+w+6}" y="${y+barH-3}" font-size="8" fill="${it.color}" font-family="F,Cairo,Arial" font-weight="800">${it.value}</text>`;
+    }).join('');
+    const h = items.length * (barH + gap) - gap;
+    return `<svg width="${width}" height="${h}" viewBox="0 0 ${width} ${h}">${rows}</svg>`;
+  },
+
+  // يبني صف الرسوم (دونات + أعمدة أفقية) — يُستخدم في أنواع التقارير التي لها توزيع نِسَبي واضح
+  _chartRow(donutPct, barItems, donutLabel) {
+    const ar = currentLang === 'ar';
+    return `
+    <div class="chart-row">
+      <div class="chart-donut-wrap">
+        ${this._svgDonut(donutPct, 'var(--PA)', 'var(--PL2)', donutLabel)}
+      </div>
+      <div class="chart-bars-wrap">
+        <div class="chart-bars-title">${ar?'التوزيع':'Breakdown'}</div>
+        ${this._svgBars(barItems)}
+      </div>
+    </div>`;
+  },
+
   printReport(type, from, to) {
     const ar  = currentLang === 'ar';
     type = type || this._activeType || this._cache.type || 'summary';
@@ -1014,7 +1061,7 @@ const ReportsModule = {
     const rangeStr  = `${from} — ${to}`;
 
     // ── بناء بيانات الجدول من نفس المصدر المعروض على الشاشة ──
-    let headers = [], rows = [], footerRow = null, rowMeta = [], groupPageBreak = false, customKpis = null;
+    let headers = [], rows = [], footerRow = null, rowMeta = [], groupPageBreak = false, customKpis = null, chartsHtml = '';
     // rowMeta: [{deptId, deptName, deptColor}] — موازٍ لـ rows لتجميع الجدول حسب القسم
 
     const _deptMeta = (empId) => {
@@ -1035,6 +1082,18 @@ const ReportsModule = {
         return [e?.name||'—', a.date, a.checkIn||'—', a.checkOut||'—', hrs, a.status];
       });
       rowMeta = recs.map(a => _deptMeta(a.empId));
+
+      {
+        const cnt = { present:0, late:0, absent:0, leave:0, no_fingerprint:0 };
+        recs.forEach(a => { if (cnt[a.status] !== undefined) cnt[a.status]++; });
+        const rate = recs.length ? Math.round(((cnt.present+cnt.late) / recs.length) * 100) : 0;
+        chartsHtml = this._chartRow(rate, [
+          { label: t('reports.present'),  value: cnt.present, color: '#15803D' },
+          { label: t('reports.late'),     value: cnt.late,    color: '#B45309' },
+          { label: t('reports.absent'),   value: cnt.absent,  color: '#B91C1C' },
+          { label: t('reports.onLeave'),  value: cnt.leave,   color: '#1D4ED8' },
+        ], t('reports.attendanceRate'));
+      }
 
     } else if (type === 'late') {
       const lates = (this._cache.type === 'late' && this._cache.records) ? this._cache.records
@@ -1073,6 +1132,15 @@ const ReportsModule = {
           '—', `-${App.formatCurrency(this._cache.totalDed)}`,
           ...(hasOT ? [`+${App.formatCurrency(this._cache.totalOT)}`] : []),
           App.formatCurrency(this._cache.totalNet)];
+
+        const grossTotal = this._cache.totalBase + this._cache.totalAllow + this._cache.totalOT;
+        const netPct = grossTotal > 0 ? Math.round((this._cache.totalNet / grossTotal) * 100) : 100;
+        chartsHtml = this._chartRow(netPct, [
+          { label: t('reports.baseTotal'),  value: this._cache.totalBase,  color: '#1D4ED8' },
+          { label: t('reports.allowances'), value: this._cache.totalAllow, color: '#0D9488' },
+          { label: t('reports.overtime'),   value: this._cache.totalOT,    color: '#7C3AED' },
+          { label: t('reports.deductions'), value: this._cache.totalDed,   color: '#B91C1C' },
+        ], ar?'صافي من الإجمالي':'Net of gross');
       } else {
         headers = [t('reports.employee'), t('reports.base'), t('reports.deductions'), t('reports.net')];
         rows = DB.payroll.map(p => { const e=DB.getEmployee(p.empId); return [e?.name||'—', App.formatCurrency(p.base), App.formatCurrency((p.absentDeduction||0)+(p.lateDeduction||0)), App.formatCurrency(p.total)]; });
@@ -1088,6 +1156,19 @@ const ReportsModule = {
         return [e?.name||'—', typeLbl, l.from||'—', l.to||'—', l.days||'—', l.status];
       });
       rowMeta = DB.leaves.map(l => _deptMeta(l.empId));
+
+      {
+        const approved = DB.leaves.filter(l=>l.status==='approved').length;
+        const pending  = DB.leaves.filter(l=>l.status==='pending').length;
+        const rejected = DB.leaves.filter(l=>l.status==='rejected').length;
+        const totalL   = DB.leaves.length;
+        const approvedPct = totalL ? Math.round((approved/totalL)*100) : 0;
+        chartsHtml = this._chartRow(approvedPct, [
+          { label: t('common.approve'), value: approved, color: '#15803D' },
+          { label: t('common.pending'), value: pending, color: '#B45309' },
+          { label: t('common.reject'),  value: rejected, color: '#B91C1C' },
+        ], ar?'نسبة الاعتماد':'Approval rate');
+      }
 
     } else if (type === 'overtime') {
       const ots = DB.attendance.filter(a => a.overtime && a.date >= from && a.date <= to);
@@ -1137,6 +1218,12 @@ const ReportsModule = {
         { v: `${attRate}%`,        l: t('reports.attendanceRate') },
       ];
 
+      chartsHtml = this._chartRow(attRate, [
+        { label: t('reports.present'), value: presentDays, color: '#15803D' },
+        { label: t('reports.late'),    value: lateDays,    color: '#B45309' },
+        { label: t('reports.absent'),  value: absentDays,  color: '#B91C1C' },
+      ], t('reports.attendanceRate'));
+
     } else {
       const s = DB.getAttendanceStats();
       headers = [t('reports.kpiLabel'), t('reports.kpiValue')];
@@ -1149,6 +1236,13 @@ const ReportsModule = {
         [t('reports.attendanceRate'),    s.attendanceRate+'%'],
         [t('reports.totalPayroll'),      App.formatCurrency(DB.payroll.reduce((s,p)=>s+(p.total||0),0))],
       ];
+
+      chartsHtml = this._chartRow(s.attendanceRate, [
+        { label: t('reports.present'), value: s.present, color: '#15803D' },
+        { label: t('reports.late'),    value: s.late,    color: '#B45309' },
+        { label: t('reports.absent'),  value: s.absent,  color: '#B91C1C' },
+        { label: t('reports.onLeave'), value: s.onLeave, color: '#1D4ED8' },
+      ], t('reports.attendanceRate'));
     }
 
     // ── Meta info ──
@@ -1225,6 +1319,10 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 [data-tpl="slate"]{ --P:#312E81;--PA:#7C3AED;--PL:#F5F3FF;--PL2:#EDE9FE;--TX:#111827;--TM:#6B7280;--BD:#E9E4FB;--BG:#FAFAFB;--BW:#FFFFFF;--OK:#059669;--WR:#D97706;--ER:#DC2626;--IN:#7c3aed; }
 /* حكومي — Government (أخضر وذهبي) */
 [data-tpl="sage"] { --P:#14532D;--PA:#B45309;--PL:#FFFBEB;--PL2:#FEF3C7;--TX:#111827;--TM:#6B7280;--BD:#E7E1CE;--BG:#FEFCF6;--BW:#FFFFFF;--OK:#15803D;--WR:#B45309;--ER:#B91C1C;--IN:#1D4ED8; }
+/* مينيمال — Minimal (رمادي/أسود، بلا ألوان زائدة) */
+[data-tpl="mono"] { --P:#18181B;--PA:#3F3F46;--PL:#F4F4F5;--PL2:#E4E4E7;--TX:#18181B;--TM:#71717A;--BD:#E4E4E7;--BG:#FAFAFA;--BW:#FFFFFF;--OK:#16A34A;--WR:#CA8A04;--ER:#DC2626;--IN:#3F3F46; }
+/* عصري — Modern (تركواز/زمردي حيوي) */
+[data-tpl="modern"] { --P:#0F172A;--PA:#0D9488;--PL:#F0FDFA;--PL2:#CCFBF1;--TX:#0F172A;--TM:#64748B;--BD:#E2E8F0;--BG:#F8FAFC;--BW:#FFFFFF;--OK:#0D9488;--WR:#D97706;--ER:#E11D48;--IN:#0891B2; }
 /* ── Document shell ── */
 .doc { width: 210mm; margin: 28px auto 56px; background: #fff; box-shadow: 0 12px 48px rgba(15,23,42,0.12); }
 .doc > thead, .doc > tfoot, .doc > tbody { display: table-row-group; }
@@ -1327,6 +1425,16 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
 .kpi-card:nth-child(5) { border-inline-start-color: var(--IN); }
 .kpi-n { font-size: 24px; font-weight: 900; color: var(--P); letter-spacing: -0.5px; line-height: 1; }
 .kpi-l { font-size: 8.5px; color: var(--TM); margin-top: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-card { break-inside: avoid; page-break-inside: avoid; }
+
+/* ── CHARTS ROW (SVG — طباعة آمنة، بدون اعتماد على JS) ── */
+.chart-row { display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: center;
+  background: var(--BW); border: 1px solid var(--BD); border-radius: 12px;
+  padding: 14px 18px; margin-bottom: 18px; break-inside: avoid; page-break-inside: avoid; }
+.chart-donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+.chart-donut-title { font-size: 7.5px; font-weight: 800; color: var(--TM); text-transform: uppercase; letter-spacing: 0.6px; }
+.chart-bars-wrap { display: flex; flex-direction: column; gap: 2px; }
+.chart-bars-title { font-size: 7.5px; font-weight: 800; color: var(--TM); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
 
 /* ── TABLE ── */
 .tbl-wrap { border: 1px solid var(--BD); border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
@@ -1425,7 +1533,7 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
   .dt tbody tr, .sig-zone { break-inside: avoid; page-break-inside: avoid; }
   tr { page-break-inside: avoid; break-inside: avoid; }
   .hdr-accent, .hdr-main, .dt thead th, .dt tfoot td, .meta-strip, .ms-cell:first-child,
-  .kpi-card, .sig-role-badge, .bs, .doc-ftr, .ftr-accent, .dept-grp-hdr td
+  .kpi-card, .sig-role-badge, .bs, .doc-ftr, .ftr-accent, .dept-grp-hdr td, .chart-row
   { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   .pg-n::after { content: counter(page); }
   @page { size: A4 portrait; margin: 0; }
@@ -1489,9 +1597,11 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
   <div class="tb-group">
     <span class="tb-label">${t('reports.printTemplate')}</span>
     <div class="tb-seg">
-      <button class="tb-btn on" data-tpl="pro"   onclick="setTpl('pro')"  >${t('reports.tplExecutive')}</button>
-      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')">${t('reports.tplCorporate')}</button>
-      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')" >${t('reports.tplOfficial')}</button>
+      <button class="tb-btn on" data-tpl="pro"    onclick="setTpl('pro')"   >${t('reports.tplExecutive')}</button>
+      <button class="tb-btn"    data-tpl="slate"  onclick="setTpl('slate')" >${t('reports.tplCorporate')}</button>
+      <button class="tb-btn"    data-tpl="sage"   onclick="setTpl('sage')"  >${t('reports.tplOfficial')}</button>
+      <button class="tb-btn"    data-tpl="mono"   onclick="setTpl('mono')"  >${t('reports.tplMinimal')}</button>
+      <button class="tb-btn"    data-tpl="modern" onclick="setTpl('modern')">${t('reports.tplModern')}</button>
     </div>
   </div>
   <div class="tb-divider"></div>
@@ -1591,6 +1701,9 @@ body{font-family:'F','Cairo','Segoe UI',Arial,sans-serif;font-size:10.5px;direct
     <div class="kpi-card"><div class="kpi-n">${sStats.attendanceRate}%</div><div class="kpi-l">${t('reports.attendanceRate')}</div></div>
     <div class="kpi-card"><div class="kpi-n">${sStats.present}</div><div class="kpi-l">${t('reports.kpiPresentToday')}</div></div>
   </div>` : ''}
+
+  <!-- Charts -->
+  ${chartsHtml}
 
   <!-- Data Table -->
   <div class="tbl-wrap">
