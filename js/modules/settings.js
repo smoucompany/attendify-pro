@@ -2204,16 +2204,17 @@ const SettingsModule = {
   _integrations() {
     const sbCfg  = typeof SupabaseDB !== 'undefined' ? SupabaseDB.getConfig() : {};
     const sbConn = typeof SupabaseDB !== 'undefined' ? SupabaseDB.isConnected : false;
+    const creds  = this._getState('integrations').credentials || {};
 
     const intgs = [
-      {icon:'fab fa-whatsapp',    color:'#25d366', l:'WhatsApp Business',  d:'إرسال إشعارات وتنبيهات عبر WhatsApp',         connected:true,  cfg:'whatsapp'},
-      {icon:'fas fa-comment-sms', color:'#3b82f6', l:'Twilio SMS',         d:'بوابة رسائل SMS للتنبيهات',                   connected:false, cfg:'twilio'},
-      {icon:'fas fa-envelope',    color:'#6366f1', l:'SMTP Email',         d:'smtp.gmail.com:587 — TLS',                    connected:true,  cfg:'smtp'},
+      {icon:'fab fa-whatsapp',    color:'#25d366', l:'WhatsApp Business',  d:'إرسال إشعارات وتنبيهات عبر WhatsApp',         connected: !!creds.whatsapp, cfg:'whatsapp'},
+      {icon:'fas fa-comment-sms', color:'#3b82f6', l:'Twilio SMS',         d:'بوابة رسائل SMS للتنبيهات',                   connected: !!creds.twilio,   cfg:'twilio'},
+      {icon:'fas fa-envelope',    color:'#6366f1', l:'SMTP Email',         d:'smtp.gmail.com:587 — TLS',                    connected: !!creds.smtp,     cfg:'smtp'},
       {icon:'fas fa-fingerprint', color:'#10b981', l:'جهاز البصمة',        d:'ZKTeco / Suprema Biometric Device',           connected: typeof DB!=='undefined' && (DB.devices||[]).some(x=>x.status==='online'), cfg:'bio'},
       {icon:'fas fa-face-smile',  color:'#8b5cf6', l:'Face Recognition AI',d:'نموذج التعرف على الوجه المحلي',               connected:true,  cfg:'face'},
-      {icon:'fas fa-lock',        color:'#0078d4', l:'Active Directory',   d:'مزامنة المستخدمين مع LDAP/AD',                connected:true,  cfg:'ldap'},
-      {icon:'fas fa-calendar',    color:'#0f9d58', l:'Google Calendar',    d:'مزامنة العطل والأحداث مع Google Calendar',    connected:false, cfg:'gcal'},
-      {icon:'fab fa-slack',       color:'#4a154b', l:'Slack',              d:'إرسال التنبيهات لقنوات Slack',                connected:false, cfg:'slack'},
+      {icon:'fas fa-lock',        color:'#0078d4', l:'Active Directory',   d:'مزامنة المستخدمين مع LDAP/AD',                connected: !!creds.ldap,     cfg:'ldap'},
+      {icon:'fas fa-calendar',    color:'#0f9d58', l:'Google Calendar',    d:'مزامنة العطل والأحداث مع Google Calendar',    connected: !!creds.gcal,     cfg:'gcal'},
+      {icon:'fab fa-slack',       color:'#4a154b', l:'Slack',              d:'إرسال التنبيهات لقنوات Slack',                connected: !!creds.slack,    cfg:'slack'},
     ];
     return `
       <div class="grid-2">
@@ -2239,7 +2240,7 @@ const SettingsModule = {
                 </button>
                 ` : `
                 <button class="btn ${i.connected?'btn-danger':'btn-primary'} btn-sm" style="flex:1"
-                  onclick="App.toast('${i.connected?'جارٍ فصل':'جارٍ ربط'} ${i.l}...','info')">
+                  onclick="${i.connected?`SettingsModule.disconnectIntegration('${i.cfg}','${i.l}')`:`SettingsModule.configIntegration('${i.cfg}','${i.l}')`}">
                   <i class="fas ${i.connected?'fa-link-slash':'fa-link'}"></i>
                   ${i.connected?'فصل':'ربط'}
                 </button>
@@ -2348,22 +2349,33 @@ const SettingsModule = {
             <div class="settings-item-label">Webhook URL</div>
             <div class="settings-item-desc">استقبال أحداث النظام على عنوانك</div>
           </div>
-          <input class="app-form-input" placeholder="https://your-server.com/webhook" dir="ltr" style="min-width:260px">
+          <div style="display:flex;gap:6px;min-width:260px">
+            <input class="app-form-input" id="webhook-url" placeholder="https://your-server.com/webhook" dir="ltr" value="${creds.webhookUrl||''}" style="flex:1">
+            <button class="btn btn-secondary btn-sm" onclick="SettingsModule.testWebhook(document.getElementById('webhook-url'))" title="اختبار"><i class="fas fa-plug"></i></button>
+            <button class="btn btn-primary btn-sm" onclick="SettingsModule.saveWebhookUrl()" title="حفظ"><i class="fas fa-save"></i></button>
+          </div>
         </div>
       `)}
     `;
   },
 
+  _integrationFields: {
+    whatsapp: ['businessPhoneId', 'accessToken'],
+    smtp: ['host', 'port', 'security', 'username', 'password'],
+    twilio: ['accountSid', 'authToken', 'fromNumber'],
+  },
+
   configIntegration(type, name) {
+    const saved = (this._getState('integrations').credentials || {})[type] || {};
     const configs = {
-      whatsapp:`<div class="app-form-group"><label>Business Phone ID</label><input class="app-form-input" dir="ltr" placeholder="123456789"></div><div class="app-form-group"><label>Access Token</label><input class="app-form-input" type="password" dir="ltr" placeholder="EAABs..."></div>`,
-      smtp:`<div class="app-form-group"><label>SMTP Host</label><input class="app-form-input" dir="ltr" value="smtp.gmail.com"></div><div class="app-form-row"><div class="app-form-group"><label>Port</label><input class="app-form-input" dir="ltr" value="587"></div><div class="app-form-group"><label>Security</label><select class="app-form-input app-form-select"><option>TLS</option><option>SSL</option></select></div></div><div class="app-form-group"><label>Username</label><input class="app-form-input" dir="ltr" placeholder="noreply@company.com"></div><div class="app-form-group"><label>Password</label><input class="app-form-input" type="password"></div>`,
-      twilio:`<div class="app-form-group"><label>Account SID</label><input class="app-form-input" dir="ltr" placeholder="ACxxxxxx"></div><div class="app-form-group"><label>Auth Token</label><input class="app-form-input" type="password"></div><div class="app-form-group"><label>From Number</label><input class="app-form-input" dir="ltr" placeholder="+1234567890"></div>`,
+      whatsapp:`<div class="app-form-group"><label>Business Phone ID</label><input class="app-form-input" id="intg-businessPhoneId" dir="ltr" placeholder="123456789" value="${saved.businessPhoneId||''}"></div><div class="app-form-group"><label>Access Token</label><input class="app-form-input" id="intg-accessToken" type="password" dir="ltr" placeholder="EAABs..." value="${saved.accessToken||''}"></div>`,
+      smtp:`<div class="app-form-group"><label>SMTP Host</label><input class="app-form-input" id="intg-host" dir="ltr" value="${saved.host||'smtp.gmail.com'}"></div><div class="app-form-row"><div class="app-form-group"><label>Port</label><input class="app-form-input" id="intg-port" dir="ltr" value="${saved.port||'587'}"></div><div class="app-form-group"><label>Security</label><select class="app-form-input app-form-select" id="intg-security"><option ${saved.security==='TLS'||!saved.security?'selected':''}>TLS</option><option ${saved.security==='SSL'?'selected':''}>SSL</option></select></div></div><div class="app-form-group"><label>Username</label><input class="app-form-input" id="intg-username" dir="ltr" placeholder="noreply@company.com" value="${saved.username||''}"></div><div class="app-form-group"><label>Password</label><input class="app-form-input" id="intg-password" type="password" value="${saved.password||''}"></div>`,
+      twilio:`<div class="app-form-group"><label>Account SID</label><input class="app-form-input" id="intg-accountSid" dir="ltr" placeholder="ACxxxxxx" value="${saved.accountSid||''}"></div><div class="app-form-group"><label>Auth Token</label><input class="app-form-input" id="intg-authToken" type="password" value="${saved.authToken||''}"></div><div class="app-form-group"><label>From Number</label><input class="app-form-input" id="intg-fromNumber" dir="ltr" placeholder="+1234567890" value="${saved.fromNumber||''}"></div>`,
     };
     const setupLabel = currentLang==='ar'?'إعداد':'Setup';
     App.openModal(`${setupLabel} ${name}`, `
-      <form onsubmit="event.preventDefault();App.closeModal();App.toast(t('settings.toastSettingsSaved'),'success')">
-        ${configs[type]||`<div class="app-form-group"><label>API Endpoint</label><input class="app-form-input" dir="ltr"></div><div class="app-form-group"><label>Secret Key</label><input class="app-form-input" type="password"></div>`}
+      <form onsubmit="event.preventDefault();SettingsModule.saveIntegration('${type}','${name}')">
+        ${configs[type]||`<div class="app-form-group"><label>API Endpoint</label><input class="app-form-input" id="intg-apiEndpoint" dir="ltr" value="${saved.apiEndpoint||''}"></div><div class="app-form-group"><label>Secret Key</label><input class="app-form-input" id="intg-secretKey" type="password" value="${saved.secretKey||''}"></div>`}
         <button type="button" class="btn btn-secondary btn-sm" onclick="SettingsModule.testWebhook(this.closest('form'))"><i class="fas fa-plug"></i> ${currentLang==='ar'?'اختبار الاتصال':'Test Connection'}</button>
         <div class="modal-footer" style="padding:0;margin-top:16px">
           <button type="button" class="btn btn-secondary" onclick="App.closeModal()">${t('common.cancel')}</button>
@@ -2371,6 +2383,37 @@ const SettingsModule = {
         </div>
       </form>
     `,{size:'sm'});
+  },
+
+  saveIntegration(type, name) {
+    const fields = this._integrationFields[type] || ['apiEndpoint', 'secretKey'];
+    const values = {};
+    fields.forEach(f => { const el = document.getElementById(`intg-${f}`); if (el) values[f] = el.value.trim(); });
+    const state = this._getState('integrations');
+    state.credentials = state.credentials || {};
+    state.credentials[type] = values;
+    this._persistState('integrations', state, false);
+    App.closeModal();
+    App.toast(currentLang==='ar'?`تم حفظ إعدادات ${name} ✓`:`${name} settings saved ✓`, 'success');
+    this.switchSection('integrations');
+  },
+
+  disconnectIntegration(type, name) {
+    const state = this._getState('integrations');
+    state.credentials = state.credentials || {};
+    delete state.credentials[type];
+    this._persistState('integrations', state, false);
+    App.toast(currentLang==='ar'?`تم فصل ${name}`:`${name} disconnected`, 'info');
+    this.switchSection('integrations');
+  },
+
+  saveWebhookUrl() {
+    const url = document.getElementById('webhook-url')?.value?.trim() || '';
+    const state = this._getState('integrations');
+    state.credentials = state.credentials || {};
+    state.credentials.webhookUrl = url;
+    this._persistState('integrations', state, false);
+    App.toast(currentLang==='ar'?'تم حفظ رابط الـ Webhook ✓':'Webhook URL saved ✓', 'success');
   },
 
   toggleApiKey() {
@@ -2401,13 +2444,14 @@ const SettingsModule = {
       .catch(() => { if (inp) { inp.select(); document.execCommand('copy'); App.toast(currentLang==='ar'?'تم النسخ':'Copied', 'success'); } });
   },
 
-  async testWebhook(form) {
-    const urlEl = form?.querySelector('input[placeholder*="webhook"], input[dir="ltr"]');
+  async testWebhook(elOrForm) {
+    const urlEl = elOrForm?.tagName === 'INPUT' ? elOrForm : elOrForm?.querySelector('input[placeholder*="webhook"], input[dir="ltr"]');
     const url = urlEl?.value?.trim();
     if (!url) { App.toast(currentLang==='ar'?'أدخل Webhook URL أولاً':'Enter a Webhook URL first', 'warning'); return; }
     App.toast(currentLang==='ar'?'جارٍ اختبار الاتصال...':'Testing connection...', 'info', 3000);
     try {
-      await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({test:true, from:'Attendify Pro', timestamp: new Date().toISOString()}) });
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({test:true, from:'Attendify Pro', timestamp: new Date().toISOString()}) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       App.toast(currentLang==='ar'?'تم الاتصال بنجاح ✓':'Connected successfully ✓', 'success');
     } catch {
       App.toast(currentLang==='ar'?'تعذّر الاتصال — تحقق من الرابط':'Connection failed — check the URL', 'error');
