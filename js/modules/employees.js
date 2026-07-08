@@ -355,7 +355,7 @@ const EmployeesModule = {
           <div class="app-form-group">
             <label>${t('employees.salary')}</label>
             <input class="app-form-input" type="number" name="salary" id="emp-salary-input"
-              value="${emp?.salary||''}" min="0" step="100"
+              value="${emp?.salary||''}" min="0" step="any"
               oninput="EmployeesModule._updateRates(this.value)">
           </div>
           <div class="app-form-group">

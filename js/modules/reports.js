@@ -158,12 +158,7 @@ const ReportsModule = {
                 <input type="checkbox" id="rpt-emp-all" checked onchange="ReportsModule._toggleEmpAll(this.checked)">
                 ${t('reports.allEmployees')}
               </label>
-              ${DB.employees.filter(e=>e.status!=='terminated').map(e=>`
-                <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;font-size:13px">
-                  <input type="checkbox" class="rpt-emp-check" value="${e.id}" onchange="ReportsModule._empCheckChanged()">
-                  ${e.name}
-                </label>
-              `).join('')}
+              <div id="rpt-emp-list">${this._empRowsHTML()}</div>
             </div>
           </div>` : `
           <div class="rpt-filter-group">
@@ -226,10 +221,29 @@ const ReportsModule = {
     return ids.length ? ids : 'all';
   },
 
+  // يبني صفوف قائمة الموظفين دائماً من DB.employees الحالية (وليس نسخة قديمة محفوظة عند أول رسم للصفحة)
+  _empRowsHTML() {
+    return DB.employees.filter(e => e.status !== 'terminated').map(e => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" class="rpt-emp-check" value="${e.id}" onchange="ReportsModule._empCheckChanged()">
+        ${e.name}
+      </label>
+    `).join('');
+  },
+
   _toggleEmpPicker() {
     const panel = document.getElementById('rpt-emp-panel');
     if (!panel) return;
     const willShow = panel.style.display === 'none';
+    if (willShow) {
+      // إعادة بناء القائمة من بيانات الموظفين الحالية (تحسباً لوصول موظفين جدد من المزامنة بعد فتح الصفحة)
+      const prevChecked = new Set([...document.querySelectorAll('.rpt-emp-check:checked')].map(c => c.value));
+      const list = document.getElementById('rpt-emp-list');
+      if (list) {
+        list.innerHTML = this._empRowsHTML();
+        list.querySelectorAll('.rpt-emp-check').forEach(cb => { cb.checked = prevChecked.has(cb.value); });
+      }
+    }
     panel.style.display = willShow ? 'block' : 'none';
     if (willShow) {
       const close = (e) => {
